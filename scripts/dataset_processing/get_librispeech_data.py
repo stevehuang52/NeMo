@@ -130,7 +130,7 @@ def __process_transcript(file_path: str, dst_folder: str):
             duration = subprocess.check_output("soxi -D {0}".format(wav_file), shell=True)
 
             entry = {}
-            entry["audio_filepath"] = os.path.abspath(wav_file)
+            entry["audio_filepath"] = wav_file # os.path.abspath(wav_file)
             entry["duration"] = float(duration)
             entry["text"] = transcript_text
             entries.append(entry)
@@ -184,10 +184,10 @@ def main():
     for data_set in data_sets.split(","):
         logging.info("\n\nWorking on: {0}".format(data_set))
         filepath = os.path.join(data_root, data_set + ".tar.gz")
-        logging.info("Getting {0}".format(data_set))
-        __maybe_download_file(filepath, data_set.upper())
-        logging.info("Extracting {0}".format(data_set))
-        __extract_file(filepath, data_root)
+        # logging.info("Getting {0}".format(data_set))
+        # __maybe_download_file(filepath, data_set.upper())
+        # logging.info("Extracting {0}".format(data_set))
+        # __extract_file(filepath, data_root)
         logging.info("Processing {0}".format(data_set))
         __process_data(
             os.path.join(os.path.join(data_root, "LibriSpeech"), data_set.replace("_", "-"),),
