@@ -10,17 +10,3 @@ python ./process_asr_text_tokenizer.py \
 
 
 
-sudo DOCKER_BUILDKIT=1 docker build --no-cache . -f Dockerfile -t nemo-22may16
-
-sudo docker image tag nemo-22may16 gitlab-master.nvidia.com/heh/nemo_containers:nemo-22may16
-
-rsync -Wav manifest/ heh@draco1:/gpfs/fs1/projects/ent_aiapps/datasets/data/ASR/catalan/cv-2022-04-27/manifest
-
-rsync -Wav tokenizers/ heh@draco1:/gpfs/fs1/projects/ent_aiapps/datasets/tokenizers/ASR/catalan/cv-2022-04-27
-
-
-gitlab-master.nvidia.com/heh/nemo_containers:nemo-dev
-
-sudo docker push gitlab-master.nvidia.com/heh/nemo_containers:nemo-22may16
-
-sudo docker image tag nemo-dev gitlab-master.nvidia.com/heh/nemo_containers:nemo-dev
