@@ -35,7 +35,6 @@ class ManifestEN:
 def item_iter(
     manifests_files: Union[str, List[str]], 
     parse_func: Callable[[str, Optional[str]], Dict[str, Any]] = None,
-    data_prefix: Optional[Union[str, List[str]]] = None, 
 ) -> Iterator[Dict[str, Any]]:
     """Iterate through json lines of provided manifests.
 
@@ -53,9 +52,6 @@ def item_iter(
         parse_func: A callable function which accepts as input a single line
             of a manifest and optionally the manifest file itself,
             and parses it, returning a dictionary mapping from str -> Any.
-            
-        data_prefix: Either single string prefix or list of such -
-            prefix to append to each manifest.
 
     Yields:
         Parsed key to value item dicts.
@@ -67,41 +63,27 @@ def item_iter(
     if isinstance(manifests_files, str):
         manifests_files = [manifests_files]
 
-    num_manifests = len(manifests_files)
-    if isinstance(data_prefix, str):
-        # use the same prefix for all manifests
-        data_prefix = [data_prefix] if num_manifests == 1 else [data_prefix]*num_manifests
-    elif data_prefix is None:
-        # append no prefix
-        data_prefix = [""] * num_manifests
-    
-    num_prefix = len(data_prefix)
-    if num_prefix > 1 and num_prefix != num_manifests:
-        raise ValueError(
-            f"The number of manifests and prefixes must match, unless a single or none prefix is provided." \
-             f"Got {num_manifests} manifests with {num_prefix} prefix(es)."
-        )
-
     if parse_func is None:
         parse_func = __parse_item
 
     k = -1
-    for manifest_file, prefix in zip(manifests_files, data_prefix):
-        if not Path(manifest_file).is_file():
-            logging.info(f"Manifest not found: {manifest_file}")
-            manifest_file = str(Path(prefix) / Path(manifest_file))
-            logging.info(f"Try adding prefix {prefix}: {manifest_file}")
-            if Path(manifest_file).is_file():
-                logging.info(f"Found alternate manifest: {manifest_file}")
-            else:
-                raise ValueError(f"Manifest not found: {manifest_file}")
-
-        with open(expanduser(manifest_file), 'r') as f:
+    for manifest_file in manifests_files:
+        manifest_file = Path(manifest_file)
+        manifest_dir = Path(manifest_file.parent)
+        with open(expanduser(str(manifest_file)), 'r') as f:
             for line in f:
                 k += 1
                 item = parse_func(line, manifest_file)
+                audio_file = Path(item['audio_file'])
+                # If the audio path is relative, and not using tarred dataset,
+                # attach the parent directory of manifest to the audio path.
+                # Assum that 'audio_file' for non-tarred datasts always starts with a foler name,
+                # such as 'wavs/xxxxxx.wav'
+                if not audio_file.is_file() and audio_file.parent != Path("."):
+                    # assume the wavs/ dir and manifest are under the same dir
+                    audio_file = manifest_dir / audio_file 
                 item['id'] = k
-                item['audio_file'] = str(Path(prefix) / Path(item['audio_file']))
+                item['audio_file'] = str(audio_file)
                 yield item
 
 

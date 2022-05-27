@@ -8,7 +8,6 @@ labels: &labels [" ", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"
 
 model:
   train_ds:
-    data_prefix: null
     manifest_filepath: ???
     sample_rate: 16000
     labels: *labels
@@ -25,7 +24,6 @@ model:
     bucketing_batch_size: null
 
   validation_ds:
-    data_prefix: null
     manifest_filepath: ???
     sample_rate: 16000
     labels: *labels
@@ -182,4 +180,3 @@ exp_manager:
   name: *name
   create_tensorboard_logger: True
   create_checkpoint_callback: True
-

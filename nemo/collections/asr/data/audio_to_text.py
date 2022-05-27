@@ -121,13 +121,11 @@ class ASRManifestProcessor:
         eos_id: Optional[int] = None,
         pad_id: int = 0,
         index_by_file_id: bool = False,
-        data_prefix: Optional[str] = None
     ):
         self.parser = parser
 
         self.collection = collections.ASRAudioText(
             manifests_files=manifest_filepath,
-            data_prefix=data_prefix,
             parser=parser,
             min_duration=min_duration,
             max_duration=max_duration,
@@ -261,17 +259,12 @@ class _AudioTextDataset(Dataset):
         eos_id: Optional[int] = None,
         pad_id: int = 0,
         return_sample_id: bool = False,
-        data_prefix: Optional[str] = None
     ):
         if type(manifest_filepath) == str:
             manifest_filepath = manifest_filepath.split(",")
 
-        if isinstance(data_prefix, str):
-            data_prefix = data_prefix.split(",")
-
         self.manifest_processor = ASRManifestProcessor(
             manifest_filepath=manifest_filepath,
-            data_prefix=data_prefix,
             parser=parser,
             max_duration=max_duration,
             min_duration=min_duration,
@@ -377,7 +370,6 @@ class AudioToCharDataset(_AudioTextDataset):
         pad_id: int = 0,
         parser: Union[str, Callable] = 'en',
         return_sample_id: bool = False,
-        data_prefix: Optional[str] = None,
     ):
         self.labels = labels
 
@@ -399,7 +391,6 @@ class AudioToCharDataset(_AudioTextDataset):
             eos_id=eos_id,
             pad_id=pad_id,
             return_sample_id=return_sample_id,
-            data_prefix=data_prefix,
         )
 
 
