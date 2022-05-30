@@ -2,7 +2,7 @@ curr_dir=${pwd}
 test_manifest="/home/heh/datasets/Catalan/catalan_cleaned/test/test.json"
 
 proj_name="ConformerL_ctc_catalan"
-exp_name="drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b1_f_gacc1_ep1000_bk4_b32"
+exp_name="drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b32_f_gacc1_ep1000"
 
 target_dir=./results/${proj_name}/${exp_name}/
 nemo_file=${exp_name}-averaged.nemo
