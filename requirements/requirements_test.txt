@@ -9,3 +9,4 @@ sphinxcontrib-bibtex
 wrapt
 wget
 wandb
+pre-commit
