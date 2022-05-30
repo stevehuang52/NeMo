@@ -2,6 +2,10 @@
 *.model
 *.pkl
 an4/
+results/
+catalan/ngram_lm/decoders/
+catalan/ngram_lm/predictions/
+catalan/ngram_lm/kenlm_saved/
 
 #*.ipynb
 output
@@ -175,4 +179,3 @@ examples/neural_graphs/*.yml
 
 .hydra/
 nemo_experiments/
-

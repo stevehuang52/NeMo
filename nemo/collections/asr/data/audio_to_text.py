@@ -121,7 +121,7 @@ class ASRManifestProcessor:
         eos_id: Optional[int] = None,
         pad_id: int = 0,
         index_by_file_id: bool = False,
-        data_prefix: Optional[str] = None
+        data_prefix: Optional[str] = None,
     ):
         self.parser = parser
 
@@ -261,7 +261,7 @@ class _AudioTextDataset(Dataset):
         eos_id: Optional[int] = None,
         pad_id: int = 0,
         return_sample_id: bool = False,
-        data_prefix: Optional[str] = None
+        data_prefix: Optional[str] = None,
     ):
         if type(manifest_filepath) == str:
             manifest_filepath = manifest_filepath.split(",")
@@ -507,7 +507,7 @@ class AudioToBPEDataset(_AudioTextDataset):
             pad_id=pad_id,
             trim=trim,
             return_sample_id=return_sample_id,
-            data_prefix=data_prefix
+            data_prefix=data_prefix,
         )
 
 

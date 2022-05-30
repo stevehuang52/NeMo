@@ -192,7 +192,9 @@ class AudioText(_Collection):
 class ASRAudioText(AudioText):
     """`AudioText` collector from asr structured json files."""
 
-    def __init__(self, manifests_files: Union[str, List[str]], data_prefix: Union[str, List[str]] = None, *args, **kwargs):
+    def __init__(
+        self, manifests_files: Union[str, List[str]], data_prefix: Union[str, List[str]] = None, *args, **kwargs
+    ):
         """Parse lists of audio files, durations and transcripts texts.
 
         Args:

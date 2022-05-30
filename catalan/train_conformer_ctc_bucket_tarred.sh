@@ -4,7 +4,8 @@ python speech_to_text_ctc_bpe.py \
     model.tokenizer.dir="/home/heh/datasets/Catalan/catalan_data/tokenizers/tokenizer_spe_unigram_v128" \
     model.train_ds.is_tarred=true \
     model.train_ds.batch_size=1 \
-    model.train_ds.bucketing_batch_size=[40,32,24,16] \
+    model.train_ds.bucketing_batch_size=[80,64,48,32] \
+    model.train_ds.bucketing_strategy=fully_randomized \
     model.train_ds.manifest_filepath=[["${DATA_ROOT}/bucket1/tarred_audio_manifest.json"],\
 ["${DATA_ROOT}/bucket2/tarred_audio_manifest.json"],\
 ["${DATA_ROOT}/bucket3/tarred_audio_manifest.json"],\
@@ -13,8 +14,7 @@ python speech_to_text_ctc_bpe.py \
 ["${DATA_ROOT}/bucket2/audio__OP_0..511_CL_.tar"],\
 ["${DATA_ROOT}/bucket3/audio__OP_0..511_CL_.tar"],\
 ["${DATA_ROOT}/bucket4/audio__OP_0..511_CL_.tar"]] \
-    model.validation_ds.data_prefix="/home/heh/datasets/Catalan/catalan_data" \
-    model.validation_ds.manifest_filepath="dev.json" \
-    trainer.devices=1 \
+    model.validation_ds.manifest_filepath="/home/heh/datasets/Catalan/catalan_cleaned/dev/dev.json" \
+    trainer.devices=2 \
     trainer.max_epochs=1000 \
     exp_manager.create_wandb_logger=false

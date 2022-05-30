@@ -130,7 +130,7 @@ def get_bpe_dataset(
         trim=config.get('trim_silence', False),
         use_start_end_token=config.get('use_start_end_token', True),
         return_sample_id=config.get('return_sample_id', False),
-        data_prefix = config.get("data_prefix", None)
+        data_prefix=config.get("data_prefix", None),
     )
     return dataset
 

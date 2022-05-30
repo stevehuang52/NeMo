@@ -40,7 +40,7 @@ INIT_MODEL=''
 GRAD_ACC=1
 TRAIN_BATCH_SIZE=1
 EVAL_BATCH_SIZE=16
-BUCKET_BATCH_SIZE=[112,96,80,64]
+BUCKET_BATCH_SIZE=[80,64,48,32]
 BUCKET_STRATEGY=synced_randomized  # synced_randomized,fully_randomized
 MAX_EPOCHS=1000
 SAVE_TOP_K=10
@@ -50,7 +50,7 @@ PRECISION=32
 
 # Conformer Params
 D_MODEL=512
-N_LAYERS=17
+N_LAYERS=18
 CONV_SIZE=31
 SAMPLING_FACTOR=4
 N_HEADS=8
@@ -77,7 +77,7 @@ TRAIN_ISTARRED=true
 # Non-bucketing
 # TRAIN_DATA_PATH="/data/MozillaCommonVoice/Catalan/train_tarred/512shard_1bucket"
 # TRAIN_MANIFEST=${TRAIN_DATA_PATH}/tarred_audio_manifest.json
-# TRAIN_FILEPATHS=${TRAIN_DATA_PATH}/audio__OP_0..511_CL_.tar 
+# TRAIN_FILEPATHS=${TRAIN_DATA_PATH}/audio__OP_0..511_CL_.tar
 # Bucketing, set batch_size to 1, use BUCKET_BATCH_SIZE instead
 TRAIN_MANIFEST="[[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket1/tarred_audio_manifest.json],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket2/tarred_audio_manifest.json],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket3/tarred_audio_manifest.json],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket4/tarred_audio_manifest.json]]"
 TRAIN_FILEPATHS="[[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket1/audio__OP_0..511_CL_.tar],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket2/audio__OP_0..511_CL_.tar],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket3/audio__OP_0..511_CL_.tar],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket4/audio__OP_0..511_CL_.tar]]"

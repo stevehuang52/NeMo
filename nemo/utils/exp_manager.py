@@ -19,7 +19,7 @@ import sys
 import time
 from copy import deepcopy
 from dataclasses import dataclass
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from shutil import copy, move
 from typing import Any, Dict, List, Optional, Union
@@ -663,7 +663,7 @@ def configure_loggers(
     if create_wandb_logger:
         if wandb_kwargs is None:
             wandb_kwargs = {}
-        
+
         curr_time = datetime.now().strftime("%m/%d/%Y-%H:%M:%S")
         if not wandb_kwargs.get("project", None):
             logging.info(f"No WandB project found, creating: Project-{curr_time}")
