@@ -12,3 +12,4 @@ wget
 frozendict
 unidecode
 huggingface_hub
+pre-commit

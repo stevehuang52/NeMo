@@ -43,4 +43,5 @@ else
     ${PIP} install "${DIST_FILE}[all]"
 fi
 
+pre-commit install
 echo 'All done!'
