@@ -1,7 +1,7 @@
 curr_dir=${pwd}
 
-proj_name="ConformerL_ctc_catalan"
-exp_dir="drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b32_f_gacc1_ep1000"
+proj_name="ConformerL_RNNT_Catalan"
+exp_dir="drc_catalan_d512_adamwlr5.0_wd1e-3_aug10x0.05_spu1024_emit0_bn_b1_f8_gacc1_ep1000_dgx1_bk4_b32"
 
 proj_dir=/gpfs/fs1/projects/ent_aiapps/users/heh/results/${proj_name}
 source_dir=${proj_dir}/${exp_dir}/${exp_dir}/checkpoints/

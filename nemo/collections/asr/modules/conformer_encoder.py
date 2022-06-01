@@ -28,6 +28,7 @@ from nemo.core.classes.exportable import Exportable
 from nemo.core.classes.mixins import adapter_mixins
 from nemo.core.classes.module import NeuralModule
 from nemo.core.neural_types import AcousticEncodedRepresentation, LengthsType, NeuralType, SpectrogramType
+from nemo.utils import logging
 
 __all__ = ['ConformerEncoder']
 
@@ -237,7 +238,11 @@ class ConformerEncoder(NeuralModule, Exportable):
 
     @typecheck()
     def forward(self, audio_signal, length=None):
+        logging.info("start forward")
+        logging.info(audio_signal.shape)
+        logging.info(length)
         self.update_max_seq_length(seq_length=audio_signal.size(2), device=audio_signal.device)
+        logging.info("after update_max_seq_length")
         return self.forward_for_export(audio_signal=audio_signal, length=length)
 
     @typecheck()
