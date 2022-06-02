@@ -238,11 +238,11 @@ class ConformerEncoder(NeuralModule, Exportable):
 
     @typecheck()
     def forward(self, audio_signal, length=None):
-        logging.info("start forward")
-        logging.info(audio_signal.shape)
-        logging.info(length)
+        # logging.info("start forward")
+        # logging.info(audio_signal.shape)
+        # logging.info(length)
         self.update_max_seq_length(seq_length=audio_signal.size(2), device=audio_signal.device)
-        logging.info("after update_max_seq_length")
+        # logging.info("after update_max_seq_length")
         return self.forward_for_export(audio_signal=audio_signal, length=length)
 
     @typecheck()
