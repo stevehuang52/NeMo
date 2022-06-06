@@ -25,7 +25,7 @@ name: "Conformer-Transducer-BPE"
 model:
   sample_rate: &sample_rate 16000
   compute_eval_loss: false # eval samples can be very long and exhaust memory. Disable computation of transducer loss during validation/testing with this flag.
-  log_prediction: false # enables logging sample predictions in the output during training
+  log_prediction: true # enables logging sample predictions in the output during training
   skip_nan_grad: false
 
   model_defaults:
@@ -154,7 +154,7 @@ model:
     # However, to preserve memory, this ratio can be 1:8 or even 1:16.
     # Extreme case of 1:B (i.e. fused_batch_size=1) should be avoided as training speed would be very slow.
     fuse_loss_wer: true
-    fused_batch_size: 16
+    fused_batch_size: 8
 
     jointnet:
       joint_hidden: ${model.model_defaults.joint_hidden}
@@ -218,7 +218,7 @@ trainer:
   gradient_clip_val: 0.0
   precision: 32 # Should be set to 16 for O1 and O2 to enable the AMP.
   log_every_n_steps: 10  # Interval of logging.
-  progress_bar_refresh_rate: 10
+  progress_bar_refresh_rate: 1
   resume_from_checkpoint: null # The path to a checkpoint file to continue the training, restores the whole state including the epoch, step, LR schedulers, apex, etc.
   num_sanity_val_steps: 0 # number of steps to perform validation steps for sanity check the validation process before starting the training, setting to 0 disables it
   check_val_every_n_epoch: 1 # number of evaluations on validation every n epochs

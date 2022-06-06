@@ -690,7 +690,7 @@ class EncDecRNNTModel(ASRModel, ASRModuleMixin, Exportable):
 
             tensorboard_logs = {'train_loss': loss_value, 'learning_rate': self._optimizer.param_groups[0]['lr']}
 
-            if (sample_id + 1) % log_every_n_steps == 0:
+            if log_every_n_steps > 0 and (sample_id + 1) % log_every_n_steps == 0:
                 self.wer.update(encoded, encoded_len, transcript, transcript_len)
                 _, scores, words = self.wer.compute()
                 self.wer.reset()
@@ -698,7 +698,7 @@ class EncDecRNNTModel(ASRModel, ASRModuleMixin, Exportable):
 
         else:
             # If experimental fused Joint-Loss-WER is used
-            if (sample_id + 1) % log_every_n_steps == 0:
+            if log_every_n_steps > 0 and (sample_id + 1) % log_every_n_steps == 0:
                 compute_wer = True
             else:
                 compute_wer = False
