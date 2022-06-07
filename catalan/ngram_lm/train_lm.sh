@@ -3,11 +3,11 @@ kenlm_bin_path="/home/heh/github/NeMo/catalan/ngram_lm/decoders/kenlm/build/bin"
 mkdir -p kenlm_saved
 
 N=6
-tag="spu1024"
+tag="spu128_v2"
 train_file="/home/heh/datasets/Catalan/catalan_data/train.json"
 
-proj_name="ConformerL_RNNT_Catalan"
-exp_name="drc_catalan_d512_adamwlr5.0_wd1e-3_aug10x0.05_spu1024_emit0_bn_b32_f8_gacc1_ep1000_dgx1"
+proj_name="ConformerL_ctc_catalan_v2"
+exp_name="drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b32_f_gacc1_ep1000_dgx2"
 
 nemo_model_file="../results/${proj_name}/${exp_name}/${exp_name}-averaged.nemo"
 
@@ -29,3 +29,9 @@ python train_kenlm.py \
 # ConformerL_ctc_catalan
 # drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b32_f_gacc1_ep1000
 # drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b1_f_gacc1_ep1000_bk4_b32
+
+# ConformerL_RNNT_Catalan_v2
+# drc_catalan_d512_adamwlr5.0_wd1e-3_aug10x0.05_spu1024_emit0_bn_b32_f16_gacc1_ep1000_dgx2
+
+# ConformerL_ctc_catalan_v2
+# drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b32_f_gacc1_ep1000_dgx2

@@ -91,7 +91,7 @@ def beam_search_eval(
         it = tqdm(
             range(int(np.ceil(len(all_probs) / beam_batch_size))),
             desc=f"Beam search decoding with width={beam_width}, alpha={beam_alpha}, beta={beam_beta}",
-            ncols=120,
+            ncols=80,
         )
     else:
         it = range(int(np.ceil(len(all_probs) / beam_batch_size)))
@@ -234,7 +234,7 @@ def main():
     manifest_dir = Path(args.input_manifest).parent
     with open(args.input_manifest, 'r') as manifest_file:
         audio_file_paths = []
-        for line in tqdm(manifest_file, desc=f"Reading Manifest {args.input_manifest} ...", ncols=120):
+        for line in tqdm(manifest_file, desc=f"Reading Manifest {args.input_manifest} ...", ncols=80):
             data = json.loads(line)
             audio_file = Path(data['audio_filepath'])
             if not audio_file.is_absolute():

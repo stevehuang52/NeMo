@@ -813,6 +813,7 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable):
                 )
 
             out = self.joint(encoder_outputs, decoder_outputs)  # [B, T, U, V + 1]
+
             return out
 
         else:
@@ -831,8 +832,6 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable):
                 )
 
             losses = []
-            wer_numer_list = []
-            wer_denom_list = []
             batch_size = int(encoder_outputs.size(0))  # actual batch size
 
             # Iterate over batch using fused_batch_size steps
@@ -906,25 +905,8 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable):
                     sub_enc = sub_enc.detach()
                     sub_transcripts = sub_transcripts.detach()
 
-                    original_log_prediction = self.wer.log_prediction
-                    if original_log_prediction and batch_idx == 0:
-                        self.wer.log_prediction = True
-                    else:
-                        self.wer.log_prediction = False
-
                     # Compute the wer (with logging for just 1st sub-batch)
                     self.wer.update(sub_enc, sub_enc_lens, sub_transcripts, sub_transcript_lens)
-                    wer, wer_num, wer_denom = self.wer.compute()
-                    self.wer.reset()
-
-                    wer_numer_list.append(wer_num)
-                    wer_denom_list.append(wer_denom)
-
-                    # Reset logging default
-                    self.wer.log_prediction = original_log_prediction
-
-                else:
-                    wer = None
 
                 del sub_enc, sub_transcripts, sub_enc_lens, sub_transcript_lens
 
@@ -937,12 +919,10 @@ class RNNTJoint(rnnt_abstract.AbstractRNNTJoint, Exportable):
 
             # Collect sub batch wer results
             if compute_wer:
-                wer_num = torch.tensor(wer_numer_list, dtype=torch.long)
-                wer_denom = torch.tensor(wer_denom_list, dtype=torch.long)
-
-                wer_num = wer_num.sum()  # global sum of correct words/chars
-                wer_denom = wer_denom.sum()  # global sum of all words/chars
+                wer, wer_num, wer_denom = self.wer.compute()
+                self.wer.reset()
             else:
+                wer = None
                 wer_num = None
                 wer_denom = None
 
