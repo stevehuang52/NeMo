@@ -1,0 +1,7 @@
+{
+    "name": "Accuracy",
+    "attributes": [
+        {"key": "MCV-9.0 Dev WER(%)", "value": "4.70"},
+        {"key": "MCV-9.0 Test WER(%)", "value": "4.27"}
+    ]
+}

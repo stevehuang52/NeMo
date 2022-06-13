@@ -1,0 +1,12 @@
+{
+    "name": "Model",
+    "attributes": [
+        {"key": "Architecture", "value": "Conformer-CTC-Large"},
+        {"key": "Inputs", "value": "Speech in Catalan"},
+        {"key": "Outputs", "value": "Text in Catalan"},
+        {"key": "Number of Layers", "value": "18"},
+        {"key": "Number of Weights", "value": "121M"},
+        {"key": "Encoder Dimension", "value": "512"},
+        {"key": "Dataset", "value": "MCV-9.0"}
+    ]
+}

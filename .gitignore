@@ -6,6 +6,7 @@ results/
 catalan/ngram_lm/decoders/
 catalan/ngram_lm/predictions/
 catalan/ngram_lm/kenlm_saved/
+*.nemo
 
 #*.ipynb
 output

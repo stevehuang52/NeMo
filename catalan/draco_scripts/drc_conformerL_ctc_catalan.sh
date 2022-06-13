@@ -68,7 +68,7 @@ MODEL_POSFIX=''
 
 ##### Dataset ####
 # Paths are after mounted
-
+LABELS=[' ','s','e','r','v','i','d','p','o','g','a','m','t','u','l','f','c','z','b','q','n','é',"'",'x','ó','è','h','í','ü','j','à','ï','w','k','y','ç','ú','ò','á','ı','·','ñ','—','–','-']
 TOKENIZER=/tokenizers/ASR/Catalan/tokenizer_spe_unigram_v${VOCAB_SIZE}/
 MAX_DURATION=11.0
 
@@ -77,7 +77,7 @@ TRAIN_ISTARRED=true
 # Non-bucketing
 TRAIN_DATA_PATH="/data/MozillaCommonVoice/Catalan/train_tarred/512shard_1bucket"
 TRAIN_MANIFEST=${TRAIN_DATA_PATH}/tarred_audio_manifest.json
-TRAIN_FILEPATHS=${TRAIN_DATA_PATH}/audio__OP_0..511_CL_.tar 
+TRAIN_FILEPATHS=${TRAIN_DATA_PATH}/audio__OP_0..511_CL_.tar
 # Bucketing, set batch_size to 1, use BUCKET_BATCH_SIZE instead
 # TRAIN_MANIFEST="[[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket1/tarred_audio_manifest.json],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket2/tarred_audio_manifest.json],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket3/tarred_audio_manifest.json],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket4/tarred_audio_manifest.json]]"
 # TRAIN_FILEPATHS="[[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket1/audio__OP_0..511_CL_.tar],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket2/audio__OP_0..511_CL_.tar],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket3/audio__OP_0..511_CL_.tar],[/data/MozillaCommonVoice/Catalan/train_tarred/512shard_4bucket/bucket4/audio__OP_0..511_CL_.tar]]"

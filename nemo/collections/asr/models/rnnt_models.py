@@ -696,13 +696,6 @@ class EncDecRNNTModel(ASRModel, ASRModuleMixin, Exportable):
                 tensorboard_logs.update({'training_batch_wer': scores.float() / words})
 
         else:
-            # If experimental fused Joint-Loss-WER is used
-            # train_ds_cfg = getattr(self._cfg, "train_ds", None)
-            # if (
-            #     train_ds_cfg
-            #     and getattr(train_ds_cfg, "bucketing_strategy", "synced_randomized") != "synced_randomized"
-            # ):
-            #     compute_wer = False
             if log_every_n_steps > 0 and (sample_id + 1) % log_every_n_steps == 0:
                 compute_wer = True
             else:
