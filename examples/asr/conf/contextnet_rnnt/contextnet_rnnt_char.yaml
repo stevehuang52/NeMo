@@ -26,7 +26,7 @@ model:
   sample_rate: &sample_rate 16000
   compute_eval_loss: false  # eval samples can be very long and exhause memory. Disable computation of transducer loss during validation/testing with this flag.
 
-  labels: [ " ", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "'" ]
+  labels: [" ","s","e","r","v","i","d","p","o","g","a","m","t","u","l","f","c","z","b","q","n","é","'","x","ó","è","h","í","ü","j","à","ï","w","k","y","ç","ú","ò","á","ı","·","ñ","—","–","-"]
 
   train_ds:
     manifest_filepath: ???

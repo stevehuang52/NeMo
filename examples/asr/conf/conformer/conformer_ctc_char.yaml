@@ -8,8 +8,7 @@ data_prefix: null
 
 model:
   sample_rate: 16000
-  labels:  [" ", "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-            "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "'"]
+  labels:  [" ","s","e","r","v","i","d","p","o","g","a","m","t","u","l","f","c","z","b","q","n","é","'","x","ó","è","h","í","ü","j","à","ï","w","k","y","ç","ú","ò","á","ı","·","ñ","—","–","-"]
   log_prediction: false # enables logging sample predictions in the output during training
   ctc_reduction: 'mean_batch'
   skip_nan_grad: false
