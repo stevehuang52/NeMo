@@ -13,6 +13,11 @@ runs
 fastspeech_output
 .hydra
 
+an4/
+*.nemo
+results/
+*.ckpt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -173,4 +178,3 @@ examples/neural_graphs/*.yml
 
 .hydra/
 nemo_experiments/
-
