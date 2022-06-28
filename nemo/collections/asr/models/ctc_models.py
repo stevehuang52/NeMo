@@ -51,26 +51,29 @@ class EncDecCTCModel(ASRModel, ExportableEncDecModel, ASRModuleMixin):
         self.preprocessor = EncDecCTCModel.from_config_dict(self._cfg.preprocessor)
         self.encoder = EncDecCTCModel.from_config_dict(self._cfg.encoder)
 
-        with open_dict(self._cfg):
-            if "feat_in" not in self._cfg.decoder or (
-                not self._cfg.decoder.feat_in and hasattr(self.encoder, '_feat_out')
+        with open_dict(self.cfg):
+            if hasattr(self.cfg.decoder, "feat_in") and (
+                not self.cfg.decoder.feat_in and hasattr(self.encoder, '_feat_out')
             ):
-                self._cfg.decoder.feat_in = self.encoder._feat_out
-            if "feat_in" not in self._cfg.decoder or not self._cfg.decoder.feat_in:
-                raise ValueError("param feat_in of the decoder's config is not set!")
+                self.cfg.decoder.feat_in = self.encoder._feat_out
 
-            if self.cfg.decoder.num_classes < 1 and self.cfg.decoder.vocabulary is not None:
+            if (
+                hasattr(self.cfg.decoder, "num_classes")
+                and self.cfg.decoder.num_classes < 1
+                and self.cfg.decoder.vocabulary is not None
+            ):
                 logging.info(
                     "\nReplacing placeholder number of classes ({}) with actual number of classes - {}".format(
                         self.cfg.decoder.num_classes, len(self.cfg.decoder.vocabulary)
                     )
                 )
-                cfg.decoder["num_classes"] = len(self.cfg.decoder.vocabulary)
+                self.cfg.decoder["num_classes"] = len(self.cfg.decoder.vocabulary)
 
-        self.decoder = EncDecCTCModel.from_config_dict(self._cfg.decoder)
+        self.decoder = EncDecCTCModel.from_config_dict(self.cfg.decoder)
 
+        self.num_classes_with_blank = getattr(self.decoder, "num_classes_with_blank", 28)
         self.loss = CTCLoss(
-            num_classes=self.decoder.num_classes_with_blank - 1,
+            num_classes=self.num_classes_with_blank - 1,
             zero_infinity=True,
             reduction=self._cfg.get("ctc_reduction", "mean_batch"),
         )
@@ -80,9 +83,10 @@ class EncDecCTCModel(ASRModel, ExportableEncDecModel, ASRModuleMixin):
         else:
             self.spec_augmentation = None
 
+        self.vocabulary = getattr(self.decoder, "vocabulary", [])
         # Setup metric objects
         self._wer = WER(
-            vocabulary=self.decoder.vocabulary,
+            vocabulary=self.vocabulary,
             batch_dim_index=0,
             use_cer=self._cfg.get('use_cer', False),
             ctc_decode=True,
@@ -232,8 +236,9 @@ class EncDecCTCModel(ASRModel, ExportableEncDecModel, ASRModuleMixin):
             del self.decoder
             self.decoder = EncDecCTCModel.from_config_dict(new_decoder_config)
             del self.loss
+            self.num_classes_with_blank = getattr(self.decoder, "num_classes_with_blank", 28)
             self.loss = CTCLoss(
-                num_classes=self.decoder.num_classes_with_blank - 1,
+                num_classes=self.num_classes_with_blank - 1,
                 zero_infinity=True,
                 reduction=self._cfg.get("ctc_reduction", "mean_batch"),
             )

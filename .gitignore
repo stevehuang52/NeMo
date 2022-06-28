@@ -13,10 +13,18 @@ runs
 fastspeech_output
 .hydra
 
-an4/
-*.nemo
-results/
 *.ckpt
+*.nemo
+*.json
+*.jsonl
+
+an4/
+results/
+decoders/
+kenlm_saved/
+predictions/
+manifests*/
+catalan/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

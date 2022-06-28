@@ -144,6 +144,35 @@ class WERBPE(Metric):
             hypotheses.append(hypothesis)
         return hypotheses
 
+    def simple_decode_predictions_tensor(
+        self, predictions: torch.Tensor, predictions_len: torch.Tensor = None, return_hypotheses: bool = False
+    ):
+        hypotheses = []
+        # Drop predictions to CPU
+        predictions = move_dimension_to_the_front(predictions, self.batch_dim_index)
+        prediction_cpu_tensor = predictions.detach().long().cpu()
+        # iterate over batch
+        for ind in range(prediction_cpu_tensor.shape[0]):
+            prediction = prediction_cpu_tensor[ind].numpy().tolist()
+            if predictions_len is not None:
+                length = predictions_len[ind].long().cpu().item()
+                prediction = prediction[:length]
+
+            text = self.decode_tokens_to_str(prediction)
+
+            if not return_hypotheses:
+                hypothesis = text
+            else:
+                hypothesis = Hypothesis(
+                    y_sequence=None,  # logprob info added by transcribe method
+                    score=-1.0,
+                    text=text,
+                    alignments=prediction,
+                    length=predictions_len[ind] if predictions_len is not None else 0,
+                )
+            hypotheses.append(hypothesis)
+        return hypotheses
+
     def decode_tokens_to_str(self, tokens: List[int]) -> str:
         """
         Implemented in order to decoder a token list into a string.
@@ -206,7 +235,7 @@ class WERBPE(Metric):
             if self.ctc_decode:
                 hypotheses = self.ctc_decoder_predictions_tensor(predictions, predictions_lengths)
             else:
-                raise NotImplementedError("Implement me if you need non-CTC decode on predictions")
+                hypotheses = self.simple_decode_predictions_tensor(predictions, predictions_lengths)
 
         if self.log_prediction:
             logging.info(f"\n")

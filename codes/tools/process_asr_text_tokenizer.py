@@ -94,6 +94,7 @@ parser = argparse.ArgumentParser(description='Create tokenizer')
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument("--manifest", default=None, type=str, help='Comma separated list of manifest files')
 group.add_argument("--data_file", default=None, help='data file from which to create tokenizer model')
+parser.add_argument("--data_key", default="text", type=str)
 parser.add_argument("--data_root", required=True, default=None, type=str, help='Output directory')
 parser.add_argument("--vocab_size", default=1024, type=int, help='Vocabulary size')
 parser.add_argument("--tokenizer", default="wpe", choices=["spe", "wpe"], help='Type of tokenization to perform')
@@ -134,9 +135,7 @@ parser.set_defaults(log=False, lower_case=True, spe_train_extremely_large_corpus
 args = parser.parse_args()
 
 
-def __build_document_from_manifests(
-    data_root: str, manifests: str,
-):
+def __build_document_from_manifests(data_root: str, manifests: str, data_key: str = "text"):
     if ',' in manifests:
         manifests = manifests.split(',')
     else:
@@ -158,8 +157,10 @@ def __build_document_from_manifests(
             with open(manifest, 'r') as in_reader:
                 for line in in_reader:
                     item = json.loads(line)
-                    text = item['text']
-
+                    text = item[data_key]
+                    if isinstance(text, dict):
+                        # Commas in dict will make using csv files tricky; replace with pipe.
+                        text = str(text).replace(",", "|")
                     out_writer.write(text + '\n')
                     out_writer.flush()
 
@@ -278,6 +279,7 @@ def main():
     spe_max_sentencepiece_length = args.spe_max_sentencepiece_length
     spe_bos, spe_eos, spe_pad = args.spe_bos, args.spe_eos, args.spe_pad
     lower_case = args.lower_case
+    data_key = args.data_key
 
     if not os.path.exists(data_root):
         os.makedirs(data_root)
@@ -286,7 +288,7 @@ def main():
         logging.basicConfig(level=logging.INFO)
 
     if manifests:
-        text_corpus_path = __build_document_from_manifests(data_root, manifests)
+        text_corpus_path = __build_document_from_manifests(data_root, manifests, data_key)
     else:
         text_corpus_path = data_file
     tokenizer_path = __process_data(

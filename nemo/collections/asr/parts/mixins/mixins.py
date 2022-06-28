@@ -121,11 +121,14 @@ class ASRBPEMixin(ABC):
                 # fallback case for older checkpoints that did not preserve the tokenizer.vocab
                 self.spe_vocab_path = None
 
+            use_blank = self.tokenizer_cfg.get("use_blank", True)
+            blank_offset = 1 if use_blank else 0
+
             vocabulary = {}
             for i in range(self.tokenizer.vocab_size):
                 piece = self.tokenizer.ids_to_tokens([i])
                 piece = piece[0]
-                vocabulary[piece] = i + 1
+                vocabulary[piece] = i + blank_offset
 
             # wrapper method to get vocabulary conveniently
             def get_vocab():

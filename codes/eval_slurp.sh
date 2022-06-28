@@ -1,0 +1,11 @@
+DATA_DIR="/home/heh/datasets/slurp-speechbrain"
+NEMO_MODEL="nemo_experiments/Conformer-Transformer-SLU2ASR.nemo"
+CUDA_VISIBLE_DEVICES=1 python run_slurp_eval.py \
+    dataset_manifest="${DATA_DIR}/test_slu2asr.json" \
+    model_path=${NEMO_MODEL} \
+    batch_size=32 \
+    num_workers=8 \
+    searcher.type="greedy" \
+    searcher.beam_size=80 \
+    searcher.temperature=1.25 \
+    only_score_manifest=false
