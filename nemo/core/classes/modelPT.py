@@ -603,7 +603,8 @@ class ModelPT(LightningModule, Model):
     """
         param_groups = None
         if hasattr(self, 'parameters'):
-            param_groups = [{'params': self.parameters()}]
+            params = filter(lambda p: p.requires_grad, self.parameters())
+            param_groups = [{'params': params}]
         self._optimizer_param_groups = param_groups
 
     def configure_optimizers(self):
@@ -1193,7 +1194,7 @@ class ModelPT(LightningModule, Model):
         DDP_WARN = """\n\nDuring testing, it is currently advisable to construct a new Trainer "
                     "with single GPU and no DDP to obtain accurate results.
                     "Following pattern should be used: "
-                    "trainer = Trainer(devices=1, accelerator='gpu')" 
+                    "trainer = Trainer(devices=1, accelerator='gpu')"
                     "if model.prepare_test(trainer):"
                     "  trainer.test(model)\n\n"""
 

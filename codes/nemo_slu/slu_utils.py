@@ -133,6 +133,7 @@ def pad_sequence(seq: torch.Tensor, max_len: int, pad_token: int = 0) -> torch.T
 
 
 def parse_semantics_str2dict(semantics_str: Union[List[str], str]) -> Dict:
+    invalid = False
     if isinstance(semantics_str, list):
         semantics_str = " ".join(semantics_str)
     try:
@@ -143,28 +144,40 @@ def parse_semantics_str2dict(semantics_str: Union[List[str], str]) -> Dict:
                 "action": "none",
                 "entities": [],
             }
+            invalid = True
     except SyntaxError:  # need this if the output is not a valid dictionary
         _dict = {
             "scenario": "none",
             "action": "none",
             "entities": [],
         }
+        invalid = True
+
     if not isinstance(_dict["scenario"], str):
         _dict["scenario"] = "none"
+        invalid = True
     if not isinstance(_dict["action"], str):
         _dict["action"] = "none"
+        invalid = True
     if "entities" not in _dict:
         _dict["entities"] = []
+        invalid = True
     else:
-        _dict["entities"] = [parse_entity(x) for x in _dict["entities"]]
-    return _dict
+        for i, x in enumerate(_dict["entities"]):
+            item, entity_error = parse_entity(x)
+            invalid = invalid or entity_error
+            _dict["entities"][i] = item
+
+    return _dict, invalid
 
 
 def parse_entity(item: Dict):
+    error = False
     for key in ["type", "filler"]:
         if key not in item or not isinstance(item[key], str):
             item[key] = "none"
-    return item
+            error = True
+    return item, error
 
 
 def get_seq_mask(seq: torch.Tensor, seq_lens: torch.Tensor) -> torch.Tensor:
@@ -184,6 +197,7 @@ class SLUEvaluator:
     def __init__(self, average_mode: str = 'micro') -> None:
         if average_mode not in ['micro', 'macro']:
             raise ValueError(f"Only supports 'micro' or 'macro' average, but got {average_mode} instead.")
+        self.average_mode = average_mode
         self.scenario_f1 = ErrorMetric.get_instance(metric="f1", average=average_mode)
         self.action_f1 = ErrorMetric.get_instance(metric="f1", average=average_mode)
         self.intent_f1 = ErrorMetric.get_instance(metric="f1", average=average_mode)
@@ -194,6 +208,22 @@ class SLUEvaluator:
                 metric="span_distance_f1", average=average_mode, distance=distance
             )
         self.slu_f1 = ErrorMetric.get_instance(metric="slu_f1", average=average_mode)
+        self.invalid = 0
+        self.total = 0
+
+    def reset(self):
+        self.scenario_f1 = ErrorMetric.get_instance(metric="f1", average=self.average_mode)
+        self.action_f1 = ErrorMetric.get_instance(metric="f1", average=self.average_mode)
+        self.intent_f1 = ErrorMetric.get_instance(metric="f1", average=self.average_mode)
+        self.span_f1 = ErrorMetric.get_instance(metric="span_f1", average=self.average_mode)
+        self.distance_metrics = {}
+        for distance in ['word', 'char']:
+            self.distance_metrics[distance] = ErrorMetric.get_instance(
+                metric="span_distance_f1", average=self.average_mode, distance=distance
+            )
+        self.slu_f1 = ErrorMetric.get_instance(metric="slu_f1", average=self.average_mode)
+        self.invalid = 0
+        self.total = 0
 
     def update(self, predictions: Union[List[str], str], groundtruth: Union[List[str], str]) -> None:
         if isinstance(predictions, str):
@@ -202,14 +232,17 @@ class SLUEvaluator:
             groundtruth = [groundtruth]
 
         for pred, truth in zip(predictions, groundtruth):
-            pred = parse_semantics_str2dict(pred)
-            truth = parse_semantics_str2dict(truth)
+            pred, syntax_error = parse_semantics_str2dict(pred)
+            truth, _ = parse_semantics_str2dict(truth)
             self.scenario_f1(truth["scenario"], pred["scenario"])
             self.action_f1(truth["action"], pred["action"])
             self.intent_f1(f"{truth['scenario']}_{truth['action']}", f"{pred['scenario']}_{pred['action']}")
             self.span_f1(truth["entities"], pred["entities"])
             for distance, metric in self.distance_metrics.items():
                 metric(truth["entities"], pred["entities"])
+
+            self.total += 1
+            self.invalid += int(syntax_error)
 
     def compute(self, aggregate=True) -> Dict:
         scenario_results = self.scenario_f1.get_metric()
@@ -231,9 +264,13 @@ class SLUEvaluator:
                 "word_dist": word_dist_results,
                 "char_dist": char_dist_results,
                 "slurp": slurp_results,
+                "invalid": self.invalid,
+                "total": self.total,
             }
 
         scores = dict()
+        scores["invalid"] = self.invalid
+        scores["total"] = self.total
         self.update_scores_dict(scenario_results, scores, "scenario")
         self.update_scores_dict(action_results, scores, "action")
         self.update_scores_dict(intent_results, scores, "intent")
@@ -251,3 +288,23 @@ class SLUEvaluator:
         target[f"{tag}_r"] = r
         target[f"{tag}_f1"] = f1
         return target
+
+
+def optimistic_restore(network, state_dict):
+    mismatch = False
+    own_state = network.state_dict()
+    for name, param in state_dict.items():
+        if name not in own_state:
+            print("Unexpected key {} in state_dict with size {}".format(name, param.size()))
+            mismatch = True
+        elif param.size() == own_state[name].size():
+            own_state[name].copy_(param)
+        else:
+            print("Network has {} with size {}, ckpt has {}".format(name, own_state[name].size(), param.size()))
+            mismatch = True
+
+    missing = set(own_state.keys()) - set(state_dict.keys())
+    if len(missing) > 0:
+        print("We couldn't find {}".format(','.join(missing)))
+        mismatch = True
+    return not mismatch

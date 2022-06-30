@@ -82,7 +82,8 @@ def main(cfg: EvaluationConfig):
     evaluator = SLUEvaluator(cfg.average)
     evaluator.update(predictions=predicted_text, groundtruth=ground_truth_text)
     results = evaluator.compute(aggregate=False)
-
+    total = results["total"]
+    invalid = results["invalid"]
     slurp_f1 = results["slurp"]["overall"][2]
 
     print("-------------- Results --------------")
@@ -154,6 +155,8 @@ def main(cfg: EvaluationConfig):
         ),
         "\n",
     )
+
+    print(f"Found {invalid} out of {total} predictions that have syntax error.")
 
     # Inject the metric name and score into the config, and return the entire config
     with open_dict(cfg):

@@ -1,36 +1,23 @@
-import ast
 import copy
-import json
-import os
-import tempfile
-from math import ceil
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional
 
 import ipdb
 import torch
-import torch.nn as nn
-from omegaconf import DictConfig, ListConfig, OmegaConf, open_dict
-from pytorch_lightning import Trainer
-from sympy import Mod
-from tqdm.auto import tqdm
+from omegaconf import DictConfig
 
 import nemo.collections.asr as nemo_asr
 from .slu_loss import SeqNLLLoss
 from .slu_utils import SearcherConfig, SequenceGenerator, SLUEvaluator, get_seq_mask
-from nemo.collections.asr.data import audio_to_text_dataset
 from nemo.collections.asr.data.audio_to_text_dali import DALIOutputs
 from nemo.collections.asr.metrics.wer_bpe import WERBPE
-from nemo.collections.asr.models.asr_model import ASRModel, ExportableEncDecModel
 from nemo.collections.asr.models.ctc_bpe_models import EncDecCTCModelBPE
-from nemo.collections.asr.parts.mixins import ASRBPEMixin, ASRModuleMixin
-from nemo.collections.asr.parts.preprocessing.perturb import process_augmentations
-from nemo.collections.nlp.modules.common.transformer import transformer_generators
+from nemo.collections.asr.parts.mixins import ASRBPEMixin
 from nemo.core.classes import Serialization as ModuleBuilder
-from nemo.core.classes.common import PretrainedModelInfo, typecheck
+from nemo.core.classes.common import typecheck
 from nemo.core.neural_types import AudioSignal, LabelsType, LengthsType, LogprobsType, NeuralType, SpectrogramType
 from nemo.utils import logging, model_utils
 
-__all__ = ['EncDecCTCModelBPE']
+__all__ = ['SLU2ASREncDecBPEModel']
 
 
 class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
@@ -43,17 +30,20 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
 
         # Init encoder from SSL checkpoint
         ssl_model = nemo_asr.models.ssl_models.SpeechEncDecSelfSupervisedModel.from_pretrained(
-            model_name=self.cfg.ssl_pretrained
+            model_name=self.cfg.ssl_pretrained.model
         )
-        self.encoder.load_state_dict(ssl_model.state_dict(), strict=False)
-        self.encoder.freeze()
+        self.encoder.load_state_dict(ssl_model.encoder.state_dict(), strict=False)
         del ssl_model
+
+        if self.cfg.ssl_pretrained.freeze:
+            logging.info("Freezing SSL encoder...")
+            self.encoder.freeze()
 
         self.vocabulary = self.tokenizer.tokenizer.get_vocab()
         vocab_size = len(self.vocabulary)
 
         # Create embedding layer
-        self.cfg.embedding["vocab_size"] = vocab_size  # unk/pad/bos/eos tokens are all token 0
+        self.cfg.embedding["vocab_size"] = vocab_size
         self.embedding = ModuleBuilder.from_config_dict(self.cfg.embedding)
 
         # Create decoder
@@ -127,6 +117,27 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         cfg.max_sequence_length = max_len
         cfg.max_delta_length = max_delta
         self.searcher = SequenceGenerator(cfg, self.embedding, self.decoder, self.classifier, self.tokenizer)
+
+    def setup_optimizer_param_groups(self):
+        """
+            Used to create param groups for the optimizer.
+            As an example, this can be used to specify per-layer learning rates:
+            optim.SGD([
+                        {'params': model.base.parameters()},
+                        {'params': model.classifier.parameters(), 'lr': 1e-3}
+                        ], lr=1e-2, momentum=0.9)
+            See https://pytorch.org/docs/stable/optim.html for more information.
+            By default, ModelPT will use self.parameters().
+            Override this method to add custom param groups.
+        """
+        optim_cfg = self.cfg.optim
+        if hasattr(optim_cfg, "param_groups"):
+            param_groups = []
+
+        param_groups = None
+        if hasattr(self, 'parameters'):
+            param_groups = [{'params': self.parameters()}]
+        self._optimizer_param_groups = param_groups
 
     @typecheck()
     def forward(
@@ -318,8 +329,12 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         wer, wer_num, wer_denom = self._wer.compute()
         self._wer.reset()
 
-        pred_semantics = self.decode_semantics(predictions)
-        true_semantics = self.decode_semantics(eos_semantics)
+        if self.teacher_force_greedy:
+            pred_semantics = []
+            true_semantics = []
+        else:
+            pred_semantics = self.decode_semantics(predictions)
+            true_semantics = self.decode_semantics(eos_semantics)
 
         return {
             'val_loss': loss_value,
@@ -345,6 +360,9 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
             'true_semantics': [],
         }
 
+        if self.teacher_force_greedy:
+            return results
+
         if is_ddp:
             for p in batch_parts['pred_semantics']:
                 results['pred_semantics'] += p
@@ -357,9 +375,9 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         return results
 
     def multi_validation_epoch_end(self, outputs, dataloader_idx: int = 0):
-        val_loss_mean = torch.stack([x['val_loss'] for x in outputs]).mean()
-        wer_num = torch.stack([x['val_wer_num'] for x in outputs]).sum()
-        wer_denom = torch.stack([x['val_wer_denom'] for x in outputs]).sum()
+        val_loss_mean = torch.stack([x['val_loss'] for x in outputs]).mean().item()
+        wer_num = torch.stack([x['val_wer_num'] for x in outputs]).sum().item()
+        wer_denom = torch.stack([x['val_wer_denom'] for x in outputs]).sum().item()
         tensorboard_logs = {'val_loss': val_loss_mean, 'val_wer': wer_num / wer_denom}
 
         if not self.teacher_force_greedy:

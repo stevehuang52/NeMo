@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     logger.info("Results:")
     results = scenario_f1.get_metric()
-    ipdb.set_trace()
+
     print(
         format_results(
             results=results, label="scenario", full=args.full, errors=args.errors, table_layout=args.table_layout
