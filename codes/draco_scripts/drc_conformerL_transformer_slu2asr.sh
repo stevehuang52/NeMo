@@ -54,6 +54,7 @@ WARMUP=2000
 GRAD_CLIP=0.0
 
 # Model
+FREEZE_ENCODER=false
 DECODER_LAYERS=3
 DECODER_INNER_SIZE=2048
 DECODER_FFT_DROPOUT=0.1
@@ -208,7 +209,8 @@ model.decoder.num_layers=$DECODER_LAYERS \
 model.decoder.inner_size=$DECODER_INNER_SIZE \
 model.decoder.ffn_dropout=$DECODER_FFT_DROPOUT \
 model.decoder.attn_score_dropout=$DECODER_ATTN_SCORE_DROPOUT \
-model.decoder.attn_layer_dropout=$DECODER_ATTN_LAYER_DROPOUT
+model.decoder.attn_layer_dropout=$DECODER_ATTN_LAYER_DROPOUT \
+model.ssl_pretrained.freeze=$FREEZE_ENCODER
 EOF
 
 

@@ -3,7 +3,7 @@ from typing import Dict, Optional
 
 import ipdb
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 import nemo.collections.asr as nemo_asr
 from .slu_loss import SeqNLLLoss
@@ -130,14 +130,13 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
             By default, ModelPT will use self.parameters().
             Override this method to add custom param groups.
         """
-        optim_cfg = self.cfg.optim
         known_groups = []
         param_groups = []
-        if getattr(optim_cfg, "param_groups", None):
-            for group in optim_cfg.param_groups:
+        if getattr(self.cfg, "optim_param_groups", None):
+            param_groups_cfg = self.cfg.optim_param_groups
+            for group, lr in param_groups_cfg.items():
                 module = getattr(self, group, None)
                 if module:
-                    lr = optim_cfg.param_groups[group]
                     params = module.parameters()
                     known_groups.append(group)
                     param_groups.append({"params": params, "lr": lr})
