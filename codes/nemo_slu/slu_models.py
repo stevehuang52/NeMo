@@ -133,7 +133,7 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         optim_cfg = self.cfg.optim
         known_groups = []
         param_groups = []
-        if hasattr(optim_cfg, "param_groups"):
+        if getattr(optim_cfg, "param_groups", None):
             for group in optim_cfg.param_groups:
                 module = getattr(self, group["name"], None)
                 if module is not None:
