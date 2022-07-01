@@ -131,12 +131,29 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
             Override this method to add custom param groups.
         """
         optim_cfg = self.cfg.optim
+        known_groups = []
+        param_groups = []
         if hasattr(optim_cfg, "param_groups"):
-            param_groups = []
+            for group in optim_cfg.param_groups:
+                module = getattr(self, group["name"], None)
+                if module is not None:
+                    lr = group["lr"]
+                    params = module.parameters()
+                    known_groups.append(group["name"])
+                    param_groups.append({"params": params, "lr": lr})
 
-        param_groups = None
-        if hasattr(self, 'parameters'):
-            param_groups = [{'params': self.parameters()}]
+        other_params = []
+        for n, p in self.named_parameters():
+            is_known = False
+            for group in known_groups:
+                if n.startswith(group):
+                    is_known = True
+            if not is_known:
+                other_params.append(p)
+
+        if len(other_params):
+            param_groups.append({"params": other_params})
+
         self._optimizer_param_groups = param_groups
 
     @typecheck()

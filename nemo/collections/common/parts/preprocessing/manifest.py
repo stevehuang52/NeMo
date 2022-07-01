@@ -96,10 +96,13 @@ def __parse_item(line: str, manifest_file: str) -> Dict[str, Any]:
     # so we will just ignore it.
     manifest_dir = Path(manifest_file).parent
     audio_file = Path(item['audio_file'])
-    if not audio_file.is_file() and not audio_file.is_absolute() and audio_file.parent != Path("."):
+    if not audio_file.is_file() and not audio_file.is_absolute():
         # assume the wavs/ dir and manifest are under the same parent dir
         audio_file = manifest_dir / audio_file
-        item['audio_file'] = str(audio_file.absolute())
+        if audio_file.is_file():
+            item['audio_file'] = str(audio_file.absolute())
+        else:
+            item['audio_file'] = expanduser(item['audio_file'])
     else:
         item['audio_file'] = expanduser(item['audio_file'])
 
