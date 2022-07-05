@@ -19,6 +19,17 @@ from nemo.utils import logging
 __all__ = ["AudioTextSemanticsBPEDataset", "get_slu_bpe_dataset", "EnCharTokenizer"]
 
 
+class DataConstantsSLU:
+    FIELD_AUDIO = "audio_signal"
+    FIELD_AUDIO_LEN = "audio_length"
+    FIELD_TEXT = "text"
+    FIELD_TEXT_LEN = "text_length"
+    FIELD_SEMANTICS = "semantics"
+    FIELD_SEMANTICS_LEN = "semantics_length"
+    FIELD_SAMPLE_ID = "sample_id"
+    FIELD_SENTIMENT = "sentiment"
+
+
 class _AudioTextSemanticsDataset(Dataset):
     """
     Dataset that loads tensors via a json file containing paths to audio files, transcripts, and durations (in seconds).
@@ -78,7 +89,7 @@ class _AudioTextSemanticsDataset(Dataset):
         if type(manifest_filepath) == str:
             manifest_filepath = manifest_filepath.split(",")
 
-        self.manifest_processor = SLUManifestProcessor(
+        self.manifest_processor = ManifestProcessorSLU(
             manifest_filepath=manifest_filepath,
             text_parser=text_parser,
             semantic_parser=semantic_parser,
@@ -210,7 +221,7 @@ def _slu_collate_fn(batch, pad_id):
         return audio_signal, audio_lengths, texts, text_lengths, semantics, semantics_lengths, sample_ids
 
 
-class SLUManifestProcessor:
+class ManifestProcessorSLU:
     """
     Class that processes a manifest json file containing paths to audio files, transcripts, durations (in seconds) and semantics.
     Each new line is a different sample. Example below:
@@ -248,7 +259,7 @@ class SLUManifestProcessor:
         self.text_parser = text_parser
         self.semantic_parser = semantic_parser
 
-        self.collection = collections.SLUAudioTextSemantics(
+        self.collection = collections.AudioTextSemantics(
             manifests_files=manifest_filepath,
             text_parser=text_parser,
             semantic_parser=semantic_parser,

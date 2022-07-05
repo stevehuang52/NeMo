@@ -127,8 +127,6 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
                         {'params': model.classifier.parameters(), 'lr': 1e-3}
                         ], lr=1e-2, momentum=0.9)
             See https://pytorch.org/docs/stable/optim.html for more information.
-            By default, ModelPT will use self.parameters().
-            Override this method to add custom param groups.
         """
         known_groups = []
         param_groups = []
@@ -151,7 +149,7 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
                 other_params.append(p)
 
         if len(other_params):
-            param_groups.append({"params": other_params})
+            param_groups = [{"params": other_params}] + param_groups
 
         self._optimizer_param_groups = param_groups
 
@@ -255,7 +253,12 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
 
         loss_value = self.loss(log_probs=log_probs, targets=eos_semantics, lengths=eos_semantics_len)
 
-        tensorboard_logs = {'train_loss': loss_value.item(), 'learning_rate': self._optimizer.param_groups[0]['lr']}
+        tensorboard_logs = {'train_loss': loss_value.item()}
+        if len(self._optimizer.param_groups) == 1:
+            tensorboard_logs['learning_rate'] = self._optimizer.param_groups[0]['lr']
+        else:
+            for i, group in enumerate(self._optimizer.param_groups):
+                tensorboard_logs[f'learning_rate_g{i}'] = group['lr']
 
         if hasattr(self, '_trainer') and self._trainer is not None:
             log_every_n_steps = self._trainer.log_every_n_steps

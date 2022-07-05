@@ -24,12 +24,11 @@
 # Pre-trained models of Conformer-CTC can be found here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/results.html
 # The checkpoint of the large model trained on LibriSpeech with this recipe can be found here: https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_conformer_ctc_large_ls
 
-name: "ssl_en_conformer_large_transformer_CosineAnneal_2LR_ep200"
+name: "ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d512h4"
 
 model:
   sample_rate: 16000
   log_prediction: true # enables logging sample predictions in the output during training
-  ctc_reduction: 'mean_batch'
   skip_nan_grad: false
 
   train_ds:
@@ -149,8 +148,8 @@ model:
     _target_: nemo.collections.nlp.modules.common.transformer.TransformerDecoder
     num_layers: 3
     hidden_size: ${model.encoder.d_model}
-    inner_size: 2048
-    num_attention_heads: 8
+    inner_size: 512
+    num_attention_heads: 4
     attn_score_dropout: 0.0
     attn_layer_dropout: 0.0
     ffn_dropout: 0.0
@@ -175,13 +174,13 @@ model:
     teacher_force_greedy: true
 
   optim_param_groups:
-      encoder: 1e-5
+      encoder: 1e-4
 
   optim:
     name: adamw
     lr: 0.0003
     # optimizer arguments
-    betas: [0.9, 0.99]
+    betas: [0.9, 0.98]
     # less necessity for weight_decay as we already have large augmentations with SpecAug
     # you may need weight_decay for large models, stable AMP training, small datasets, or when lower augmentations are used
     # weight decay of 0.0 with lr of 2.0 also works fine
@@ -191,9 +190,9 @@ model:
     sched:
       name: CosineAnnealing  # WarmupAnnealing
       # scheduler config override
-      warmup_steps: 1000
+      warmup_steps: 2000
       warmup_ratio: null
-      min_lr: 1e-6
+      min_lr: 1e-5
 
 trainer:
   devices: -1 # number of GPUs, -1 would use all available GPUs

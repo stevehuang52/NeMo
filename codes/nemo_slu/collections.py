@@ -15,7 +15,7 @@ class _Collection(collections.UserList):
     OUTPUT_TYPE = None  # Single element output type.
 
 
-class AudioTextSemantics(_Collection):
+class _AudioTextSemantics(_Collection):
     """List of audio-transcript text correspondence with preprocessing."""
 
     OUTPUT_TYPE = collections.namedtuple(
@@ -182,7 +182,7 @@ class AudioTextSemantics(_Collection):
         super().__init__(data)
 
 
-class SLUAudioTextSemantics(AudioTextSemantics):
+class AudioTextSemantics(_AudioTextSemantics):
     """`AudioTextSemantics` collector from SLU structured json files."""
 
     FIELD_ID = "id"
