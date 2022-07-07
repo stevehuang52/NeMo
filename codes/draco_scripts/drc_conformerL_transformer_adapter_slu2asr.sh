@@ -26,7 +26,7 @@ CONTAINER="gitlab-master.nvidia.com/heh/nemo_containers:nemo-22may16"
 #### Project Constants ####
 PROJECT_NAME="SLURP_SLU2ASR"
 DATASET="SLURP"
-MODEL_NAME="ConformerL-Transformer"
+MODEL_NAME="ConformerL-Transformer-Adapter"
 ###########################
 
 
@@ -63,7 +63,7 @@ DECODER_ATTN_SCORE_DROPOUT=0.0
 DECODER_ATTN_LAYER_DROPOUT=0.0
 
 # Misc
-SAVE_TOP_K=1
+SAVE_TOP_K=5
 LOG_PREDICTION=true
 SUBSAMPLING=striding # stacking
 PRECISION=32
@@ -100,7 +100,7 @@ TEST_FILEPATHS='na'
 ##### Code&Config Location ####
 CODE_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/code/nemo-slu
 CONFIG_PATH='./configs/'
-CONFIG_NAME=conformer_transformer_bpe
+CONFIG_NAME=conformer_transformer_bpe_adapter
 ###############################
 
 

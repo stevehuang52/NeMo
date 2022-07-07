@@ -34,7 +34,7 @@ model:
   train_ds:
     manifest_filepath: ???
     sample_rate: ${model.sample_rate}
-    batch_size: 32 # 16~24 for 32GB GPUs
+    batch_size: 64 # 16~24 for 32GB GPUs
     shuffle: true
     num_workers: 8
     pin_memory: true
