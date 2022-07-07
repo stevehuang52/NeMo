@@ -1,17 +1,18 @@
 import copy
 from typing import Dict, Optional
 
-import ipdb
 import torch
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, open_dict
 
 import nemo.collections.asr as nemo_asr
 from .slu_loss import SeqNLLLoss
-from .slu_utils import SearcherConfig, SequenceGenerator, SLUEvaluator, get_seq_mask
+from .slu_utils import SearcherConfig, SequenceGenerator, get_seq_mask
 from nemo.collections.asr.data.audio_to_text_dali import DALIOutputs
 from nemo.collections.asr.metrics.wer_bpe import WERBPE
 from nemo.collections.asr.models.ctc_bpe_models import EncDecCTCModelBPE
 from nemo.collections.asr.parts.mixins import ASRBPEMixin
+from nemo.collections.common.parts.adapter_modules import LinearAdapterConfig
+from nemo.core import adapter_mixins
 from nemo.core.classes import Serialization as ModuleBuilder
 from nemo.core.classes.common import typecheck
 from nemo.core.neural_types import AudioSignal, LabelsType, LengthsType, LogprobsType, NeuralType, SpectrogramType
@@ -26,10 +27,17 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         cfg = model_utils.convert_model_config_to_dict_config(cfg)
         cfg = model_utils.maybe_update_config_version(cfg)
         self.cfg = cfg
+
+        if hasattr(cfg, "adapter") and getattr(cfg.adapter, "enabled", False):
+            with open_dict(cfg):
+                adapter_metadata = adapter_mixins.get_registered_adapter(cfg.encoder._target_)
+                if adapter_metadata is not None:
+                    cfg.encoder._target_ = adapter_metadata.adapter_class_path
+
         super().__init__(cfg=cfg, trainer=trainer)
 
         # Init encoder from SSL checkpoint
-        ssl_model = nemo_asr.models.ssl_models.SpeechEncDecSelfSupervisedModel.from_pretrained(
+        ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(
             model_name=self.cfg.ssl_pretrained.model
         )
         self.encoder.load_state_dict(ssl_model.encoder.state_dict(), strict=False)
@@ -38,6 +46,19 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         if self.cfg.ssl_pretrained.freeze:
             logging.info("Freezing SSL encoder...")
             self.encoder.freeze()
+
+        if hasattr(cfg, "adapter") and getattr(cfg.adapter, "enabled", False):
+            logging.info("Using Adapters...")
+            adapter_cfg = LinearAdapterConfig(
+                in_features=self.cfg.encoder.d_model,  # conformer specific model dim. Every layer emits this dim at its output.
+                dim=cfg.adapter.adapter_dim,  # the bottleneck dimension of the adapter
+                activation=cfg.adapter.adapter_activation,  # activation used in bottleneck block
+                norm_position=cfg.adapter.adapter_norm_position,  # whether to use LayerNorm at the beginning or the end of the adapter
+            )
+            self.add_adapter(name=cfg.adapter.adapter_name, cfg=adapter_cfg)
+            self.set_enabled_adapters(name=cfg.adapter.adapter_name, enabled=True)
+            self.encoder.freeze()
+            self.unfreeze_enabled_adapters()
 
         self.vocabulary = self.tokenizer.tokenizer.get_vocab()
         vocab_size = len(self.vocabulary)
@@ -399,13 +420,13 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         wer_denom = torch.stack([x['val_wer_denom'] for x in outputs]).sum().item()
         tensorboard_logs = {'val_loss': val_loss_mean, 'val_wer': wer_num / wer_denom}
 
-        if not self.teacher_force_greedy:
-            slurp_evaluator = SLUEvaluator()
-            for x in outputs:
-                slurp_evaluator.update(x['pred_semantics'], x['true_semantics'])
-            slurp_scores = slurp_evaluator.compute()
-            for k, v in slurp_scores.items():
-                tensorboard_logs[f"val_{k}"] = v
+        # if not self.teacher_force_greedy:
+        #     slurp_evaluator = SLUEvaluator()
+        #     for x in outputs:
+        #         slurp_evaluator.update(x['pred_semantics'], x['true_semantics'])
+        #     slurp_scores = slurp_evaluator.compute()
+        #     for k, v in slurp_scores.items():
+        #         tensorboard_logs[f"val_{k}"] = v
 
         return {'val_loss': val_loss_mean, 'log': tensorboard_logs}
 
@@ -415,13 +436,13 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         wer_denom = torch.stack([x['test_wer_denom'] for x in outputs]).sum()
         tensorboard_logs = {'test_loss': val_loss_mean, 'test_wer': wer_num / wer_denom}
 
-        if not self.teacher_force_greedy:
-            slurp_evaluator = SLUEvaluator()
-            for x in outputs:
-                slurp_evaluator.update(x['pred_semantics'], x['true_semantics'])
-            slurp_scores = slurp_evaluator.compute()
-            for k, v in slurp_scores.items():
-                tensorboard_logs[f"test_{k}"] = v
+        # if not self.teacher_force_greedy:
+        #     slurp_evaluator = SLUEvaluator()
+        #     for x in outputs:
+        #         slurp_evaluator.update(x['pred_semantics'], x['true_semantics'])
+        #     slurp_scores = slurp_evaluator.compute()
+        #     for k, v in slurp_scores.items():
+        #         tensorboard_logs[f"test_{k}"] = v
 
         return {'test_loss': val_loss_mean, 'log': tensorboard_logs}
 
@@ -435,6 +456,78 @@ class TokenizerBuilder(ASRBPEMixin):
         self.tokenizer = None
         self._setup_tokenizer(cfg)
         return copy.deepcopy(self.tokenizer)
+
+
+class SLU2ASREncDecBPECascadedModel(EncDecCTCModelBPE):
+    def __init__(self, cfg: DictConfig, trainer=None):
+        # Convert to Hydra 1.0 compatible DictConfig
+        cfg = model_utils.convert_model_config_to_dict_config(cfg)
+        cfg = model_utils.maybe_update_config_version(cfg)
+        self.cfg = cfg
+
+        if hasattr(cfg, "adapter") and getattr(cfg.adapter, "enabled", False):
+            with open_dict(cfg):
+                adapter_metadata = adapter_mixins.get_registered_adapter(cfg.encoder._target_)
+                if adapter_metadata is not None:
+                    cfg.encoder._target_ = adapter_metadata.adapter_class_path
+
+        super().__init__(cfg=cfg, trainer=trainer)
+
+        # Init encoder from SSL checkpoint
+        ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(
+            model_name=self.cfg.ssl_pretrained.model
+        )
+        self.encoder.load_state_dict(ssl_model.encoder.state_dict(), strict=False)
+        del ssl_model
+
+        if self.cfg.ssl_pretrained.freeze:
+            logging.info("Freezing SSL encoder...")
+            self.encoder.freeze()
+
+        ipdb.set_trace()
+        if hasattr(cfg, "adapter") and getattr(cfg.adapter, "enabled", False):
+            logging.info("Using Adapters...")
+            self.adapter_cfg = LinearAdapterConfig(
+                in_features=self.cfg.encoder.d_model,  # conformer specific model dim. Every layer emits this dim at its output.
+                dim=cfg.adapter.adapter_dim,  # the bottleneck dimension of the adapter
+                activation=cfg.adapter.adapter_activation,  # activation used in bottleneck block
+                norm_position=cfg.adapter.adapter_norm_position,  # whether to use LayerNorm at the beginning or the end of the adapter
+            )
+            self.add_adapter(name=cfg.adapter.adapter_name, cfg=self.adapter_cfg)
+            self.set_enabled_adapters(enabled=False)  # disable all adapters
+            self.encoder.freeze()
+            self.encoder.unfreeze_enabled_adapters()
+
+        ipdb.set_trace()
+
+        self.vocabulary = self.tokenizer.tokenizer.get_vocab()
+        vocab_size = len(self.vocabulary)
+
+        # Create embedding layer
+        self.cfg.embedding["vocab_size"] = vocab_size
+        self.embedding = ModuleBuilder.from_config_dict(self.cfg.embedding)
+
+        # Create decoder
+        # self.decoder = ModuleBuilder.from_config_dict(self.cfg.decoder)
+
+        # Create token classifier
+        self.cfg.classifier["num_classes"] = vocab_size
+        self.classifier = ModuleBuilder.from_config_dict(self.cfg.classifier)
+
+        self.loss = SeqNLLLoss(label_smoothing=getattr(self.cfg, "loss.label_smoothing", 0.0))
+
+        self.teacher_force_greedy = getattr(cfg.searcher, "teacher_force_greedy", False)
+        self.searcher = SequenceGenerator(cfg.searcher, self.embedding, self.decoder, self.classifier, self.tokenizer)
+
+        # Setup metric objects
+        self._wer = WERBPE(
+            tokenizer=self.tokenizer,
+            batch_dim_index=0,
+            use_cer=self._cfg.get('use_cer', False),
+            ctc_decode=False,  # use naive decoding
+            dist_sync_on_step=True,
+            log_prediction=self._cfg.get("log_prediction", False),
+        )
 
 
 # TODO

@@ -24,7 +24,7 @@
 # Pre-trained models of Conformer-CTC can be found here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/results.html
 # The checkpoint of the large model trained on LibriSpeech with this recipe can be found here: https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_conformer_ctc_large_ls
 
-name: "ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8"
+name: "ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8_adapter"
 
 model:
   sample_rate: 16000
@@ -102,6 +102,14 @@ model:
     model: ssl_en_conformer_large
     freeze: false
 
+  adapter:
+    enabled: true
+    adapter_name: "slurp" #@param {type:"string"}
+    adapter_dim: 32 #@param {type:"integer"}
+    adapter_activation: "swish" #@param {type:"string"}
+    adapter_norm_position: "post" #@param ["pre", "post"]
+    check_decoder_adapter: false
+
   encoder:
     _target_: nemo.collections.asr.modules.ConformerEncoder
     feat_in: ${model.preprocessor.features}
@@ -145,6 +153,7 @@ model:
     learn_positional_encodings: false
 
   decoder:
+    # _target_: nemo_slu.slu_modules.SLUTransformerDecoder
     _target_: nemo.collections.nlp.modules.common.transformer.TransformerDecoder
     num_layers: 3
     hidden_size: ${model.encoder.d_model}

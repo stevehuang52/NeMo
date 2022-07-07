@@ -48,6 +48,7 @@ TIME_WIDTH=0.05
 # Optimization
 OPT=adamw
 LR=0.0003
+LR_ENC=1e-4
 WD=0.0
 SCHEDULER="CosineAnnealing"  # WarmupAnnealing, CosineAnnealing
 WARMUP=2000
@@ -142,7 +143,7 @@ else
 fi
 
 ### Script to Run ###
-SCRIPT_FILE="run_slu_to_asr_bpe.py"
+SCRIPT_FILE="codes/run_slu_to_asr_bpe.py"
 ############################################################################################################
 
 
@@ -200,6 +201,7 @@ trainer.accumulate_grad_batches=${GRAD_ACC} \
 trainer.gradient_clip_val=$GRAD_CLIP \
 model.spec_augment.time_masks=$TIME_MASKS \
 model.spec_augment.time_width=$TIME_WIDTH \
+model.optim_param_groups.encoder=$LR_ENC \
 model.optim.name=$OPT \
 model.optim.lr=$LR \
 model.optim.weight_decay=$WD \
