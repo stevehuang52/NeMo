@@ -1,6 +1,7 @@
 import json
 import random
 import warnings
+from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import torch
@@ -27,7 +28,40 @@ class DataConstantsSLU:
     FIELD_SEMANTICS = "semantics"
     FIELD_SEMANTICS_LEN = "semantics_length"
     FIELD_SAMPLE_ID = "sample_id"
-    FIELD_SENTIMENT = "sentiment"
+    FIELD_PRED_TEXT = "pred_text"
+    FIELD_PRED_TEXT_LEN = "pred_text_length"
+
+    def __init__(self) -> None:
+        self.all_fields = [
+            self.FIELD_AUDIO,
+            self.FIELD_AUDIO_LEN,
+            self.FIELD_TEXT,
+            self.FIELD_TEXT_LEN,
+            self.FIELD_SEMANTICS,
+            self.FIELD_SEMANTICS_LEN,
+            self.FIELD_SAMPLE_ID,
+            self.FIELD_PRED_TEXT,
+            self.FIELD_PRED_TEXT_LEN,
+        ]
+
+
+class DatumSLU(DataConstantsSLU):
+    def __init__(self, **kwargs) -> None:
+        super().__init__()
+        for field in self.all_fields:
+            setattr(self, field, kwargs.get(field, None))
+
+    def set(self, key, val):
+        setattr(self, key, val)
+
+    def get(self, key, default=None):
+        return getattr(self, key, default)
+
+    def keys(self):
+        return deepcopy(self.all_fields)
+
+    def __getitem__(self, key):
+        return self.get(key)
 
 
 class _AudioTextSemanticsDataset(Dataset):
@@ -52,22 +86,7 @@ class _AudioTextSemanticsDataset(Dataset):
         bos_id: Id of beginning of sequence symbol to append if not None
         eos_id: Id of end of sequence symbol to append if not None
         pad_id: Id of pad symbol. Defaults to 0
-        return_sample_id (bool): whether to return the sample_id as a part of each sample
     """
-
-    @property
-    def output_types(self) -> Optional[Dict[str, NeuralType]]:
-        """Returns definitions of module output ports.
-               """
-        return {
-            'audio_signal': NeuralType(('B', 'T'), AudioSignal()),
-            'audio_length': NeuralType(tuple('B'), LengthsType()),
-            'transcripts': NeuralType(('B', 'T'), LabelsType()),
-            'transcript_length': NeuralType(tuple('B'), LengthsType()),
-            'semantics': NeuralType(('B', 'T'), LabelsType()),
-            'semantics_length': NeuralType(tuple('B'), LengthsType()),
-            'sample_id': NeuralType(tuple('B'), LengthsType(), optional=True),
-        }
 
     def __init__(
         self,
@@ -84,7 +103,6 @@ class _AudioTextSemanticsDataset(Dataset):
         bos_id: Optional[int] = None,
         eos_id: Optional[int] = None,
         pad_id: int = 0,
-        return_sample_id: bool = False,
     ):
         if type(manifest_filepath) == str:
             manifest_filepath = manifest_filepath.split(",")
@@ -102,7 +120,6 @@ class _AudioTextSemanticsDataset(Dataset):
         )
         self.featurizer = WaveformFeaturizer(sample_rate=sample_rate, int_values=int_values, augmentor=augmentor)
         self.trim = trim
-        self.return_sample_id = return_sample_id
 
     def get_manifest_sample(self, sample_id):
         return self.manifest_processor.collection[sample_id]
@@ -123,25 +140,19 @@ class _AudioTextSemanticsDataset(Dataset):
 
         s, sl = self.manifest_processor.process_semantics_by_sample(sample=sample)
 
-        if self.return_sample_id:
-            output = (
-                f,
-                fl,
-                torch.tensor(t).long(),
-                torch.tensor(tl).long(),
-                torch.tensor(s).long(),
-                torch.tensor(sl).long(),
-                index,
-            )
-        else:
-            output = (
-                f,
-                fl,
-                torch.tensor(t).long(),
-                torch.tensor(tl).long(),
-                torch.tensor(s).long(),
-                torch.tensor(sl).long(),
-            )
+        pt = sample.pred_text_tokens
+        ptl = len(pt)
+
+        output = DatumSLU()
+        setattr(output, output.FIELD_SAMPLE_ID, torch.tensor(index).long())
+        setattr(output, output.FIELD_AUDIO, f)
+        setattr(output, output.FIELD_AUDIO_LEN, fl)
+        setattr(output, output.FIELD_TEXT, torch.tensor(t).long())
+        setattr(output, output.FIELD_TEXT_LEN, torch.tensor(tl).long())
+        setattr(output, output.FIELD_SEMANTICS, torch.tensor(s).long())
+        setattr(output, output.FIELD_SEMANTICS_LEN, torch.tensor(sl).long())
+        setattr(output, output.FIELD_PRED_TEXT, torch.tensor(pt).long())
+        setattr(output, output.FIELD_PRED_TEXT_LEN, torch.tensor(ptl).long())
 
         return output
 
@@ -149,76 +160,116 @@ class _AudioTextSemanticsDataset(Dataset):
         return len(self.manifest_processor.collection)
 
     def _collate_fn(self, batch):
-        return _slu_collate_fn(batch, pad_id=self.manifest_processor.pad_id)
+        return self._slu_collate_fn(batch, pad_id=self.manifest_processor.pad_id)
 
+    def get_max_length(self, batch, field):
+        max_len = 0
+        data = getattr(batch, field, None)
+        all_lengths = []
+        if not data:
+            return max_len, all_lengths
+        for d in data:
+            if d is not None:
+                max_len = max(max_len, d)
+                all_lengths.append(d)
+        return max_len, all_lengths
 
-def _slu_collate_fn(batch, pad_id):
-    """collate batch of audio sig, audio len, tokens, tokens len
-    Args:
-        batch (Optional[FloatTensor], Optional[LongTensor], LongTensor,
-               LongTensor):  A tuple of tuples of signal, signal lengths,
-               encoded tokens, and encoded tokens length.  This collate func
-               assumes the signals are 1d torch tensors (i.e. mono audio).
-    """
-    packed_batch = list(zip(*batch))
-    if len(packed_batch) == 5:
-        _, audio_lengths, _, text_lengths, _, semantics_lengths, sample_ids = packed_batch
-    elif len(packed_batch) == 4:
-        sample_ids = None
-        _, audio_lengths, _, text_lengths, _, semantics_lengths, = packed_batch
-    else:
-        raise ValueError("Expects 6 or 7 tensors in the batch!")
+    def _slu_collate_fn(self, batch, pad_id):
+        """collate batch of audio sig, audio len, tokens, tokens len
+        Args:
+            batch (Optional[FloatTensor], Optional[LongTensor], LongTensor,
+                LongTensor):  A tuple of tuples of signal, signal lengths,
+                encoded tokens, and encoded tokens length.  This collate func
+                assumes the signals are 1d torch tensors (i.e. mono audio).
+        """
 
-    max_audio_len = 0
-    has_audio = audio_lengths[0] is not None
-    if has_audio:
-        max_audio_len = max(audio_lengths).item()
-    max_text_len = max(text_lengths).item()
-    max_semantics_len = max(semantics_lengths).item()
+        max_audio_len, audio_lengths = self.get_max_length(batch, DatumSLU.FIELD_AUDIO_LEN)
+        has_audio = max_audio_len > 0
 
-    audio_signal, texts, semantics = [], [], []
-    for b in batch:
-        if len(b) == 7:
-            sig, sig_len, text_i, text_i_len, semantics_i, semantics_i_len, _ = b
+        max_text_len, text_lengths = self.get_max_length(batch, DatumSLU.FIELD_TEXT_LEN)
+        has_text = max_text_len > 0
+        max_semantics_len, semantics_lengths = self.get_max_length(batch, DatumSLU.FIELD_SEMANTICS_LEN)
+        max_pred_text_len, pred_text_lengths = self.get_max_length(batch, DatumSLU.FIELD_PRED_TEXT_LEN)
+        has_pred_text = max_pred_text_len > 0
+
+        audio_signal, texts, semantics, pred_texts, sample_ids = [], [], [], [], []
+        for b in batch:
+            sid = getattr(b, DatumSLU.FIELD_SAMPLE_ID)
+            sig = getattr(b, DatumSLU.FIELD_AUDIO)
+            sig_len = getattr(b, DatumSLU.FIELD_AUDIO_LEN)
+            text_i = getattr(b, DatumSLU.FIELD_TEXT)
+            text_i_len = getattr(b, DatumSLU.FIELD_TEXT_LEN)
+            semantics_i = getattr(b, DatumSLU.FIELD_SEMANTICS)
+            semantics_i_len = getattr(b, DatumSLU.FIELD_SEMANTICS_LEN)
+            pred_text_i = getattr(b, DatumSLU.FIELD_PRED_TEXT)
+            pred_text_i_len = getattr(b, DatumSLU.FIELD_PRED_TEXT_LEN)
+
+            sample_ids.append(sid)
+
+            if has_audio:
+                sig_len = sig_len.item()
+                if sig_len < max_audio_len:
+                    pad = (0, max_audio_len - sig_len)
+                    sig = torch.nn.functional.pad(sig, pad)
+                audio_signal.append(sig)
+
+            text_i_len = text_i_len.item()
+            if text_i_len < max_text_len:
+                pad = (0, max_text_len - text_i_len)
+                text_i = torch.nn.functional.pad(text_i, pad, value=pad_id)
+            texts.append(text_i)
+
+            pred_text_i_len = pred_text_i_len.item()
+            if pred_text_i_len < max_pred_text_len:
+                pad = (0, max_pred_text_len - pred_text_i_len)
+                pred_text_i = torch.nn.functional.pad(pred_text_i, pad, value=pad_id)
+            pred_texts.append(pred_text_i)
+
+            semantics_i_len = semantics_i_len.item()
+            if semantics_i_len < max_semantics_len:
+                pad = (0, max_semantics_len - semantics_i_len)
+                semantics_i = torch.nn.functional.pad(semantics_i, pad, value=pad_id)
+            semantics.append(semantics_i)
+
+        if all(sample_ids):
+            sample_ids = torch.stack(sample_ids)
         else:
-            sig, sig_len, text_i, text_i_len, semantics_i, semantics_i_len = b
+            sample_ids = None
 
         if has_audio:
-            sig_len = sig_len.item()
-            if sig_len < max_audio_len:
-                pad = (0, max_audio_len - sig_len)
-                sig = torch.nn.functional.pad(sig, pad)
-            audio_signal.append(sig)
+            audio_signal = torch.stack(audio_signal)
+            audio_lengths = torch.stack(audio_lengths)
+        else:
+            audio_signal, audio_lengths = None, None
 
-        text_i_len = text_i_len.item()
-        if text_i_len < max_text_len:
-            pad = (0, max_text_len - text_i_len)
-            text_i = torch.nn.functional.pad(text_i, pad, value=pad_id)
-        texts.append(text_i)
+        if has_text:
+            texts = torch.stack(texts)
+            text_lengths = torch.stack(text_lengths)
+        else:
+            texts, text_lengths = None, None
 
-        semantics_i_len = semantics_i_len.item()
-        if semantics_i_len < max_semantics_len:
-            pad = (0, max_semantics_len - semantics_i_len)
-            semantics_i = torch.nn.functional.pad(semantics_i, pad, value=pad_id)
-        semantics.append(semantics_i)
+        if has_pred_text:
+            pred_texts = torch.stack(pred_texts)
+            pred_text_lengths = torch.stack(pred_text_lengths)
+        else:
+            pred_texts, pred_text_lengths = None, None
 
-    if has_audio:
-        audio_signal = torch.stack(audio_signal)
-        audio_lengths = torch.stack(audio_lengths)
-    else:
-        audio_signal, audio_lengths = None, None
+        semantics = torch.stack(semantics)
+        semantics_lengths = torch.stack(semantics_lengths)
 
-    texts = torch.stack(texts)
-    text_lengths = torch.stack(text_lengths)
+        output = DatumSLU()
 
-    semantics = torch.stack(semantics)
-    semantics_lengths = torch.stack(semantics_lengths)
+        setattr(output, output.FIELD_SAMPLE_ID, sample_ids)
+        setattr(output, output.FIELD_AUDIO, audio_signal)
+        setattr(output, output.FIELD_AUDIO_LEN, audio_lengths)
+        setattr(output, output.FIELD_TEXT, texts)
+        setattr(output, output.FIELD_TEXT_LEN, text_lengths)
+        setattr(output, output.FIELD_PRED_TEXT, pred_texts)
+        setattr(output, output.FIELD_PRED_TEXT_LEN, pred_text_lengths)
+        setattr(output, output.FIELD_SEMANTICS, semantics)
+        setattr(output, output.FIELD_SEMANTICS_LEN, semantics_lengths)
 
-    if sample_ids is None:
-        return audio_signal, audio_lengths, texts, text_lengths, semantics, semantics_lengths
-    else:
-        sample_ids = torch.tensor(sample_ids, dtype=torch.int32)
-        return audio_signal, audio_lengths, texts, text_lengths, semantics, semantics_lengths, sample_ids
+        return output
 
 
 class ManifestProcessorSLU:
@@ -316,7 +367,7 @@ class ManifestProcessorSLU:
         return t, tl
 
 
-class AudioTextSemanticsBPEDataset(_AudioTextSemanticsDataset):
+class AudioTextSemanticsDataset(_AudioTextSemanticsDataset):
     def __init__(
         self,
         manifest_filepath: str,
@@ -330,7 +381,6 @@ class AudioTextSemanticsBPEDataset(_AudioTextSemanticsDataset):
         max_utts: int = 0,
         trim: bool = False,
         use_start_end_token: bool = True,
-        return_sample_id: bool = False,
     ):
         if use_start_end_token and hasattr(semantic_tokenizer, 'bos_token'):
             bos_id = semantic_tokenizer.bos_id
@@ -373,7 +423,6 @@ class AudioTextSemanticsBPEDataset(_AudioTextSemanticsDataset):
             eos_id=eos_id,
             pad_id=pad_id,
             trim=trim,
-            return_sample_id=return_sample_id,
         )
 
 
@@ -470,12 +519,12 @@ class EnCharTokenizer(tokenizers.TokenizerSpec):
         return "".join(self.ids_to_tokens(ids_))
 
 
-def get_slu_bpe_dataset(
+def get_slu_dataset(
     config: dict,
     text_tokenizer: 'TokenizerSpec',
     semantic_tokenizer: 'TokenizerSpec',
     augmentor: Optional['AudioAugmentor'] = None,
-) -> AudioTextSemanticsBPEDataset:
+) -> AudioTextSemanticsDataset:
     """
     Instantiates a Byte Pair Encoding / Word Piece Encoding based AudioToBPEDataset.
 
@@ -487,7 +536,7 @@ def get_slu_bpe_dataset(
     Returns:
         An instance of AudioToBPEDataset.
     """
-    dataset = AudioTextSemanticsBPEDataset(
+    dataset = AudioTextSemanticsDataset(
         manifest_filepath=config['manifest_filepath'],
         text_tokenizer=text_tokenizer,
         semantic_tokenizer=semantic_tokenizer,
@@ -499,6 +548,5 @@ def get_slu_bpe_dataset(
         max_utts=config.get('max_utts', 0),
         trim=config.get('trim_silence', False),
         use_start_end_token=config.get('use_start_end_token', True),
-        return_sample_id=config.get('return_sample_id', False),
     )
     return dataset

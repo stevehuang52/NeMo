@@ -23,11 +23,6 @@ __all__ = ['SLU2ASREncDecBPEModel']
 
 class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
     def __init__(self, cfg: DictConfig, trainer=None):
-        # Convert to Hydra 1.0 compatible DictConfig
-        cfg = model_utils.convert_model_config_to_dict_config(cfg)
-        cfg = model_utils.maybe_update_config_version(cfg)
-        self.cfg = cfg
-
         if hasattr(cfg, "adapter") and getattr(cfg.adapter, "enabled", False):
             with open_dict(cfg):
                 adapter_metadata = adapter_mixins.get_registered_adapter(cfg.encoder._target_)
@@ -55,7 +50,10 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
                 activation=cfg.adapter.adapter_activation,  # activation used in bottleneck block
                 norm_position=cfg.adapter.adapter_norm_position,  # whether to use LayerNorm at the beginning or the end of the adapter
             )
-            self.add_adapter(name=cfg.adapter.adapter_name, cfg=adapter_cfg)
+            try:
+                self.add_adapter(name=cfg.adapter.adapter_name, cfg=adapter_cfg)
+            except ValueError:
+                logging.warning(f"Adapter name {cfg.adapter.adapter_name} already exists, skipping.")
             self.set_enabled_adapters(name=cfg.adapter.adapter_name, enabled=True)
             self.encoder.freeze()
             self.unfreeze_enabled_adapters()
@@ -132,47 +130,12 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         else:
             return torch.cat([seq, zero_tokens], dim=1)
 
-    def change_decoding_strategy(self, cfg: SearcherConfig):
+    def set_decoding_strategy(self, cfg: SearcherConfig):
         max_len = getattr(self.searcher, "generator.max_seq_length", cfg.max_sequence_length)
         max_delta = getattr(self.searcher, "generator.max_delta_length", cfg.max_delta_length)
         cfg.max_sequence_length = max_len
         cfg.max_delta_length = max_delta
         self.searcher = SequenceGenerator(cfg, self.embedding, self.decoder, self.classifier, self.tokenizer)
-
-    def setup_optimizer_param_groups(self):
-        """
-            Used to create param groups for the optimizer.
-            As an example, this can be used to specify per-layer learning rates:
-            optim.SGD([
-                        {'params': model.base.parameters()},
-                        {'params': model.classifier.parameters(), 'lr': 1e-3}
-                        ], lr=1e-2, momentum=0.9)
-            See https://pytorch.org/docs/stable/optim.html for more information.
-        """
-        known_groups = []
-        param_groups = []
-        if getattr(self.cfg, "optim_param_groups", None):
-            param_groups_cfg = self.cfg.optim_param_groups
-            for group, lr in param_groups_cfg.items():
-                module = getattr(self, group, None)
-                if module:
-                    params = module.parameters()
-                    known_groups.append(group)
-                    param_groups.append({"params": params, "lr": lr})
-
-        other_params = []
-        for n, p in self.named_parameters():
-            is_known = False
-            for group in known_groups:
-                if n.startswith(group):
-                    is_known = True
-            if not is_known:
-                other_params.append(p)
-
-        if len(other_params):
-            param_groups = [{"params": other_params}] + param_groups
-
-        self._optimizer_param_groups = param_groups
 
     @typecheck()
     def forward(
@@ -456,78 +419,6 @@ class TokenizerBuilder(ASRBPEMixin):
         self.tokenizer = None
         self._setup_tokenizer(cfg)
         return copy.deepcopy(self.tokenizer)
-
-
-class SLU2ASREncDecBPECascadedModel(EncDecCTCModelBPE):
-    def __init__(self, cfg: DictConfig, trainer=None):
-        # Convert to Hydra 1.0 compatible DictConfig
-        cfg = model_utils.convert_model_config_to_dict_config(cfg)
-        cfg = model_utils.maybe_update_config_version(cfg)
-        self.cfg = cfg
-
-        if hasattr(cfg, "adapter") and getattr(cfg.adapter, "enabled", False):
-            with open_dict(cfg):
-                adapter_metadata = adapter_mixins.get_registered_adapter(cfg.encoder._target_)
-                if adapter_metadata is not None:
-                    cfg.encoder._target_ = adapter_metadata.adapter_class_path
-
-        super().__init__(cfg=cfg, trainer=trainer)
-
-        # Init encoder from SSL checkpoint
-        ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(
-            model_name=self.cfg.ssl_pretrained.model
-        )
-        self.encoder.load_state_dict(ssl_model.encoder.state_dict(), strict=False)
-        del ssl_model
-
-        if self.cfg.ssl_pretrained.freeze:
-            logging.info("Freezing SSL encoder...")
-            self.encoder.freeze()
-
-        ipdb.set_trace()
-        if hasattr(cfg, "adapter") and getattr(cfg.adapter, "enabled", False):
-            logging.info("Using Adapters...")
-            self.adapter_cfg = LinearAdapterConfig(
-                in_features=self.cfg.encoder.d_model,  # conformer specific model dim. Every layer emits this dim at its output.
-                dim=cfg.adapter.adapter_dim,  # the bottleneck dimension of the adapter
-                activation=cfg.adapter.adapter_activation,  # activation used in bottleneck block
-                norm_position=cfg.adapter.adapter_norm_position,  # whether to use LayerNorm at the beginning or the end of the adapter
-            )
-            self.add_adapter(name=cfg.adapter.adapter_name, cfg=self.adapter_cfg)
-            self.set_enabled_adapters(enabled=False)  # disable all adapters
-            self.encoder.freeze()
-            self.encoder.unfreeze_enabled_adapters()
-
-        ipdb.set_trace()
-
-        self.vocabulary = self.tokenizer.tokenizer.get_vocab()
-        vocab_size = len(self.vocabulary)
-
-        # Create embedding layer
-        self.cfg.embedding["vocab_size"] = vocab_size
-        self.embedding = ModuleBuilder.from_config_dict(self.cfg.embedding)
-
-        # Create decoder
-        # self.decoder = ModuleBuilder.from_config_dict(self.cfg.decoder)
-
-        # Create token classifier
-        self.cfg.classifier["num_classes"] = vocab_size
-        self.classifier = ModuleBuilder.from_config_dict(self.cfg.classifier)
-
-        self.loss = SeqNLLLoss(label_smoothing=getattr(self.cfg, "loss.label_smoothing", 0.0))
-
-        self.teacher_force_greedy = getattr(cfg.searcher, "teacher_force_greedy", False)
-        self.searcher = SequenceGenerator(cfg.searcher, self.embedding, self.decoder, self.classifier, self.tokenizer)
-
-        # Setup metric objects
-        self._wer = WERBPE(
-            tokenizer=self.tokenizer,
-            batch_dim_index=0,
-            use_cer=self._cfg.get('use_cer', False),
-            ctc_decode=False,  # use naive decoding
-            dist_sync_on_step=True,
-            log_prediction=self._cfg.get("log_prediction", False),
-        )
 
 
 # TODO

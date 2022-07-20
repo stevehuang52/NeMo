@@ -21,12 +21,12 @@ CLUSTER='drc'
 ###############################
 
 # Container to be used by job. TIP: create "complete" containers, do not do pip/apt install as part of job
-CONTAINER="gitlab-master.nvidia.com/heh/nemo_containers:nemo-22may16"
+CONTAINER="gitlab-master.nvidia.com/heh/nemo_containers:nemo-slu19jul22"
 
 #### Project Constants ####
 PROJECT_NAME="SLURP_SLU2ASR"
 DATASET="SLURP"
-MODEL_NAME="ConformerL-Transformer-Adapter"
+MODEL_NAME="ConformerXL-Transformer"
 ###########################
 
 
@@ -38,8 +38,8 @@ INIT_MODEL=''
 #### Hyper-Parameters ##########
 MAX_EPOCHS=100
 GRAD_ACC=1
-TRAIN_BATCH_SIZE=16
-EVAL_BATCH_SIZE=16
+TRAIN_BATCH_SIZE=4
+EVAL_BATCH_SIZE=8
 BUCKET_BATCH_SIZE=[40,32,24,16]
 BUCKET_STRATEGY=fully_randomized  # synced_randomized, fully_randomized
 TIME_MASKS=10
@@ -56,15 +56,14 @@ GRAD_CLIP=0.0
 
 # Model
 FREEZE_ENCODER=false
-ADAPTER_DIM=64
 DECODER_LAYERS=3
 DECODER_INNER_SIZE=2048
-DECODER_FFT_DROPOUT=0.0
+DECODER_FFT_DROPOUT=0.1
 DECODER_ATTN_SCORE_DROPOUT=0.0
 DECODER_ATTN_LAYER_DROPOUT=0.0
 
 # Misc
-SAVE_TOP_K=5
+SAVE_TOP_K=1
 LOG_PREDICTION=true
 SUBSAMPLING=striding # stacking
 PRECISION=32
@@ -75,9 +74,9 @@ MODEL_POSFIX=''
 DATA_ROOT="/data/SLU/slurp"
 # Paths are after mounted
 TOKENIZER="${DATA_ROOT}/tokenizers_slu2asr/tokenizer_spe_unigram_v58_pad_bos_eos"
-MAX_DURATION=10.0
+MAX_DURATION=12.0
 
-TRAIN_WORKERS=4
+TRAIN_WORKERS=8
 TRAIN_ISTARRED=false
 # Non-bucketing
 TRAIN_MANIFEST="[${DATA_ROOT}/train_real_slu2asr.json,${DATA_ROOT}/train_synth_slu2asr.json]"
@@ -101,7 +100,7 @@ TEST_FILEPATHS='na'
 ##### Code&Config Location ####
 CODE_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/code/nemo-slu
 CONFIG_PATH='./configs/'
-CONFIG_NAME=conformer_transformer_bpe_adapter
+CONFIG_NAME=conformer_transformer_xlarge_bpe
 ###############################
 
 
@@ -109,7 +108,7 @@ CONFIG_NAME=conformer_transformer_bpe_adapter
 ################ Usually No Change #########################################################################
 NOW=$(date +'%m/%d/%Y-%T')
 ### Experiment Name ###
-EXP_NAME=${CLUSTER}_${MODEL_NAME}_decl${DECODER_LAYERS}_adp${ADAPTER_DIM}_${OPT}lr${LR}x${LR_ENC}_wd${WD}_gc${GRAD_CLIP}_${SCHEDULER}_wp${WARMUP}_aug${TIME_MASKS}x${TIME_WIDTH}_b${TRAIN_BATCH_SIZE}_ep${MAX_EPOCHS}${MODEL_POSFIX}
+EXP_NAME=${CLUSTER}_${MODEL_NAME}_dl${DECODER_LAYERS}_${OPT}lr${LR}_wd${WD}_gc${GRAD_CLIP}_${SCHEDULER}_wp${WARMUP}_aug${TIME_MASKS}x${TIME_WIDTH}_b${TRAIN_BATCH_SIZE}_ep${MAX_EPOCHS}${MODEL_POSFIX}
 
 ######## Local Paths Before Mapping ###################
 INIT_EXP_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/results/
@@ -213,8 +212,7 @@ model.decoder.inner_size=$DECODER_INNER_SIZE \
 model.decoder.ffn_dropout=$DECODER_FFT_DROPOUT \
 model.decoder.attn_score_dropout=$DECODER_ATTN_SCORE_DROPOUT \
 model.decoder.attn_layer_dropout=$DECODER_ATTN_LAYER_DROPOUT \
-model.ssl_pretrained.freeze=$FREEZE_ENCODER \
-model.adapter.adapter_dim=$ADAPTER_DIM
+model.ssl_pretrained.freeze=$FREEZE_ENCODER
 EOF
 
 

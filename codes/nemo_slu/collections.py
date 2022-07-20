@@ -20,7 +20,7 @@ class _AudioTextSemantics(_Collection):
 
     OUTPUT_TYPE = collections.namedtuple(
         typename='AudioTextSemanticsEntity',
-        field_names='id audio_file duration text_tokens semantic_tokens offset text_raw semantics_raw speaker orig_sr lang',
+        field_names='id audio_file duration text_tokens semantic_tokens pred_text_tokens offset text_raw semantics_raw pred_text_raw speaker orig_sr lang',
     )
 
     def __init__(
@@ -36,6 +36,8 @@ class _AudioTextSemantics(_Collection):
         text_tokens: List[Optional[int]],
         semantic_tokens: List[Optional[int]],
         langs: List[Optional[str]],
+        pred_text: List[Optional[str]],
+        pred_text_tokens: List[Optional[str]],
         text_parser: Optional[parsers.CharParser] = None,
         semantic_parser: Optional[parsers.CharParser] = None,
         min_duration: Optional[float] = None,
@@ -79,10 +81,12 @@ class _AudioTextSemantics(_Collection):
             offset,
             text,
             semantic,
+            p_text,
             speaker,
             orig_sr,
             text_token,
             semantic_token,
+            p_text_tokens,
             lang,
         ) in zip(
             ids,
@@ -91,10 +95,12 @@ class _AudioTextSemantics(_Collection):
             offsets,
             texts,
             semantics,
+            pred_text,
             speakers,
             orig_sampling_rates,
             text_tokens,
             semantic_tokens,
+            pred_text_tokens,
             langs,
         ):
             # Duration filters.
@@ -110,37 +116,51 @@ class _AudioTextSemantics(_Collection):
 
             # tokenize text
             if text_token is not None:
-                text_tokens = text_token
+                _text_tokens = text_token
             else:
                 if text != '' and text_parser:
                     if hasattr(text_parser, "is_aggregate") and text_parser.is_aggregate:
                         if lang is not None:
-                            text_tokens = text_parser(text, lang)
+                            _text_tokens = text_parser(text, lang)
                         else:
                             raise ValueError("lang required in manifest when using aggregate tokenizers")
                     else:
-                        text_tokens = text_parser(text)
+                        _text_tokens = text_parser(text)
                 else:
-                    text_tokens = []
+                    _text_tokens = []
 
-                if text_tokens is None:
+                if _text_tokens is None:
                     duration_filtered += duration
                     num_filtered += 1
                     continue
 
+            if p_text_tokens is not None:
+                _pred_text_tokens = p_text_tokens
+            else:
+                if p_text and text_parser:
+                    if hasattr(text_parser, "is_aggregate") and text_parser.is_aggregate:
+                        if lang is not None:
+                            _pred_text_tokens = text_parser(p_text, lang)
+                        else:
+                            raise ValueError("lang required in manifest when using aggregate tokenizers")
+                    else:
+                        _pred_text_tokens = text_parser(p_text)
+                else:
+                    _pred_text_tokens = []
+
             # tokenize semantics
             if semantic_token is not None:
-                semantic_tokens = semantic_token
+                _semantic_tokens = semantic_token
             elif semantic != '' and semantic_parser:
                 if hasattr(semantic_parser, "is_aggregate") and semantic_parser.is_aggregate:
                     if lang is not None:
-                        semantic_tokens = semantic_parser(semantic, lang)
+                        _semantic_tokens = semantic_parser(semantic, lang)
                     else:
                         raise ValueError("lang required in manifest when using aggregate tokenizers")
                 else:
-                    semantic_tokens = semantic_parser(semantic)
+                    _semantic_tokens = semantic_parser(semantic)
             else:
-                semantic_tokens = []
+                _semantic_tokens = []
 
             total_duration += duration
 
@@ -149,13 +169,14 @@ class _AudioTextSemantics(_Collection):
                     id_,
                     audio_file,
                     duration,
-                    text_tokens,
-                    semantic_tokens,
+                    _text_tokens,
+                    _semantic_tokens,
+                    _pred_text_tokens,
                     offset,
                     text,
                     semantic,
+                    p_text,
                     speaker,
-                    semantic,
                     orig_sr,
                     lang,
                 )
@@ -196,6 +217,8 @@ class AudioTextSemantics(_AudioTextSemantics):
     FIELD_LANG = "lang"
     FIELD_TEXT_TOKENS = "text_tokens"
     FIELD_SEMANTIC_TOKENS = "semantic_tokens"
+    FIELD_PRED_TEXT = "pred_text"
+    FIELD_PRED_TEXT_TOKENS = "pred_text_tokens"
 
     def __init__(self, manifests_files: Union[str, List[str]], *args, **kwargs):
         """Parse lists of audio files, durations, transcripts texts and semantics for SLU.
@@ -210,6 +233,7 @@ class AudioTextSemantics(_AudioTextSemantics):
         ids, audio_files, durations, offsets, = [], [], [], []
         texts, text_tokens, semantics, semantic_tokens = [], [], [], []
         speakers, orig_srs, langs = [], [], []
+        pred_text, pred_text_tokens = [], []
         for item in manifest.item_iter(manifests_files, parse_func=self.__slu_parse_item):
             ids.append(item[self.FIELD_ID])
             audio_files.append(item[self.FIELD_AUDIO])
@@ -222,6 +246,8 @@ class AudioTextSemantics(_AudioTextSemantics):
             text_tokens.append(item[self.FIELD_TEXT_TOKENS])
             semantic_tokens.append(item[self.FIELD_SEMANTIC_TOKENS])
             langs.append(item[self.FIELD_LANG])
+            pred_text.append(item[self.FIELD_PRED_TEXT])
+            pred_text_tokens.append(item[self.FIELD_PRED_TEXT_TOKENS])
 
         super().__init__(
             ids,
@@ -234,7 +260,8 @@ class AudioTextSemantics(_AudioTextSemantics):
             text_tokens,
             semantic_tokens,
             langs,
-            *args,
+            pred_text,
+            pred_text_tokens * args,
             **kwargs,
         )
 
@@ -304,5 +331,6 @@ class AudioTextSemantics(_AudioTextSemantics):
         datum[cls.FIELD_TEXT_TOKENS] = item.get(cls.FIELD_TEXT_TOKENS, None)
         datum[cls.FIELD_SEMANTIC_TOKENS] = item.get(cls.FIELD_SEMANTIC_TOKENS, None)
         datum[cls.FIELD_LANG] = (item.get(cls.FIELD_LANG, None),)
-
+        datum[cls.FIELD_PRED_TEXT] = item.get(cls.FIELD_PRED_TEXT, None)
+        datum[cls.FIELD_PRED_TEXT_TOKENS] = item.get(cls.FIELD_PRED_TEXT_TOKENS, None)
         return datum

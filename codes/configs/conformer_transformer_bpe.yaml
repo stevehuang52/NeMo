@@ -24,7 +24,7 @@
 # Pre-trained models of Conformer-CTC can be found here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/results.html
 # The checkpoint of the large model trained on LibriSpeech with this recipe can be found here: https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_conformer_ctc_large_ls
 
-name: "ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8"
+name: "ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8_r2"
 
 model:
   sample_rate: 16000
@@ -174,7 +174,8 @@ model:
     teacher_force_greedy: true
 
   optim_param_groups:
-      encoder: 1e-4
+      encoder:
+        lr: 0.0002
 
   optim:
     name: adamw
@@ -189,7 +190,6 @@ model:
     # scheduler setup
     sched:
       name: CosineAnnealing  # WarmupAnnealing
-      # scheduler config override
       warmup_steps: 2000
       warmup_ratio: null
       min_lr: 1e-5
@@ -197,7 +197,7 @@ model:
 trainer:
   devices: -1 # number of GPUs, -1 would use all available GPUs
   num_nodes: 1
-  max_epochs: 1000
+  max_epochs: 100
   max_steps: null # computed at runtime if not set
   val_check_interval: 1.0 # Set to 0.25 to check 4 times per epoch, or an int for number of iterations
   accelerator: auto

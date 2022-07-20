@@ -239,8 +239,8 @@ def main(cfg: InferenceConfig) -> InferenceConfig:
     asr_model = asr_model.eval()
 
     # Setup decoding strategy
-    if hasattr(asr_model, 'change_decoding_strategy'):
-        asr_model.change_decoding_strategy(cfg.searcher)
+    if hasattr(asr_model, 'set_decoding_strategy'):
+        asr_model.set_decoding_strategy(cfg.searcher)
 
     # get audio filenames
     if cfg.audio_dir is not None:

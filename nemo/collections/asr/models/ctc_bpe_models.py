@@ -26,6 +26,7 @@ from nemo.collections.asr.models.ctc_models import EncDecCTCModel
 from nemo.collections.asr.parts.mixins import ASRBPEMixin
 from nemo.collections.asr.parts.preprocessing.perturb import process_augmentations
 from nemo.core.classes.common import PretrainedModelInfo
+from nemo.core.classes.modelPT import ModelPT
 from nemo.utils import logging, model_utils
 
 __all__ = ['EncDecCTCModelBPE']

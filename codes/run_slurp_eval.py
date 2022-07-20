@@ -6,8 +6,7 @@ from typing import Optional
 
 import nemo_slu.eval_utils as inference
 import torch
-from nemo_slu.eval_utils import InferenceConfig
-from nemo_slu.slu_utils import SLUEvaluator
+from nemo_slu.eval_utils import InferenceConfig, SLUEvaluator
 from omegaconf import MISSING, OmegaConf, open_dict
 from slurp_eval_tools.util import format_results
 
@@ -29,6 +28,8 @@ class EvaluationConfig(InferenceConfig):
 @hydra_runner(config_name="EvaluationConfig", schema=EvaluationConfig)
 def main(cfg: EvaluationConfig):
     torch.set_grad_enabled(False)
+
+    cfg.output_filename = str(Path(Path(cfg.model_path).parent) / Path("predictions.json"))
 
     if is_dataclass(cfg):
         cfg = OmegaConf.structured(cfg)
