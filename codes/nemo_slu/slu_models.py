@@ -37,7 +37,7 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         logging.info(f"Loading pretrained encoder from {self.cfg.ssl_pretrained.model}")
         if Path(self.cfg.ssl_pretrained.model).is_file():
             ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.restore_from(
-                model_name=self.cfg.ssl_pretrained.model
+                restore_path=self.cfg.ssl_pretrained.model
             )
         else:
             ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(

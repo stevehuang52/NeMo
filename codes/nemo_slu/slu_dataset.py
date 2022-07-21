@@ -147,17 +147,17 @@ class _AudioTextSemanticsDataset(Dataset):
 
         pt = sample.pred_text_tokens
         ptl = len(pt)
-
+        device = "cuda" if torch.cuda.is_available() else "cpu"
         output = DatumSLU()
-        setattr(output, output.FIELD_SAMPLE_ID, torch.tensor(index).long())
-        setattr(output, output.FIELD_AUDIO, f)
-        setattr(output, output.FIELD_AUDIO_LEN, fl)
-        setattr(output, output.FIELD_TEXT, torch.tensor(t).long())
-        setattr(output, output.FIELD_TEXT_LEN, torch.tensor(tl).long())
-        setattr(output, output.FIELD_SEMANTICS, torch.tensor(s).long())
-        setattr(output, output.FIELD_SEMANTICS_LEN, torch.tensor(sl).long())
-        setattr(output, output.FIELD_PRED_TEXT, torch.tensor(pt).long())
-        setattr(output, output.FIELD_PRED_TEXT_LEN, torch.tensor(ptl).long())
+        setattr(output, output.FIELD_SAMPLE_ID, torch.tensor(index).long().to(device))
+        setattr(output, output.FIELD_AUDIO, f.to(device))
+        setattr(output, output.FIELD_AUDIO_LEN, fl.to(device))
+        setattr(output, output.FIELD_TEXT, torch.tensor(t).long().to(device))
+        setattr(output, output.FIELD_TEXT_LEN, torch.tensor(tl).long().to(device))
+        setattr(output, output.FIELD_SEMANTICS, torch.tensor(s).long().to(device))
+        setattr(output, output.FIELD_SEMANTICS_LEN, torch.tensor(sl).long().to(device))
+        setattr(output, output.FIELD_PRED_TEXT, torch.tensor(pt).long().to(device))
+        setattr(output, output.FIELD_PRED_TEXT_LEN, torch.tensor(ptl).long().to(device))
 
         return output
 
