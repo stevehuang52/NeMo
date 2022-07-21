@@ -1,7 +1,9 @@
 import copy
+from pathlib import Path
 from typing import Dict, Optional
 
 import torch
+from genericpath import isfile
 from omegaconf import DictConfig, open_dict
 
 import nemo.collections.asr as nemo_asr
@@ -33,9 +35,14 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
 
         # Init encoder from SSL checkpoint
         logging.info(f"Loading pretrained encoder from {self.cfg.ssl_pretrained.model}")
-        ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(
-            model_name=self.cfg.ssl_pretrained.model
-        )
+        if Path(self.cfg.ssl_pretrained.model).isfile():
+            ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.restore_from(
+                model_name=self.cfg.ssl_pretrained.model
+            )
+        else:
+            ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(
+                model_name=self.cfg.ssl_pretrained.model
+            )
         self.encoder.load_state_dict(ssl_model.encoder.state_dict(), strict=False)
         del ssl_model
 
@@ -213,7 +220,8 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         else:
             predictions = self.searcher(encoded, encoded_mask)
 
-        return log_probs, encoded_len, predictions
+        pred_len = self.searcher.get_seq_length(predictions)
+        return log_probs, pred_len, predictions
 
     # PTL-specific methods
     def training_step(self, batch, batch_nb):
@@ -226,7 +234,7 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         else:
             signal, signal_len, transcript, transcript_len, semantics, semantics_len, idx = batch
 
-        log_probs, encoded_len, predictions = self.forward(
+        log_probs, pred_len, predictions = self.forward(
             input_signal=signal,
             input_signal_length=signal_len,
             target_semantics=semantics,
@@ -254,7 +262,7 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
             self._wer.update(
                 predictions=predictions,
                 targets=eos_semantics,
-                predictions_lengths=encoded_len,
+                predictions_lengths=pred_len,
                 target_lengths=eos_semantics_len,
             )
             wer, _, _ = self._wer.compute()
@@ -305,14 +313,14 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
             signal, signal_len, transcript, transcript_len, semantics, semantics_len, sample_id = batch
 
         if isinstance(batch, DALIOutputs) and batch.has_processed_signal:
-            log_probs, encoded_len, predictions = self.forward(
+            log_probs, pred_len, predictions = self.forward(
                 processed_signal=signal,
                 processed_signal_length=signal_len,
                 target_semantics=semantics,
                 target_semantics_length=semantics_len,
             )
         else:
-            log_probs, encoded_len, predictions = self.forward(
+            log_probs, pred_len, predictions = self.forward(
                 input_signal=signal,
                 input_signal_length=signal_len,
                 target_semantics=semantics,
@@ -327,7 +335,7 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         self._wer.update(
             predictions=predictions,
             targets=eos_semantics,
-            predictions_lengths=encoded_len,
+            predictions_lengths=pred_len,
             target_lengths=eos_semantics_len,
         )
         wer, wer_num, wer_denom = self._wer.compute()

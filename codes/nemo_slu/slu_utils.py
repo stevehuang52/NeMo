@@ -79,7 +79,7 @@ class SequenceGenerator:
         encoder_input_mask=None,
         return_beam_scores=False,
         pad_max_len: Optional[int] = None,
-        **kwargs,
+        return_length: bool = False,
     ):
         predictions = self.generator(
             encoder_hidden_states=encoder_states,
@@ -89,6 +89,10 @@ class SequenceGenerator:
 
         if pad_max_len:
             predictions = pad_sequence(predictions, pad_max_len, self.pad_id)
+
+        if return_length:
+            return predictions, self.get_seq_length(predictions)
+
         return predictions
 
     def get_seq_length(self, seq):
@@ -110,6 +114,13 @@ class SequenceGenerator:
             text = "".join(self.tokenizer.tokenizer.decode_ids(tokens))
             semantics_list.append(text)
         return semantics_list
+
+
+def get_seq_length(seq, eos_id):
+    lengths = seq.size(1) * torch.ones(seq.size(0), device=seq.device).long()
+    pos = (seq == eos_id).long().nonzero()
+    seq_lengths = torch.scatter(lengths, dim=0, index=pos[:, 0], src=pos[:, 1])
+    return seq_lengths
 
 
 def pad_sequence(seq: torch.Tensor, max_len: int, pad_token: int = 0) -> torch.Tensor:

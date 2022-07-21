@@ -2,16 +2,20 @@ from copy import deepcopy
 from math import ceil
 from typing import Dict, List, Optional, Union
 
+import ipdb
 import torch
 from omegaconf import DictConfig, open_dict
 
 import nemo.collections.asr as nemo_asr
-from .slu_dataset import get_slu_dataset
+from .slu_dataset import DataConstantsSLU as DC
+from .slu_dataset import DatumSLU, get_slu_dataset
 from .slu_loss import SeqNLLLoss
 from .slu_utils import SearcherConfig, SequenceGenerator, get_seq_mask
 from nemo.collections.asr.data.audio_to_text_dali import DALIOutputs
 from nemo.collections.asr.metrics.wer_bpe import WERBPE
+from nemo.collections.asr.models import asr_model
 from nemo.collections.asr.models.ctc_bpe_models import EncDecCTCModelBPE
+from nemo.collections.asr.models.rnnt_bpe_models import EncDecRNNTBPEModel
 from nemo.collections.asr.parts.mixins import ASRBPEMixin
 from nemo.collections.asr.parts.preprocessing.perturb import process_augmentations
 from nemo.core.classes import Serialization as ModuleBuilder
@@ -22,26 +26,44 @@ from nemo.utils import logging, model_utils
 
 
 class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
-    def __init__(self, cfg: DictConfig, trainer=None):
-        super().__init__(cfg=cfg, trainer=trainer)
+    MODE_SLU = "slu"
+    MODE_NLU = "nlu"
+    MODE_NLU_ORACLE = "nlu_oracle"
 
+    def __init__(self, cfg: DictConfig, trainer=None):
+        self.mode = cfg.get("mode", self.MODE_NLU)
+        share_tokenizer = cfg.get("share_tokenizer", False)
         self._setup_tokenizer(cfg.tokenizer)
         self.nlu_tokenizer = self.tokenizer
 
-        asr_model = EncDecCTCModelBPE.from_pretrained(cfg.asr_model)
-        self.asr_config = deepcopy(asr_model.cfg)
-        self.asr_vocab_size = asr_model.cfg.decoder["num_classes"]
-        self.asr_tokenizer = deepcopy(self.asr_model.tokenizer)
-        del asr_model
+        if "ctc" in cfg.asr_model:
+            asr_model = EncDecCTCModelBPE.from_pretrained(cfg.asr_model)
+        else:
+            asr_model = EncDecRNNTBPEModel.from_pretrained(cfg.asr_model)
 
-        self.nlu_vocabulary = self.tokenizer.tokenizer.get_vocab()
+        self.asr_config = deepcopy(asr_model.cfg)
+        self.asr_vocab_size = asr_model.cfg.decoder["vocab_size"]
+        if share_tokenizer:
+            self.asr_tokenizer = self.nlu_tokenizer
+        else:
+            self.asr_tokenizer = deepcopy(asr_model.tokenizer)
+
+        super().__init__(cfg=cfg, trainer=trainer)
+
+        if self.mode == self.MODE_SLU:
+            self.asr_model = asr_model
+        else:
+            self.asr_model = None
+            del asr_model
+
+        self.nlu_vocabulary = self.nlu_tokenizer.tokenizer.get_vocab()
         self.nlu_vocab_size = len(self.nlu_vocabulary)
 
         # Create embedding layer
         self.cfg.asr_embedding["vocab_size"] = self.asr_vocab_size
         self.asr_embedding = ModuleBuilder.from_config_dict(self.cfg.asr_embedding)
 
-        self.cfg.slu_embedding["vocab_size"] = self.nlu_vocab_size
+        self.cfg.nlu_embedding["vocab_size"] = self.nlu_vocab_size
         self.embedding = ModuleBuilder.from_config_dict(self.cfg.nlu_embedding)
 
         # Create decoder
@@ -82,6 +104,8 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
 
     def get_ctc_decoded_tokens(self, signal, signal_len):
         _, encoded_len, predictions = self.asr_model.forward(input_signal=signal, input_signal_length=signal_len)
+        predicted_text = self.asr_model._wer.ctc_decoder_predictions_tensor(predictions, encoded_len)
+        # TODO: tokenize predicted text
 
     def forward(
         self,
@@ -92,23 +116,75 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         target_semantics=None,
         target_semantics_length=None,
     ):
-
-        asr_tokens, asr_tokens_len = self.get_asr_predictions(input_signal, input_signal_length)
+        if self.asr_model is not None:
+            asr_tokens, asr_tokens_len = self.get_asr_predictions(input_signal, input_signal_length)
+        else:
+            asr_tokens, asr_tokens_len = pred_text, pred_text_length
 
         asr_embeddings = self.asr_embedding(asr_tokens)
 
-        # PTL-specific methods
+        encoded = asr_embeddings
+        encoded_len = asr_tokens_len
+        encoded_mask = get_seq_mask(encoded, encoded_len)
 
-    def training_step(self, batch, batch_nb):
-        signal, signal_len, transcript, transcript_len = batch
+        if target_semantics is None:
+            predictions, predictions_len = self.searcher(encoded, encoded_mask, return_length=True)
+            return None, predictions_len, predictions
 
-        log_probs, encoded_len, predictions = self.forward(input_signal=signal, input_signal_length=signal_len)
+        bos_semantics_tokens = target_semantics[:, :-1]
+        bos_semantics = self.embedding(bos_semantics_tokens)
+        bos_semantics_mask = get_seq_mask(bos_semantics, target_semantics_length - 1)
 
-        loss_value = self.loss(
-            log_probs=log_probs, targets=transcript, input_lengths=encoded_len, target_lengths=transcript_len
+        decoded = self.decoder(
+            encoder_states=encoded,
+            encoder_mask=encoded_mask,
+            decoder_states=bos_semantics,
+            decoder_mask=bos_semantics_mask,
+        )
+        log_probs = self.classifier(decoded)
+
+        if self.training or self.teacher_force_greedy:
+            predictions = log_probs.argmax(dim=-1, keepdim=False)
+        else:
+            predictions = self.searcher(encoded, encoded_mask)
+
+        predictions_len = self.searcher.get_seq_length(predictions)
+        return log_probs, predictions_len, predictions
+
+    # PTL-specific methods
+    def training_step(self, batch: DatumSLU, batch_nb: int):
+        signal = batch.get(DC.FIELD_AUDIO)
+        signal_len = batch.get(DC.FIELD_AUDIO_LEN)
+        pred_text = batch.get(DC.FIELD_PRED_TEXT)
+        pred_text_len = batch.get(DC.FIELD_PRED_TEXT_LEN)
+        semantics = batch.get(DC.FIELD_SEMANTICS)
+        semantics_len = batch.get(DC.FIELD_SEMANTICS_LEN)
+
+        ipdb.set_trace()
+        if self.mode == self.MODE_NLU_ORACLE:
+            pred_text = batch.get(DC.FIELD_TEXT)
+            pred_text_len = batch.get(DC.FIELD_TEXT_LEN)
+
+        log_probs, predictions_len, predictions = self.forward(
+            input_signal=signal,
+            input_signal_length=signal_len,
+            pred_text=pred_text,
+            pred_text_length=pred_text_len,
+            target_semantics=semantics,
+            target_semantics_length=semantics_len,
         )
 
-        tensorboard_logs = {'train_loss': loss_value, 'learning_rate': self._optimizer.param_groups[0]['lr']}
+        eos_semantics = semantics[:, 1:]
+        eos_semantics_len = semantics_len - 1  # subtract 1 for eos tokens
+
+        loss_value = self.loss(log_probs=log_probs, targets=eos_semantics, lengths=eos_semantics_len)
+
+        tensorboard_logs = {'train_loss': loss_value.item()}
+        if len(self._optimizer.param_groups) == 1:
+            tensorboard_logs['learning_rate'] = self._optimizer.param_groups[0]['lr']
+        else:
+            for i, group in enumerate(self._optimizer.param_groups):
+                tensorboard_logs[f'learning_rate_g{i}'] = group['lr']
 
         if hasattr(self, '_trainer') and self._trainer is not None:
             log_every_n_steps = self._trainer.log_every_n_steps
@@ -118,9 +194,9 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         if (batch_nb + 1) % log_every_n_steps == 0:
             self._wer.update(
                 predictions=predictions,
-                targets=transcript,
-                target_lengths=transcript_len,
-                predictions_lengths=encoded_len,
+                targets=eos_semantics,
+                predictions_lengths=predictions_len,
+                target_lengths=eos_semantics_len,
             )
             wer, _, _ = self._wer.compute()
             self._wer.reset()
@@ -128,40 +204,92 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
 
         return {'loss': loss_value, 'log': tensorboard_logs}
 
-    def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        signal, signal_len, transcript, transcript_len, sample_id = batch
+    def predict(
+        self,
+        input_signal=None,
+        input_signal_length=None,
+        input_text=None,
+        input_text_length=None,
+        processed_signal=None,
+        processed_signal_length=None,
+    ):
+        has_input_signal = input_signal is not None and input_signal_length is not None
+        has_processed_signal = processed_signal is not None and processed_signal_length is not None
+        has_audio = has_input_signal or has_processed_signal
+        if has_audio and not has_processed_signal:
+            processed_signal, processed_signal_length = self.preprocessor(
+                input_signal=input_signal, length=input_signal_length,
+            )
 
-        log_probs, encoded_len, predictions = self.forward(input_signal=signal, input_signal_length=signal_len)
+        if has_audio:
+            if self.spec_augmentation is not None and self.training:
+                processed_signal = self.spec_augmentation(input_spec=processed_signal, length=processed_signal_length)
+            encoded, encoded_len = self.get_asr_predictions(
+                audio_signal=processed_signal, length=processed_signal_length
+            )
+            encoded = encoded.transpose(1, 2)  # BxDxT -> BxTxD
+        else:
+            encoded, encoded_len = input_text, input_text_length
 
-        transcribed_texts = self._wer.ctc_decoder_predictions_tensor(
-            predictions=predictions, predictions_len=encoded_len, return_hypotheses=False,
-        )
+        encoded_mask = get_seq_mask(encoded, encoded_len)
 
-        sample_id = sample_id.cpu().detach().numpy()
-        return list(zip(sample_id, transcribed_texts))
+        pred_tokens = self.searcher(encoded, encoded_mask)
+        predictions = self.decode_semantics(pred_tokens)
+        return predictions
+
+    def decode_semantics(self, seq_tokens):
+        semantics_str = self.searcher.decode_semantics_from_tokens(seq_tokens)
+        return semantics_str
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        signal, signal_len, transcript, transcript_len = batch
-        if isinstance(batch, DALIOutputs) and batch.has_processed_signal:
-            log_probs, encoded_len, predictions = self.forward(
-                processed_signal=signal, processed_signal_length=signal_len
-            )
-        else:
-            log_probs, encoded_len, predictions = self.forward(input_signal=signal, input_signal_length=signal_len)
+        signal = batch.get(DC.FIELD_AUDIO)
+        signal_len = batch.get(DC.FIELD_AUDIO_LEN)
+        pred_text = batch.get(DC.FIELD_PRED_TEXT)
+        pred_text_len = batch.get(DC.FIELD_PRED_TEXT_LEN)
+        semantics = batch.get(DC.FIELD_SEMANTICS)
+        semantics_len = batch.get(DC.FIELD_SEMANTICS_LEN)
 
-        loss_value = self.loss(
-            log_probs=log_probs, targets=transcript, input_lengths=encoded_len, target_lengths=transcript_len
+        if self.mode == self.MODE_NLU_ORACLE:
+            pred_text = batch.get(DC.FIELD_TEXT)
+            pred_text_len = batch.get(DC.FIELD_TEXT_LEN)
+
+        log_probs, predictions_len, predictions = self.forward(
+            input_signal=signal,
+            input_signal_length=signal_len,
+            pred_text=pred_text,
+            pred_text_length=pred_text_len,
+            target_semantics=semantics,
+            target_semantics_length=semantics_len,
         )
+
+        eos_semantics = semantics[:, 1:]
+        eos_semantics_len = semantics_len - 1  # subtract 1 for bos&eos tokens
+
+        loss_value = self.loss(log_probs=log_probs, targets=eos_semantics, lengths=eos_semantics_len)
+
         self._wer.update(
-            predictions=predictions, targets=transcript, target_lengths=transcript_len, predictions_lengths=encoded_len
+            predictions=predictions,
+            targets=eos_semantics,
+            predictions_lengths=predictions_len,
+            target_lengths=eos_semantics_len,
         )
         wer, wer_num, wer_denom = self._wer.compute()
         self._wer.reset()
+
+        if self.teacher_force_greedy:
+            pred_semantics = []
+            true_semantics = []
+        else:
+            pred_semantics = self.decode_semantics(predictions)
+            true_semantics = self.decode_semantics(eos_semantics)
+
         return {
             'val_loss': loss_value,
             'val_wer_num': wer_num,
             'val_wer_denom': wer_denom,
             'val_wer': wer,
+            'pred_semantics': pred_semantics,
+            'true_semantics': true_semantics,
         }
 
     def test_step(self, batch, batch_idx, dataloader_idx=0):
@@ -325,3 +453,7 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
 
         temporary_datalayer = self._setup_dataloader_from_config(config=DictConfig(dl_config))
         return temporary_datalayer
+
+    @classmethod
+    def list_available_models(cls):
+        pass

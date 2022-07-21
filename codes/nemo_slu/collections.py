@@ -254,6 +254,7 @@ class AudioTextSemantics(_AudioTextSemantics):
             audio_files,
             durations,
             texts,
+            semantics,
             offsets,
             speakers,
             orig_srs,
@@ -261,7 +262,8 @@ class AudioTextSemantics(_AudioTextSemantics):
             semantic_tokens,
             langs,
             pred_text,
-            pred_text_tokens * args,
+            pred_text_tokens,
+            *args,
             **kwargs,
         )
 

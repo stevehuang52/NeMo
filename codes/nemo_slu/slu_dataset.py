@@ -103,7 +103,9 @@ class _AudioTextSemanticsDataset(Dataset):
         bos_id: Optional[int] = None,
         eos_id: Optional[int] = None,
         pad_id: int = 0,
+        mode: str = "slu",
     ):
+        self.mode = mode
         if type(manifest_filepath) == str:
             manifest_filepath = manifest_filepath.split(",")
 
@@ -131,10 +133,13 @@ class _AudioTextSemanticsDataset(Dataset):
         if offset is None:
             offset = 0
 
-        features = self.featurizer.process(
-            sample.audio_file, offset=offset, duration=sample.duration, trim=self.trim, orig_sr=sample.orig_sr
-        )
-        f, fl = features, torch.tensor(features.shape[0]).long()
+        if self.mode == "slu":
+            features = self.featurizer.process(
+                sample.audio_file, offset=offset, duration=sample.duration, trim=self.trim, orig_sr=sample.orig_sr
+            )
+            f, fl = features, torch.tensor(features.shape[0]).long()
+        else:
+            f, fl = None, None
 
         t, tl = self.manifest_processor.process_text_by_sample(sample=sample)
 
@@ -164,11 +169,11 @@ class _AudioTextSemanticsDataset(Dataset):
 
     def get_max_length(self, batch, field):
         max_len = 0
-        data = getattr(batch, field, None)
         all_lengths = []
-        if not data:
-            return max_len, all_lengths
-        for d in data:
+        for b in batch:
+            d = getattr(b, field, None)
+            if d is None:
+                return 0, []
             if d is not None:
                 max_len = max(max_len, d)
                 all_lengths.append(d)
@@ -213,17 +218,19 @@ class _AudioTextSemanticsDataset(Dataset):
                     sig = torch.nn.functional.pad(sig, pad)
                 audio_signal.append(sig)
 
-            text_i_len = text_i_len.item()
-            if text_i_len < max_text_len:
-                pad = (0, max_text_len - text_i_len)
-                text_i = torch.nn.functional.pad(text_i, pad, value=pad_id)
-            texts.append(text_i)
+            if has_text:
+                text_i_len = text_i_len.item()
+                if text_i_len < max_text_len:
+                    pad = (0, max_text_len - text_i_len)
+                    text_i = torch.nn.functional.pad(text_i, pad, value=pad_id)
+                texts.append(text_i)
 
-            pred_text_i_len = pred_text_i_len.item()
-            if pred_text_i_len < max_pred_text_len:
-                pad = (0, max_pred_text_len - pred_text_i_len)
-                pred_text_i = torch.nn.functional.pad(pred_text_i, pad, value=pad_id)
-            pred_texts.append(pred_text_i)
+            if has_pred_text:
+                pred_text_i_len = pred_text_i_len.item()
+                if pred_text_i_len < max_pred_text_len:
+                    pad = (0, max_pred_text_len - pred_text_i_len)
+                    pred_text_i = torch.nn.functional.pad(pred_text_i, pad, value=pad_id)
+                pred_texts.append(pred_text_i)
 
             semantics_i_len = semantics_i_len.item()
             if semantics_i_len < max_semantics_len:
@@ -231,7 +238,7 @@ class _AudioTextSemanticsDataset(Dataset):
                 semantics_i = torch.nn.functional.pad(semantics_i, pad, value=pad_id)
             semantics.append(semantics_i)
 
-        if all(sample_ids):
+        if any(sample_ids):
             sample_ids = torch.stack(sample_ids)
         else:
             sample_ids = None
@@ -381,6 +388,7 @@ class AudioTextSemanticsDataset(_AudioTextSemanticsDataset):
         max_utts: int = 0,
         trim: bool = False,
         use_start_end_token: bool = True,
+        mode: str = "slu",
     ):
         if use_start_end_token and hasattr(semantic_tokenizer, 'bos_token'):
             bos_id = semantic_tokenizer.bos_id
@@ -423,6 +431,7 @@ class AudioTextSemanticsDataset(_AudioTextSemanticsDataset):
             eos_id=eos_id,
             pad_id=pad_id,
             trim=trim,
+            mode=mode,
         )
 
 
@@ -548,5 +557,6 @@ def get_slu_dataset(
         max_utts=config.get('max_utts', 0),
         trim=config.get('trim_silence', False),
         use_start_end_token=config.get('use_start_end_token', True),
+        mode=config.get('mode', 'slu'),
     )
     return dataset

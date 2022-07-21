@@ -39,7 +39,7 @@ INIT_MODEL=''
 MAX_EPOCHS=100
 GRAD_ACC=1
 TRAIN_BATCH_SIZE=4
-EVAL_BATCH_SIZE=8
+EVAL_BATCH_SIZE=6
 BUCKET_BATCH_SIZE=[40,32,24,16]
 BUCKET_STRATEGY=fully_randomized  # synced_randomized, fully_randomized
 TIME_MASKS=10
@@ -101,6 +101,7 @@ TEST_FILEPATHS='na'
 CODE_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/code/nemo-slu
 CONFIG_PATH='./configs/'
 CONFIG_NAME=conformer_transformer_xlarge_bpe
+PRETRAINED_MODEL="/pretrained/ssl_en_conformer_xlarge.nemo"
 ###############################
 
 
@@ -112,6 +113,7 @@ EXP_NAME=${CLUSTER}_${MODEL_NAME}_dl${DECODER_LAYERS}_${OPT}lr${LR}_wd${WD}_gc${
 
 ######## Local Paths Before Mapping ###################
 INIT_EXP_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/results/
+PRETRAINED_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/pretrained/
 
 # Where training/validation data is, various manifests and configs
 DATA_DIR=${LUSTRE_ACCOUNT_PREFIX}/datasets/data/
@@ -131,7 +133,7 @@ OUTFILE=${RESULTS_DIR}/output-%j-%n.out
 ERRFILE=${RESULTS_DIR}/error-%j-%n.out
 
 # actually mount folders to container
-MOUNTS="--container-mounts=${CODE_DIR}:/code,${RESULTS_DIR}:/results,${DATA_DIR}:/data,${TOKENIZERS_DIR}:/tokenizers,${MANIFESTS_DIR}:/manifests,${INIT_EXP_DIR}:/exp_init"
+MOUNTS="--container-mounts=${CODE_DIR}:/code,${RESULTS_DIR}:/results,${DATA_DIR}:/data,${TOKENIZERS_DIR}:/tokenizers,${MANIFESTS_DIR}:/manifests,${INIT_EXP_DIR}:/exp_init,${PRETRAINED_DIR}:/pretrained"
 
 if [ -z "$INIT_MODEL" ]
 then
@@ -201,7 +203,7 @@ trainer.accumulate_grad_batches=${GRAD_ACC} \
 trainer.gradient_clip_val=$GRAD_CLIP \
 model.spec_augment.time_masks=$TIME_MASKS \
 model.spec_augment.time_width=$TIME_WIDTH \
-model.optim_param_groups.encoder=$LR_ENC \
+model.optim_param_groups.encoder.lr=$LR_ENC \
 model.optim.name=$OPT \
 model.optim.lr=$LR \
 model.optim.weight_decay=$WD \
@@ -212,6 +214,7 @@ model.decoder.inner_size=$DECODER_INNER_SIZE \
 model.decoder.ffn_dropout=$DECODER_FFT_DROPOUT \
 model.decoder.attn_score_dropout=$DECODER_ATTN_SCORE_DROPOUT \
 model.decoder.attn_layer_dropout=$DECODER_ATTN_LAYER_DROPOUT \
+model.ssl_pretrained.model=$PRETRAINED_MODEL \
 model.ssl_pretrained.freeze=$FREEZE_ENCODER
 EOF
 
