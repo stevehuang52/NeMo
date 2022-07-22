@@ -1,8 +1,8 @@
 curr_dir=${pwd}
-test_manifest="/home/heh/datasets/Catalan/catalan_cleaned/test/test_v1.json"
+test_manifest="/home/heh/datasets/Catalan/catalan_cleaned/test/test.json"
 
-proj_name="ConformerL_ctc_catalan_abl"
-exp_name="drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b1_f_gacc1_ep1000_bk4_b32_dgx1_full_v1"
+proj_name="ConformerL_ctc_catalan_v2"
+exp_name="drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_char_emit_bn_b32_f_gacc1_ep1000_char_dgx2"
 
 target_dir=./results/${proj_name}/${exp_name}/
 nemo_file=${exp_name}-averaged.nemo
@@ -36,6 +36,7 @@ CUDA_VISIBLE_DEVICES=0 python speech_to_text_eval.py \
 
 # ConformerL_ctc_catalan_v2
 # drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b32_f_gacc1_ep1000_dgx2
+# drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_char_emit_bn_b32_f_gacc1_ep1000_char_dgx2
 
 # ConformerL_ctc_catalan_abl
 # drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b1_f_gacc1_ep1000_bk4_b32_dgx1_full_v1

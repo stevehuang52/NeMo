@@ -1,20 +1,23 @@
 curr_dir=${pwd}
+test_manifest="/home/heh/datasets/Catalan/catalan_cleaned/test/test.json"
 
-proj_name="ConformerL_ctc_catalan_v2"
-exp_dir="drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_char_emit_bn_b32_f_gacc1_ep1000_char_dgx2"
+target_dir="stt_ca_citrinet"
+nemo_file=stt_ca_citrinet.nemo
 
-proj_dir=/gpfs/fs1/projects/ent_aiapps/users/heh/results/${proj_name}
-source_dir=${proj_dir}/${exp_dir}/${exp_dir}/checkpoints/
-target_dir=./results/${proj_name}/${exp_dir}/
 
-mkdir -p ${target_dir}
-
-rsync -Wav heh@draco1:${source_dir} ${target_dir}
-
-cp checkpoint_averaging.py ${target_dir}/
+cp speech_to_text_eval.py ${target_dir}/
+cp transcribe_speech.py ${target_dir}/
+cp transcribe_speech_parallel.py ${target_dir}/
 
 cd ${target_dir}
-find . -name '*.nemo' | grep -v -- "-averaged.nemo" | xargs python checkpoint_averaging.py
+
+CUDA_VISIBLE_DEVICES=0 python speech_to_text_eval.py \
+    model_path=${nemo_file} \
+    dataset_manifest=${test_manifest} \
+    output_filename="evaluation_transcripts.json" \
+    batch_size=32 \
+    amp=True \
+    use_cer=False
 
 # ConformerL_RNNT_Catalan
 # drc_catalan_d512_adamwlr5.0_wd1e-3_aug10x0.05_spu1024_emit0_bn_b1_f8_gacc1_ep1000_dgx1_bk4

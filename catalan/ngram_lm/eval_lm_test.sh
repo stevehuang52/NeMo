@@ -1,8 +1,8 @@
 
-kenlm_model_file="./kenlm_saved/kenlm_N6_spu128_v1.model"
+kenlm_model_file="./kenlm_saved/kenlm_N6_char.model"
 
-proj_name="ConformerL_ctc_catalan_abl"
-exp_name="drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b1_f_gacc1_ep1000_bk4_b32_dgx1_full_v1"
+proj_name="ConformerL_ctc_catalan_v2"
+exp_name="drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_char_emit_bn_b32_f_gacc1_ep1000_char_dgx2"
 
 pred_output="./predictions/${proj_name}/${exp_name}"
 mkdir -p $pred_output
@@ -21,15 +21,15 @@ nemo_model_file="../results/${proj_name}/${exp_name}/${exp_name}-averaged.nemo"
 #     --preds_output_folder $pred_output \
 #     --decoding_mode beamsearch_ngram
 
-test_manifest="/home/heh/datasets/Catalan/catalan_cleaned/test/test_v1.json"
+test_manifest="/home/heh/datasets/Catalan/catalan_cleaned/test/test.json"
 CUDA_VISIBLE_DEVICES=1 python eval_beamsearch_ngram.py \
     --nemo_model_file $nemo_model_file \
     --input_manifest $test_manifest \
     --kenlm_model_file $kenlm_model_file \
     --acoustic_batch_size 32 \
     --beam_width 128 \
-    --beam_alpha 1.0 \
-    --beam_beta  1.0 \
+    --beam_alpha 0.1 \
+    --beam_beta  0.1 \
     --preds_output_folder $pred_output \
     --decoding_mode beamsearch_ngram
 
@@ -44,6 +44,7 @@ CUDA_VISIBLE_DEVICES=1 python eval_beamsearch_ngram.py \
 
 # ConformerL_ctc_catalan_v2
 # drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b32_f_gacc1_ep1000_dgx2
+# drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_char_emit_bn_b32_f_gacc1_ep1000_char_dgx2
 
 # ConformerL_ctc_catalan_abl
 # drc_catalan_d512_adamwlr2.0_wd1e-3_aug10x0.05_spu128_emit_bn_b1_f_gacc1_ep1000_bk4_b32_dgx1_full_v1
