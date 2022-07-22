@@ -8,4 +8,4 @@ CUDA_VISIBLE_DEVICES=1 python run_slu_to_nlu.py \
     trainer.devices=1 \
     trainer.max_epochs=100 \
     model.optim.sched.warmup_steps=2000 \
-    exp_manager.create_wandb_logger=False
+    exp_manager.create_wandb_logger=True

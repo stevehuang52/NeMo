@@ -63,6 +63,14 @@ class DatumSLU(DataConstantsSLU):
     def __getitem__(self, key):
         return self.get(key)
 
+    def to_device(self, device):
+        for field in self.all_fields:
+            self.set(field, self.get(field).to(device))
+
+    def to_cuda(self):
+        for field in self.all_fields:
+            self.set(field, self.get(field).cuda())
+
 
 class _AudioTextSemanticsDataset(Dataset):
     """
@@ -88,6 +96,10 @@ class _AudioTextSemanticsDataset(Dataset):
         pad_id: Id of pad symbol. Defaults to 0
     """
 
+    # OUTPUT_TYPE = collections.namedtuple(
+    #     typename='AudioTextSemanticsData',
+    #     field_names='sample_id audio_signal audio_length text text_length semantics semantics_length pred_text pred_text_length',
+    # )
     def __init__(
         self,
         manifest_filepath: str,
@@ -147,17 +159,29 @@ class _AudioTextSemanticsDataset(Dataset):
 
         pt = sample.pred_text_tokens
         ptl = len(pt)
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        output = DatumSLU()
-        setattr(output, output.FIELD_SAMPLE_ID, torch.tensor(index).long().to(device))
-        setattr(output, output.FIELD_AUDIO, f.to(device))
-        setattr(output, output.FIELD_AUDIO_LEN, fl.to(device))
-        setattr(output, output.FIELD_TEXT, torch.tensor(t).long().to(device))
-        setattr(output, output.FIELD_TEXT_LEN, torch.tensor(tl).long().to(device))
-        setattr(output, output.FIELD_SEMANTICS, torch.tensor(s).long().to(device))
-        setattr(output, output.FIELD_SEMANTICS_LEN, torch.tensor(sl).long().to(device))
-        setattr(output, output.FIELD_PRED_TEXT, torch.tensor(pt).long().to(device))
-        setattr(output, output.FIELD_PRED_TEXT_LEN, torch.tensor(ptl).long().to(device))
+
+        # output = DatumSLU()
+        # setattr(output, output.FIELD_SAMPLE_ID, torch.tensor(index).long())
+        # setattr(output, output.FIELD_AUDIO, f)
+        # setattr(output, output.FIELD_AUDIO_LEN, fl)
+        # setattr(output, output.FIELD_TEXT, torch.tensor(t).long())
+        # setattr(output, output.FIELD_TEXT_LEN, torch.tensor(tl).long())
+        # setattr(output, output.FIELD_SEMANTICS, torch.tensor(s).long())
+        # setattr(output, output.FIELD_SEMANTICS_LEN, torch.tensor(sl).long())
+        # setattr(output, output.FIELD_PRED_TEXT, torch.tensor(pt).long())
+        # setattr(output, output.FIELD_PRED_TEXT_LEN, torch.tensor(ptl).long())
+
+        output = (
+            torch.tensor(index).long(),
+            f,
+            fl,
+            torch.tensor(t).long(),
+            torch.tensor(tl).long(),
+            torch.tensor(s).long(),
+            torch.tensor(sl).long(),
+            torch.tensor(pt).long(),
+            torch.tensor(ptl).long(),
+        )
 
         return output
 
@@ -187,27 +211,25 @@ class _AudioTextSemanticsDataset(Dataset):
                 encoded tokens, and encoded tokens length.  This collate func
                 assumes the signals are 1d torch tensors (i.e. mono audio).
         """
+        packed_batch = list(zip(*batch))
+        _, _, audio_lengths, _, text_lengths, _, semantics_lengths, _, pred_text_lengths = packed_batch
+        max_audio_len = max(audio_lengths) if all(audio_lengths) else 0
+        max_text_len = max(text_lengths) if all(text_lengths) else 0
+        max_semantics_len = max(semantics_lengths) if all(semantics_lengths) else 0
+        max_pred_text_len = max(pred_text_lengths) if all(pred_text_lengths) else 0
 
-        max_audio_len, audio_lengths = self.get_max_length(batch, DatumSLU.FIELD_AUDIO_LEN)
+        # max_audio_len, audio_lengths = self.get_max_length(batch, DatumSLU.FIELD_AUDIO_LEN)
+        # max_text_len, text_lengths = self.get_max_length(batch, DatumSLU.FIELD_TEXT_LEN)
+        # max_semantics_len, semantics_lengths = self.get_max_length(batch, DatumSLU.FIELD_SEMANTICS_LEN)
+        # max_pred_text_len, pred_text_lengths = self.get_max_length(batch, DatumSLU.FIELD_PRED_TEXT_LEN)
+
         has_audio = max_audio_len > 0
-
-        max_text_len, text_lengths = self.get_max_length(batch, DatumSLU.FIELD_TEXT_LEN)
         has_text = max_text_len > 0
-        max_semantics_len, semantics_lengths = self.get_max_length(batch, DatumSLU.FIELD_SEMANTICS_LEN)
-        max_pred_text_len, pred_text_lengths = self.get_max_length(batch, DatumSLU.FIELD_PRED_TEXT_LEN)
         has_pred_text = max_pred_text_len > 0
 
         audio_signal, texts, semantics, pred_texts, sample_ids = [], [], [], [], []
         for b in batch:
-            sid = getattr(b, DatumSLU.FIELD_SAMPLE_ID)
-            sig = getattr(b, DatumSLU.FIELD_AUDIO)
-            sig_len = getattr(b, DatumSLU.FIELD_AUDIO_LEN)
-            text_i = getattr(b, DatumSLU.FIELD_TEXT)
-            text_i_len = getattr(b, DatumSLU.FIELD_TEXT_LEN)
-            semantics_i = getattr(b, DatumSLU.FIELD_SEMANTICS)
-            semantics_i_len = getattr(b, DatumSLU.FIELD_SEMANTICS_LEN)
-            pred_text_i = getattr(b, DatumSLU.FIELD_PRED_TEXT)
-            pred_text_i_len = getattr(b, DatumSLU.FIELD_PRED_TEXT_LEN)
+            sid, sig, sig_len, text_i, text_i_len, semantics_i, semantics_i_len, pred_text_i, pred_text_i_len = b
 
             sample_ids.append(sid)
 
@@ -264,17 +286,29 @@ class _AudioTextSemanticsDataset(Dataset):
         semantics = torch.stack(semantics)
         semantics_lengths = torch.stack(semantics_lengths)
 
-        output = DatumSLU()
+        # output = DatumSLU()
 
-        setattr(output, output.FIELD_SAMPLE_ID, sample_ids)
-        setattr(output, output.FIELD_AUDIO, audio_signal)
-        setattr(output, output.FIELD_AUDIO_LEN, audio_lengths)
-        setattr(output, output.FIELD_TEXT, texts)
-        setattr(output, output.FIELD_TEXT_LEN, text_lengths)
-        setattr(output, output.FIELD_PRED_TEXT, pred_texts)
-        setattr(output, output.FIELD_PRED_TEXT_LEN, pred_text_lengths)
-        setattr(output, output.FIELD_SEMANTICS, semantics)
-        setattr(output, output.FIELD_SEMANTICS_LEN, semantics_lengths)
+        # setattr(output, output.FIELD_SAMPLE_ID, sample_ids)
+        # setattr(output, output.FIELD_AUDIO, audio_signal)
+        # setattr(output, output.FIELD_AUDIO_LEN, audio_lengths)
+        # setattr(output, output.FIELD_TEXT, texts)
+        # setattr(output, output.FIELD_TEXT_LEN, text_lengths)
+        # setattr(output, output.FIELD_PRED_TEXT, pred_texts)
+        # setattr(output, output.FIELD_PRED_TEXT_LEN, pred_text_lengths)
+        # setattr(output, output.FIELD_SEMANTICS, semantics)
+        # setattr(output, output.FIELD_SEMANTICS_LEN, semantics_lengths)
+
+        output = (
+            sample_ids,
+            audio_signal,
+            audio_lengths,
+            texts,
+            text_lengths,
+            semantics,
+            semantics_lengths,
+            pred_texts,
+            pred_text_lengths,
+        )
 
         return output
 

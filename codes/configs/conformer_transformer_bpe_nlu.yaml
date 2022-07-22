@@ -37,7 +37,7 @@ model:
     sample_rate: ${model.sample_rate}
     batch_size: 32 # 16~24 for 32GB GPUs
     shuffle: true
-    num_workers: 0
+    num_workers: 8
     pin_memory: true
     use_start_end_token: true
     trim_silence: false

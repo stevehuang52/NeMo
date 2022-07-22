@@ -14,6 +14,7 @@ from .slu_utils import SearcherConfig, SequenceGenerator, get_seq_mask
 from nemo.collections.asr.data.audio_to_text_dali import DALIOutputs
 from nemo.collections.asr.metrics.wer_bpe import WERBPE
 from nemo.collections.asr.models import asr_model
+from nemo.collections.asr.models.asr_model import ASRModel
 from nemo.collections.asr.models.ctc_bpe_models import EncDecCTCModelBPE
 from nemo.collections.asr.models.rnnt_bpe_models import EncDecRNNTBPEModel
 from nemo.collections.asr.parts.mixins import ASRBPEMixin
@@ -116,6 +117,7 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         target_semantics=None,
         target_semantics_length=None,
     ):
+
         if self.asr_model is not None:
             asr_tokens, asr_tokens_len = self.get_asr_predictions(input_signal, input_signal_length)
         else:
@@ -153,17 +155,22 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
 
     # PTL-specific methods
     def training_step(self, batch: DatumSLU, batch_nb: int):
-        signal = batch.get(DC.FIELD_AUDIO)
-        signal_len = batch.get(DC.FIELD_AUDIO_LEN)
-        pred_text = batch.get(DC.FIELD_PRED_TEXT)
-        pred_text_len = batch.get(DC.FIELD_PRED_TEXT_LEN)
-        semantics = batch.get(DC.FIELD_SEMANTICS)
-        semantics_len = batch.get(DC.FIELD_SEMANTICS_LEN)
+        # signal = batch.get(DC.FIELD_AUDIO)
+        # signal_len = batch.get(DC.FIELD_AUDIO_LEN)
+        # pred_text = batch.get(DC.FIELD_PRED_TEXT)
+        # pred_text_len = batch.get(DC.FIELD_PRED_TEXT_LEN)
+        # semantics = batch.get(DC.FIELD_SEMANTICS)
+        # semantics_len = batch.get(DC.FIELD_SEMANTICS_LEN)
+        _, signal, signal_len, text, text_len, semantics, semantics_len, pred_text, pred_text_len = batch
+        if pred_text is None:
+            import ipdb
 
-        ipdb.set_trace()
+            ipdb.set_trace()
         if self.mode == self.MODE_NLU_ORACLE:
-            pred_text = batch.get(DC.FIELD_TEXT)
-            pred_text_len = batch.get(DC.FIELD_TEXT_LEN)
+            # pred_text = batch.get(DC.FIELD_TEXT)
+            # pred_text_len = batch.get(DC.FIELD_TEXT_LEN)
+            pred_text = text
+            pred_text_len = text_len
 
         log_probs, predictions_len, predictions = self.forward(
             input_signal=signal,
@@ -242,12 +249,14 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         return semantics_str
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        signal = batch.get(DC.FIELD_AUDIO)
-        signal_len = batch.get(DC.FIELD_AUDIO_LEN)
-        pred_text = batch.get(DC.FIELD_PRED_TEXT)
-        pred_text_len = batch.get(DC.FIELD_PRED_TEXT_LEN)
-        semantics = batch.get(DC.FIELD_SEMANTICS)
-        semantics_len = batch.get(DC.FIELD_SEMANTICS_LEN)
+        # batch = batch.to_device(self.device)
+        # signal = batch.get(DC.FIELD_AUDIO)
+        # signal_len = batch.get(DC.FIELD_AUDIO_LEN)
+        # pred_text = batch.get(DC.FIELD_PRED_TEXT)
+        # pred_text_len = batch.get(DC.FIELD_PRED_TEXT_LEN)
+        # semantics = batch.get(DC.FIELD_SEMANTICS)
+        # semantics_len = batch.get(DC.FIELD_SEMANTICS_LEN)
+        _, signal, signal_len, _, _, semantics, semantics_len, pred_text, pred_text_len = batch
 
         if self.mode == self.MODE_NLU_ORACLE:
             pred_text = batch.get(DC.FIELD_TEXT)
@@ -282,7 +291,6 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         else:
             pred_semantics = self.decode_semantics(predictions)
             true_semantics = self.decode_semantics(eos_semantics)
-
         return {
             'val_loss': loss_value,
             'val_wer_num': wer_num,
@@ -453,6 +461,68 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
 
         temporary_datalayer = self._setup_dataloader_from_config(config=DictConfig(dl_config))
         return temporary_datalayer
+
+    def multi_validation_epoch_end(self, outputs, dataloader_idx: int = 0):
+        val_loss_mean = torch.stack([x['val_loss'] for x in outputs]).mean()
+        wer_num = torch.stack([x['val_wer_num'] for x in outputs]).sum()
+        wer_denom = torch.stack([x['val_wer_denom'] for x in outputs]).sum()
+        tensorboard_logs = {'val_loss': val_loss_mean, 'val_wer': wer_num / wer_denom}
+        return {'val_loss': val_loss_mean, 'log': tensorboard_logs}
+
+    def multi_test_epoch_end(self, outputs, dataloader_idx: int = 0):
+        val_loss_mean = torch.stack([x['test_loss'] for x in outputs]).mean()
+        wer_num = torch.stack([x['test_wer_num'] for x in outputs]).sum()
+        wer_denom = torch.stack([x['test_wer_denom'] for x in outputs]).sum()
+        tensorboard_logs = {'test_loss': val_loss_mean, 'test_wer': wer_num / wer_denom}
+        return {'test_loss': val_loss_mean, 'log': tensorboard_logs}
+
+    @classmethod
+    def list_available_models(cls) -> 'List[PretrainedModelInfo]':
+        """
+        This method returns a list of pre-trained model which can be instantiated directly from NVIDIA's NGC cloud.
+        Returns:
+            List of available pre-trained models.
+        """
+        # recursively walk the subclasses to generate pretrained model info
+        list_of_models = model_utils.resolve_subclass_pretrained_model_info(cls)
+        return list_of_models
+
+    def setup_optimization_flags(self):
+        """
+        Utility method that must be explicitly called by the subclass in order to support optional optimization flags.
+        This method is the only valid place to access self.cfg prior to DDP training occurs.
+
+        The subclass may chose not to support this method, therefore all variables here must be checked via hasattr()
+        """
+        # Skip update if nan/inf grads appear on any rank.
+        self._skip_nan_grad = False
+        if "skip_nan_grad" in self._cfg and self._cfg["skip_nan_grad"]:
+            self._skip_nan_grad = self._cfg["skip_nan_grad"]
+
+    def on_after_backward(self):
+        """
+        zero-out the gradients which any of them is NAN or INF
+        """
+        super().on_after_backward()
+
+        if hasattr(self, '_skip_nan_grad') and self._skip_nan_grad:
+            device = next(self.parameters()).device
+            valid_gradients = torch.tensor([1], device=device, dtype=torch.float32)
+
+            # valid_gradients = True
+            for param_name, param in self.named_parameters():
+                if param.grad is not None:
+                    is_not_nan_or_inf = not (torch.isnan(param.grad).any() or torch.isinf(param.grad).any())
+                    if not is_not_nan_or_inf:
+                        valid_gradients = valid_gradients * 0
+                        break
+
+            if torch.distributed.is_initialized():
+                torch.distributed.all_reduce(valid_gradients, op=torch.distributed.ReduceOp.MIN)
+
+            if valid_gradients < 1:
+                logging.warning(f'detected inf or nan values in gradients! Setting gradients to zero.')
+                self.zero_grad()
 
     @classmethod
     def list_available_models(cls):
