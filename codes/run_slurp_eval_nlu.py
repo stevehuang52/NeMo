@@ -4,10 +4,9 @@ from dataclasses import dataclass, is_dataclass
 from pathlib import Path
 from typing import Optional
 
-import nemo_slu.eval_utils as inference
-import nemo_slu.eval_utils_nlu as inference_nlu
+import nemo_slu.eval_utils_nlu as inference
 import torch
-from nemo_slu.eval_utils import InferenceConfig, SLUEvaluator
+from nemo_slu.eval_utils_nlu import InferenceConfig, SLUEvaluator
 from omegaconf import MISSING, OmegaConf, open_dict
 from slurp_eval_tools.util import format_results
 
@@ -24,7 +23,7 @@ class EvaluationConfig(InferenceConfig):
     errors: bool = False
     table_layout: str = "fancy_grid"
     only_score_manifest: bool = False
-    mode: str = "slu"
+    mode: str = "nlu"
 
 
 @hydra_runner(config_name="EvaluationConfig", schema=EvaluationConfig)
@@ -71,8 +70,8 @@ def main(cfg: EvaluationConfig):
                 invalid_manifest = True
                 break
 
-            ground_truth_text.append(data['text'])
-            predicted_text.append(data['pred_text'])
+            ground_truth_text.append(data['semantics'])
+            predicted_text.append(data['pred_semantics'])
 
     # Test for invalid manifest supplied
     if invalid_manifest:

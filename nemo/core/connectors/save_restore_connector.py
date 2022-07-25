@@ -60,6 +60,7 @@ class SaveRestoreConnector:
                     self._handle_artifacts(model, nemo_file_folder=tmpdir)
                     # We should not update self._cfg here - the model can still be in use
                     self._update_artifact_paths(model, path2yaml_file=config_yaml)
+
                 self._save_state_dict_to_disk(model.state_dict(), model_weights)
                 self._make_nemo_file_from_folder(filename=save_path, source_dir=tmpdir)
         else:
@@ -156,6 +157,7 @@ class SaveRestoreConnector:
                 # get the class
                 calling_cls._set_model_restore_state(is_being_restored=True, folder=tmpdir)
                 instance = calling_cls.from_config_dict(config=conf, trainer=trainer)
+
                 instance = instance.to(map_location)
                 # add load_state_dict override
                 if app_state.model_parallel_size is not None and app_state.model_parallel_size > 1:
@@ -235,6 +237,7 @@ class SaveRestoreConnector:
         loaded_params = self.load_config_and_state_dict(
             calling_cls, restore_path, override_config_path, map_location, strict, return_config, trainer,
         )
+
         if not isinstance(loaded_params, tuple):
             return loaded_params
         conf, instance, state_dict = loaded_params
@@ -362,17 +365,20 @@ class SaveRestoreConnector:
         if os.path.exists(os.path.abspath(src)):
             return_path = os.path.abspath(src)
             artifact_item.path_type = model_utils.ArtifactPathType.LOCAL_PATH
+            artifact_item.path = return_path
 
         # this is the case when artifact must be retried from the nemo file
         # we are assuming that the location of the right nemo file is available from _MODEL_RESTORE_PATH
         elif src.startswith("nemo:"):
             return_path = os.path.abspath(os.path.join(app_state.nemo_file_folder, src[5:]))
             artifact_item.path_type = model_utils.ArtifactPathType.TAR_PATH
+            artifact_item.path = src
 
         # backward compatibility implementation
         elif os.path.exists(src_obj_path):
             return_path = src_obj_path
             artifact_item.path_type = model_utils.ArtifactPathType.TAR_PATH
+            artifact_item.path = src_obj_name
         else:
             if verify_src_exists:
                 raise FileNotFoundError(
@@ -384,7 +390,7 @@ class SaveRestoreConnector:
 
         assert os.path.exists(return_path)
 
-        artifact_item.path = os.path.abspath(src)
+        # artifact_item.path = return_path  # os.path.abspath(src)
         model.artifacts[config_path] = artifact_item
         # we were called by ModelPT
         if hasattr(model, "cfg"):
@@ -416,6 +422,8 @@ class SaveRestoreConnector:
 
             else:
                 raise ValueError(f"Directly referencing artifacts from other nemo files isn't supported yet")
+
+        model_metadata = app_state.get_model_metadata_from_guid(model.model_guid)
 
         # Process current tarfile artifacts by unpacking the previous tarfile and extract the artifacts
         # that are currently required.

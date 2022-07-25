@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy
 from math import ceil
 from typing import Dict, List, Optional, Union
@@ -7,8 +8,7 @@ import torch
 from omegaconf import DictConfig, open_dict
 
 import nemo.collections.asr as nemo_asr
-from .slu_dataset import DataConstantsSLU as DC
-from .slu_dataset import DatumSLU, get_slu_dataset
+from .slu_dataset import get_slu_dataset
 from .slu_loss import SeqNLLLoss
 from .slu_utils import SearcherConfig, SequenceGenerator, get_seq_mask
 from nemo.collections.asr.data.audio_to_text_dali import DALIOutputs
@@ -32,8 +32,10 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
     MODE_NLU_ORACLE = "nlu_oracle"
 
     def __init__(self, cfg: DictConfig, trainer=None):
+        super().__init__(cfg=cfg, trainer=trainer)
         self.mode = cfg.get("mode", self.MODE_NLU)
         share_tokenizer = cfg.get("share_tokenizer", False)
+
         self._setup_tokenizer(cfg.tokenizer)
         self.nlu_tokenizer = self.tokenizer
 
@@ -49,7 +51,7 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         else:
             self.asr_tokenizer = deepcopy(asr_model.tokenizer)
 
-        super().__init__(cfg=cfg, trainer=trainer)
+        self.asr_tokenizer = self.nlu_tokenizer
 
         if self.mode == self.MODE_SLU:
             self.asr_model = asr_model
@@ -154,21 +156,11 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         return log_probs, predictions_len, predictions
 
     # PTL-specific methods
-    def training_step(self, batch: DatumSLU, batch_nb: int):
-        # signal = batch.get(DC.FIELD_AUDIO)
-        # signal_len = batch.get(DC.FIELD_AUDIO_LEN)
-        # pred_text = batch.get(DC.FIELD_PRED_TEXT)
-        # pred_text_len = batch.get(DC.FIELD_PRED_TEXT_LEN)
-        # semantics = batch.get(DC.FIELD_SEMANTICS)
-        # semantics_len = batch.get(DC.FIELD_SEMANTICS_LEN)
-        _, signal, signal_len, text, text_len, semantics, semantics_len, pred_text, pred_text_len = batch
-        if pred_text is None:
-            import ipdb
+    def training_step(self, batch: tuple, batch_nb: int):
 
-            ipdb.set_trace()
+        _, signal, signal_len, text, text_len, semantics, semantics_len, pred_text, pred_text_len = batch
+
         if self.mode == self.MODE_NLU_ORACLE:
-            # pred_text = batch.get(DC.FIELD_TEXT)
-            # pred_text_len = batch.get(DC.FIELD_TEXT_LEN)
             pred_text = text
             pred_text_len = text_len
 
@@ -222,7 +214,7 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
     ):
         has_input_signal = input_signal is not None and input_signal_length is not None
         has_processed_signal = processed_signal is not None and processed_signal_length is not None
-        has_audio = has_input_signal or has_processed_signal
+        has_audio = (has_input_signal or has_processed_signal) and self.mode == self.MODE_SLU
         if has_audio and not has_processed_signal:
             processed_signal, processed_signal_length = self.preprocessor(
                 input_signal=input_signal, length=input_signal_length,
@@ -231,13 +223,13 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         if has_audio:
             if self.spec_augmentation is not None and self.training:
                 processed_signal = self.spec_augmentation(input_spec=processed_signal, length=processed_signal_length)
-            encoded, encoded_len = self.get_asr_predictions(
+            asr_tokens, encoded_len = self.get_asr_predictions(
                 audio_signal=processed_signal, length=processed_signal_length
             )
-            encoded = encoded.transpose(1, 2)  # BxDxT -> BxTxD
         else:
-            encoded, encoded_len = input_text, input_text_length
+            asr_tokens, encoded_len = input_text, input_text_length
 
+        encoded = self.asr_embedding(asr_tokens)
         encoded_mask = get_seq_mask(encoded, encoded_len)
 
         pred_tokens = self.searcher(encoded, encoded_mask)
@@ -249,18 +241,11 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         return semantics_str
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        # batch = batch.to_device(self.device)
-        # signal = batch.get(DC.FIELD_AUDIO)
-        # signal_len = batch.get(DC.FIELD_AUDIO_LEN)
-        # pred_text = batch.get(DC.FIELD_PRED_TEXT)
-        # pred_text_len = batch.get(DC.FIELD_PRED_TEXT_LEN)
-        # semantics = batch.get(DC.FIELD_SEMANTICS)
-        # semantics_len = batch.get(DC.FIELD_SEMANTICS_LEN)
-        _, signal, signal_len, _, _, semantics, semantics_len, pred_text, pred_text_len = batch
+        _, signal, signal_len, text, text_len, semantics, semantics_len, pred_text, pred_text_len = batch
 
         if self.mode == self.MODE_NLU_ORACLE:
-            pred_text = batch.get(DC.FIELD_TEXT)
-            pred_text_len = batch.get(DC.FIELD_TEXT_LEN)
+            pred_text = text
+            pred_text_len = text_len
 
         log_probs, predictions_len, predictions = self.forward(
             input_signal=signal,
@@ -450,8 +435,7 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
 
         dl_config = {
             'manifest_filepath': manifest_filepath,
-            'sample_rate': self.preprocessor._sample_rate,
-            'labels': self.decoder.vocabulary,
+            'sample_rate': 16000,
             'batch_size': batch_size,
             'trim_silence': False,
             'shuffle': False,

@@ -10,66 +10,14 @@ from omegaconf.listconfig import ListConfig
 from pytorch_lightning.callbacks import BasePredictionWriter
 from torch.utils.data import ChainDataset
 
-from . import collections
+from .collections import AudioTextSemantics
 from nemo.collections.asr.parts.preprocessing.features import WaveformFeaturizer
 from nemo.collections.common import tokenizers
 from nemo.core.classes import Dataset
 from nemo.core.neural_types import *
 from nemo.utils import logging
 
-__all__ = ["AudioTextSemanticsBPEDataset", "get_slu_bpe_dataset", "EnCharTokenizer"]
-
-
-class DataConstantsSLU:
-    FIELD_AUDIO = "audio_signal"
-    FIELD_AUDIO_LEN = "audio_length"
-    FIELD_TEXT = "text"
-    FIELD_TEXT_LEN = "text_length"
-    FIELD_SEMANTICS = "semantics"
-    FIELD_SEMANTICS_LEN = "semantics_length"
-    FIELD_SAMPLE_ID = "sample_id"
-    FIELD_PRED_TEXT = "pred_text"
-    FIELD_PRED_TEXT_LEN = "pred_text_length"
-
-    def __init__(self) -> None:
-        self.all_fields = [
-            self.FIELD_AUDIO,
-            self.FIELD_AUDIO_LEN,
-            self.FIELD_TEXT,
-            self.FIELD_TEXT_LEN,
-            self.FIELD_SEMANTICS,
-            self.FIELD_SEMANTICS_LEN,
-            self.FIELD_SAMPLE_ID,
-            self.FIELD_PRED_TEXT,
-            self.FIELD_PRED_TEXT_LEN,
-        ]
-
-
-class DatumSLU(DataConstantsSLU):
-    def __init__(self, **kwargs) -> None:
-        super().__init__()
-        for field in self.all_fields:
-            setattr(self, field, kwargs.get(field, None))
-
-    def set(self, key, val):
-        setattr(self, key, val)
-
-    def get(self, key, default=None):
-        return getattr(self, key, default)
-
-    def keys(self):
-        return deepcopy(self.all_fields)
-
-    def __getitem__(self, key):
-        return self.get(key)
-
-    def to_device(self, device):
-        for field in self.all_fields:
-            self.set(field, self.get(field).to(device))
-
-    def to_cuda(self):
-        for field in self.all_fields:
-            self.set(field, self.get(field).cuda())
+__all__ = ["get_slu_bpe_dataset", "EnCharTokenizer"]
 
 
 class _AudioTextSemanticsDataset(Dataset):
@@ -160,17 +108,6 @@ class _AudioTextSemanticsDataset(Dataset):
         pt = sample.pred_text_tokens
         ptl = len(pt)
 
-        # output = DatumSLU()
-        # setattr(output, output.FIELD_SAMPLE_ID, torch.tensor(index).long())
-        # setattr(output, output.FIELD_AUDIO, f)
-        # setattr(output, output.FIELD_AUDIO_LEN, fl)
-        # setattr(output, output.FIELD_TEXT, torch.tensor(t).long())
-        # setattr(output, output.FIELD_TEXT_LEN, torch.tensor(tl).long())
-        # setattr(output, output.FIELD_SEMANTICS, torch.tensor(s).long())
-        # setattr(output, output.FIELD_SEMANTICS_LEN, torch.tensor(sl).long())
-        # setattr(output, output.FIELD_PRED_TEXT, torch.tensor(pt).long())
-        # setattr(output, output.FIELD_PRED_TEXT_LEN, torch.tensor(ptl).long())
-
         output = (
             torch.tensor(index).long(),
             f,
@@ -217,11 +154,6 @@ class _AudioTextSemanticsDataset(Dataset):
         max_text_len = max(text_lengths) if all(text_lengths) else 0
         max_semantics_len = max(semantics_lengths) if all(semantics_lengths) else 0
         max_pred_text_len = max(pred_text_lengths) if all(pred_text_lengths) else 0
-
-        # max_audio_len, audio_lengths = self.get_max_length(batch, DatumSLU.FIELD_AUDIO_LEN)
-        # max_text_len, text_lengths = self.get_max_length(batch, DatumSLU.FIELD_TEXT_LEN)
-        # max_semantics_len, semantics_lengths = self.get_max_length(batch, DatumSLU.FIELD_SEMANTICS_LEN)
-        # max_pred_text_len, pred_text_lengths = self.get_max_length(batch, DatumSLU.FIELD_PRED_TEXT_LEN)
 
         has_audio = max_audio_len > 0
         has_text = max_text_len > 0
@@ -286,18 +218,6 @@ class _AudioTextSemanticsDataset(Dataset):
         semantics = torch.stack(semantics)
         semantics_lengths = torch.stack(semantics_lengths)
 
-        # output = DatumSLU()
-
-        # setattr(output, output.FIELD_SAMPLE_ID, sample_ids)
-        # setattr(output, output.FIELD_AUDIO, audio_signal)
-        # setattr(output, output.FIELD_AUDIO_LEN, audio_lengths)
-        # setattr(output, output.FIELD_TEXT, texts)
-        # setattr(output, output.FIELD_TEXT_LEN, text_lengths)
-        # setattr(output, output.FIELD_PRED_TEXT, pred_texts)
-        # setattr(output, output.FIELD_PRED_TEXT_LEN, pred_text_lengths)
-        # setattr(output, output.FIELD_SEMANTICS, semantics)
-        # setattr(output, output.FIELD_SEMANTICS_LEN, semantics_lengths)
-
         output = (
             sample_ids,
             audio_signal,
@@ -351,7 +271,7 @@ class ManifestProcessorSLU:
         self.text_parser = text_parser
         self.semantic_parser = semantic_parser
 
-        self.collection = collections.AudioTextSemantics(
+        self.collection = AudioTextSemantics(
             manifests_files=manifest_filepath,
             text_parser=text_parser,
             semantic_parser=semantic_parser,
@@ -374,7 +294,7 @@ class ManifestProcessorSLU:
         sample = self.collection[manifest_idx]
         return self.process_text_by_sample(sample)
 
-    def process_text_by_sample(self, sample: collections.AudioTextSemantics.OUTPUT_TYPE) -> Tuple[List[int], int]:
+    def process_text_by_sample(self, sample: AudioTextSemantics.OUTPUT_TYPE) -> Tuple[List[int], int]:
         t, tl = sample.text_tokens, len(sample.text_tokens)
 
         if self.bos_id is not None:
@@ -395,7 +315,7 @@ class ManifestProcessorSLU:
         sample = self.collection[manifest_idx]
         return self.process_semantics_by_sample(sample)
 
-    def process_semantics_by_sample(self, sample: collections.AudioTextSemantics.OUTPUT_TYPE) -> Tuple[List[int], int]:
+    def process_semantics_by_sample(self, sample: AudioTextSemantics.OUTPUT_TYPE) -> Tuple[List[int], int]:
         t, tl = sample.semantic_tokens, len(sample.semantic_tokens)
 
         if self.bos_id is not None:

@@ -24,9 +24,9 @@ CLUSTER='drc'
 CONTAINER="gitlab-master.nvidia.com/heh/nemo_containers:nemo-22may16"
 
 #### Project Constants ####
-PROJECT_NAME="SLURP_SLU2ASR"
+PROJECT_NAME="SLURP_NLU"
 DATASET="SLURP"
-MODEL_NAME="ConformerL-Transformer-Adapter"
+MODEL_NAME="Transformer"
 ###########################
 
 
@@ -38,8 +38,8 @@ INIT_MODEL=''
 #### Hyper-Parameters ##########
 MAX_EPOCHS=100
 GRAD_ACC=1
-TRAIN_BATCH_SIZE=16
-EVAL_BATCH_SIZE=16
+TRAIN_BATCH_SIZE=512
+EVAL_BATCH_SIZE=256
 BUCKET_BATCH_SIZE=[40,32,24,16]
 BUCKET_STRATEGY=fully_randomized  # synced_randomized, fully_randomized
 TIME_MASKS=10
@@ -47,8 +47,7 @@ TIME_WIDTH=0.05
 
 # Optimization
 OPT=adamw
-LR=3e-4
-LR_ENC=1e-4
+LR=0.0003
 WD=0.0
 SCHEDULER="CosineAnnealing"  # WarmupAnnealing, CosineAnnealing
 WARMUP=2000
@@ -56,10 +55,9 @@ GRAD_CLIP=0.0
 
 # Model
 FREEZE_ENCODER=false
-ADAPTER_DIM=64
 DECODER_LAYERS=3
 DECODER_INNER_SIZE=2048
-DECODER_FFT_DROPOUT=0.0
+DECODER_FFT_DROPOUT=0.1
 DECODER_ATTN_SCORE_DROPOUT=0.0
 DECODER_ATTN_LAYER_DROPOUT=0.0
 
@@ -80,7 +78,7 @@ MAX_DURATION=11.0
 TRAIN_WORKERS=4
 TRAIN_ISTARRED=false
 # Non-bucketing
-TRAIN_MANIFEST="[${DATA_ROOT}/train_real_slu2asr.json,${DATA_ROOT}/train_synth_slu2asr.json]"
+TRAIN_MANIFEST="[${DATA_ROOT}/train_real_nlu.json,${DATA_ROOT}/train_synth_nlu.json]"
 TRAIN_FILEPATHS='na'
 # TRAIN_FILEPATHS=${TRAIN_DATA_PATH}/audio__OP_0..511_CL_.tar
 # Bucketing, set batch_size to 1, use BUCKET_BATCH_SIZE instead
@@ -89,19 +87,19 @@ TRAIN_FILEPATHS='na'
 
 VAL_WORKERS=4
 VAL_ISTARRED=false
-VAL_MANIFEST="${DATA_ROOT}/dev_slu2asr.json"
+VAL_MANIFEST="${DATA_ROOT}/dev_nlu.json"
 VAL_FILEPATHS='na'
 
 TEST_WORKERS=4
 TEST_ISTARRED=false
-TEST_MANIFEST="${DATA_ROOT}/test_slu2asr.json"
+TEST_MANIFEST="${DATA_ROOT}/test_nlu.json"
 TEST_FILEPATHS='na'
 ##################
 
 ##### Code&Config Location ####
 CODE_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/code/nemo-slu
 CONFIG_PATH='./configs/'
-CONFIG_NAME=conformer_transformer_bpe_adapter
+CONFIG_NAME=conformer_transformer_bpe_nlu
 ###############################
 
 
@@ -109,7 +107,7 @@ CONFIG_NAME=conformer_transformer_bpe_adapter
 ################ Usually No Change #########################################################################
 NOW=$(date +'%m/%d/%Y-%T')
 ### Experiment Name ###
-EXP_NAME=${CLUSTER}_${MODEL_NAME}_decl${DECODER_LAYERS}_adp${ADAPTER_DIM}_${OPT}lr${LR}x${LR_ENC}_wd${WD}_gc${GRAD_CLIP}_${SCHEDULER}_wp${WARMUP}_aug${TIME_MASKS}x${TIME_WIDTH}_b${TRAIN_BATCH_SIZE}_ep${MAX_EPOCHS}${MODEL_POSFIX}
+EXP_NAME=${CLUSTER}_${MODEL_NAME}_dec${DECODER_LAYERS}_${OPT}lr${LR}_wd${WD}_gc${GRAD_CLIP}_${SCHEDULER}_wp${WARMUP}_aug${TIME_MASKS}x${TIME_WIDTH}_b${TRAIN_BATCH_SIZE}_ep${MAX_EPOCHS}${MODEL_POSFIX}
 
 ######## Local Paths Before Mapping ###################
 INIT_EXP_DIR=${LUSTRE_ACCOUNT_PREFIX}/${USERID}/results/
@@ -144,7 +142,7 @@ else
 fi
 
 ### Script to Run ###
-SCRIPT_FILE="codes/run_slu_to_asr_bpe.py"
+SCRIPT_FILE="codes/run_slu_to_nlu.py"
 ############################################################################################################
 
 
@@ -202,7 +200,6 @@ trainer.accumulate_grad_batches=${GRAD_ACC} \
 trainer.gradient_clip_val=$GRAD_CLIP \
 model.spec_augment.time_masks=$TIME_MASKS \
 model.spec_augment.time_width=$TIME_WIDTH \
-model.optim_param_groups.encoder.lr=$LR_ENC \
 model.optim.name=$OPT \
 model.optim.lr=$LR \
 model.optim.weight_decay=$WD \
@@ -212,9 +209,7 @@ model.decoder.num_layers=$DECODER_LAYERS \
 model.decoder.inner_size=$DECODER_INNER_SIZE \
 model.decoder.ffn_dropout=$DECODER_FFT_DROPOUT \
 model.decoder.attn_score_dropout=$DECODER_ATTN_SCORE_DROPOUT \
-model.decoder.attn_layer_dropout=$DECODER_ATTN_LAYER_DROPOUT \
-model.ssl_pretrained.freeze=$FREEZE_ENCODER \
-model.adapter.adapter_dim=$ADAPTER_DIM
+model.decoder.attn_layer_dropout=$DECODER_ATTN_LAYER_DROPOUT
 EOF
 
 
