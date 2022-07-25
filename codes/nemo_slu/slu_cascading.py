@@ -32,13 +32,12 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
     MODE_NLU_ORACLE = "nlu_oracle"
 
     def __init__(self, cfg: DictConfig, trainer=None):
-        super().__init__(cfg=cfg, trainer=trainer)
+
         self.mode = cfg.get("mode", self.MODE_NLU)
         share_tokenizer = cfg.get("share_tokenizer", False)
 
         self._setup_tokenizer(cfg.tokenizer)
         self.nlu_tokenizer = self.tokenizer
-
         if "ctc" in cfg.asr_model:
             asr_model = EncDecCTCModelBPE.from_pretrained(cfg.asr_model)
         else:
@@ -52,6 +51,8 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
             self.asr_tokenizer = deepcopy(asr_model.tokenizer)
 
         self.asr_tokenizer = self.nlu_tokenizer
+
+        super().__init__(cfg=cfg, trainer=trainer)
 
         if self.mode == self.MODE_SLU:
             self.asr_model = asr_model

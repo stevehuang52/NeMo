@@ -143,6 +143,8 @@ def pad_sequence(seq: torch.Tensor, max_len: int, pad_token: int = 0) -> torch.T
 
 def parse_semantics_str2dict(semantics_str: Union[List[str], str]) -> Dict:
     invalid = False
+    if isinstance(semantics_str, dict):
+        return semantics_str, invalid
     if isinstance(semantics_str, list):
         semantics_str = " ".join(semantics_str)
     try:

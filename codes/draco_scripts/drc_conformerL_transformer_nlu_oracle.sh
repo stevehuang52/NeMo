@@ -36,7 +36,7 @@ INIT_MODEL=''
 ##############################
 
 #### Hyper-Parameters ##########
-MODEEL_MODE="nlu"
+MODEEL_MODE="nlu_oracle"
 MAX_EPOCHS=100
 GRAD_ACC=1
 TRAIN_BATCH_SIZE=512
@@ -56,7 +56,7 @@ GRAD_CLIP=0.0
 
 # Model
 FREEZE_ENCODER=false
-DECODER_LAYERS=3
+DECODER_LAYERS=10
 DECODER_INNER_SIZE=2048
 DECODER_FFT_DROPOUT=0.1
 DECODER_ATTN_SCORE_DROPOUT=0.0
@@ -79,7 +79,7 @@ MAX_DURATION=11.0
 TRAIN_WORKERS=4
 TRAIN_ISTARRED=false
 # Non-bucketing
-TRAIN_MANIFEST="[${DATA_ROOT}/train_real_nlu.json,${DATA_ROOT}/train_synth_nlu.json]"
+TRAIN_MANIFEST="[${DATA_ROOT}/train_real_${MODEEL_MODE}.json,${DATA_ROOT}/train_synth_${MODEEL_MODE}.json]"
 TRAIN_FILEPATHS='na'
 # TRAIN_FILEPATHS=${TRAIN_DATA_PATH}/audio__OP_0..511_CL_.tar
 # Bucketing, set batch_size to 1, use BUCKET_BATCH_SIZE instead
@@ -88,12 +88,12 @@ TRAIN_FILEPATHS='na'
 
 VAL_WORKERS=4
 VAL_ISTARRED=false
-VAL_MANIFEST="${DATA_ROOT}/dev_nlu.json"
+VAL_MANIFEST="${DATA_ROOT}/dev_${MODEEL_MODE}.json"
 VAL_FILEPATHS='na'
 
 TEST_WORKERS=4
 TEST_ISTARRED=false
-TEST_MANIFEST="${DATA_ROOT}/test_nlu.json"
+TEST_MANIFEST="${DATA_ROOT}/test_${MODEEL_MODE}.json"
 TEST_FILEPATHS='na'
 ##################
 

@@ -66,7 +66,7 @@ def main(cfg: EvaluationConfig):
         for line in f:
             data = json.loads(line)
 
-            if 'pred_text' not in data:
+            if 'pred_semantics' not in data:
                 invalid_manifest = True
                 break
 
@@ -81,7 +81,6 @@ def main(cfg: EvaluationConfig):
         )
 
     # Compute the metrics
-
     evaluator = SLUEvaluator(cfg.average)
     evaluator.update(predictions=predicted_text, groundtruth=ground_truth_text)
     results = evaluator.compute(aggregate=False)
