@@ -47,8 +47,8 @@ TIME_WIDTH=0.05
 
 # Optimization
 OPT=adamw
-LR=0.0003
-LR_ENC=1e-4
+LR=3e-4
+LR_ENC=3e-4
 WD=0.0
 SCHEDULER="CosineAnnealing"  # WarmupAnnealing, CosineAnnealing
 WARMUP=2000
@@ -67,7 +67,7 @@ SAVE_TOP_K=5
 LOG_PREDICTION=true
 SUBSAMPLING=striding # stacking
 PRECISION=32
-MODEL_POSFIX=''
+MODEL_POSFIX='_nossl'
 ###############################
 
 ##### Dataset ####
@@ -212,7 +212,8 @@ model.decoder.inner_size=$DECODER_INNER_SIZE \
 model.decoder.ffn_dropout=$DECODER_FFT_DROPOUT \
 model.decoder.attn_score_dropout=$DECODER_ATTN_SCORE_DROPOUT \
 model.decoder.attn_layer_dropout=$DECODER_ATTN_LAYER_DROPOUT \
-model.ssl_pretrained.freeze=$FREEZE_ENCODER
+model.ssl_pretrained.freeze=$FREEZE_ENCODER \
+model.ssl_pretrained.model=null
 EOF
 
 

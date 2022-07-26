@@ -95,46 +95,46 @@ def main():
         nemo_model = imported_class.restore_from(restore_path=model_fname, map_location=device)
 
         # search for all checkpoints (ignore -last.ckpt)
-        checkpoint_paths = [
-            os.path.join(model_folder_path, x)
-            for x in os.listdir(model_folder_path)
-            if x.endswith('.ckpt') and not x.endswith('-last.ckpt')
-        ]
-        """ < Checkpoint Averaging Logic > """
-        # load state dicts
-        n = len(checkpoint_paths)
-        avg_state = None
+        # checkpoint_paths = [
+        #     os.path.join(model_folder_path, x)
+        #     for x in os.listdir(model_folder_path)
+        #     if x.endswith('.ckpt') and not x.endswith('-last.ckpt')
+        # ]
+        # """ < Checkpoint Averaging Logic > """
+        # # load state dicts
+        # n = len(checkpoint_paths)
+        # avg_state = None
 
-        logging.info(f"Averaging {n} checkpoints ...")
+        # logging.info(f"Averaging {n} checkpoints ...")
 
-        for ix, path in enumerate(checkpoint_paths):
-            checkpoint = torch.load(path, map_location=device)
+        # for ix, path in enumerate(checkpoint_paths):
+        #     checkpoint = torch.load(path, map_location=device)
 
-            if 'state_dict' in checkpoint:
-                checkpoint = checkpoint['state_dict']
+        #     if 'state_dict' in checkpoint:
+        #         checkpoint = checkpoint['state_dict']
 
-            if ix == 0:
-                # Initial state
-                avg_state = checkpoint
+        #     if ix == 0:
+        #         # Initial state
+        #         avg_state = checkpoint
 
-                logging.info(f"Initialized average state dict with checkpoint : {path}")
-            else:
-                # Accumulated state
-                for k in avg_state:
-                    avg_state[k] = avg_state[k] + checkpoint[k]
+        #         logging.info(f"Initialized average state dict with checkpoint : {path}")
+        #     else:
+        #         # Accumulated state
+        #         for k in avg_state:
+        #             avg_state[k] = avg_state[k] + checkpoint[k]
 
-                logging.info(f"Updated average state dict with state from checkpoint : {path}")
+        #         logging.info(f"Updated average state dict with state from checkpoint : {path}")
 
-        for k in avg_state:
-            if str(avg_state[k].dtype).startswith("torch.int"):
-                # For int type, not averaged, but only accumulated.
-                # e.g. BatchNorm.num_batches_tracked
-                pass
-            else:
-                avg_state[k] = avg_state[k] / n
+        # for k in avg_state:
+        #     if str(avg_state[k].dtype).startswith("torch.int"):
+        #         # For int type, not averaged, but only accumulated.
+        #         # e.g. BatchNorm.num_batches_tracked
+        #         pass
+        #     else:
+        #         avg_state[k] = avg_state[k] / n
 
-        # restore merged weights into model
-        nemo_model.load_state_dict(avg_state, strict=True)
+        # # restore merged weights into model
+        # nemo_model.load_state_dict(avg_state, strict=True)
         # Save model
         logging.info(f"Saving average mdel to: {avg_model_fname}")
         nemo_model.save_to(avg_model_fname)

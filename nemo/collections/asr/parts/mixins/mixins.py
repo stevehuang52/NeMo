@@ -42,21 +42,23 @@ class ASRBPEMixin(ABC):
     The mixin also supports aggregate tokenizers, which consist of ordinary, monolingual tokenizers.
     If a conversion between a monolongual and an aggregate tokenizer (or vice versa) is detected,
     all registered artifacts will be cleaned up.
+
     """
 
     # this will be used in configs and nemo artifacts
     AGGREGATE_TOKENIZERS_DICT_PREFIX = 'langs'
 
-    def _setup_tokenizer(self, tokenizer_cfg: DictConfig):
+    def _setup_tokenizer(self, tokenizer_cfg: DictConfig, postfix: str = ""):
+
         tokenizer_type = tokenizer_cfg.get('type')
         if tokenizer_type is None:
             raise ValueError("`tokenizer.type` cannot be None")
         elif tokenizer_type.lower() == 'agg':
-            self._setup_aggregate_tokenizer(tokenizer_cfg)
+            self._setup_aggregate_tokenizer(tokenizer_cfg, postfix)
         else:
-            self._setup_monolingual_tokenizer(tokenizer_cfg)
+            self._setup_monolingual_tokenizer(tokenizer_cfg, postfix)
 
-    def _setup_monolingual_tokenizer(self, tokenizer_cfg: DictConfig):
+    def _setup_monolingual_tokenizer(self, tokenizer_cfg: DictConfig, postfix: str):
         # Prevent tokenizer parallelism (unless user has explicitly set it)
         if 'TOKENIZERS_PARALLELISM' not in os.environ:
             os.environ['TOKENIZERS_PARALLELISM'] = 'false'
@@ -172,7 +174,7 @@ class ASRBPEMixin(ABC):
             )
         )
 
-    def _setup_aggregate_tokenizer(self, tokenizer_cfg: DictConfig):
+    def _setup_aggregate_tokenizer(self, tokenizer_cfg: DictConfig, postfix: str):
         # Prevent tokenizer parallelism (unless user has explicitly set it)
         if 'TOKENIZERS_PARALLELISM' not in os.environ:
             os.environ['TOKENIZERS_PARALLELISM'] = 'false'

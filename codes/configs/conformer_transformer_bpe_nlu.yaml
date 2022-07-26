@@ -28,6 +28,7 @@ name: "nlu_ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4_dec3_d2048h8"
 
 model:
   mode: "nlu"
+  share_tokenizer: false
   sample_rate: 16000
   log_prediction: true # enables logging sample predictions in the output during training
   skip_nan_grad: false
@@ -76,7 +77,6 @@ model:
     type: bpe  # Can be either bpe (SentencePiece tokenizer) or wpe (WordPiece tokenizer)
     use_blank: false
 
-  share_tokenizer: false
   asr_model: stt_en_conformer_transducer_large  # stt_en_conformer_ctc_large, stt_en_conformer_transducer_large
 
   asr_embedding:

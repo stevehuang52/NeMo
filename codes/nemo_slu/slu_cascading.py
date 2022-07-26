@@ -32,36 +32,42 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
     MODE_NLU_ORACLE = "nlu_oracle"
 
     def __init__(self, cfg: DictConfig, trainer=None):
-
         self.mode = cfg.get("mode", self.MODE_NLU)
         share_tokenizer = cfg.get("share_tokenizer", False)
 
         self._setup_tokenizer(cfg.tokenizer)
         self.nlu_tokenizer = self.tokenizer
-        if "ctc" in cfg.asr_model:
-            asr_model = EncDecCTCModelBPE.from_pretrained(cfg.asr_model)
-        else:
-            asr_model = EncDecRNNTBPEModel.from_pretrained(cfg.asr_model)
 
-        self.asr_config = deepcopy(asr_model.cfg)
-        self.asr_vocab_size = asr_model.cfg.decoder["vocab_size"]
-        if share_tokenizer:
-            self.asr_tokenizer = self.nlu_tokenizer
-        else:
-            self.asr_tokenizer = deepcopy(asr_model.tokenizer)
+        # is_being_restored = self._is_model_being_restored()
+        # if "ctc" in cfg.asr_model:
+        #     asr_model = EncDecCTCModelBPE.from_pretrained(cfg.asr_model)
+        # else:
+        #     asr_model = EncDecRNNTBPEModel.from_pretrained(cfg.asr_model)
 
+        # self._set_model_restore_state(is_being_restored=is_being_restored)
+        # print("\n\n\n\n")
+        # self.asr_config = deepcopy(asr_model.cfg)
+        # self.asr_vocab_size = asr_model.cfg.decoder["vocab_size"]
+        # if share_tokenizer:
+        #     self.asr_tokenizer = self.nlu_tokenizer
+        # else:
+        #     self.asr_tokenizer = deepcopy(asr_model.tokenizer)
+
+        # if self.mode == self.MODE_SLU:
+        #     self.asr_model = asr_model
+        # else:
+        #     self.asr_model = None
+        #     del asr_model
         self.asr_tokenizer = self.nlu_tokenizer
-
-        super().__init__(cfg=cfg, trainer=trainer)
-
-        if self.mode == self.MODE_SLU:
-            self.asr_model = asr_model
-        else:
-            self.asr_model = None
-            del asr_model
+        self.asr_model = None
 
         self.nlu_vocabulary = self.nlu_tokenizer.tokenizer.get_vocab()
         self.nlu_vocab_size = len(self.nlu_vocabulary)
+
+        # TODO: TEMP
+        self.asr_vocab_size = self.nlu_vocab_size
+
+        super().__init__(cfg=cfg, trainer=trainer)
 
         # Create embedding layer
         self.cfg.asr_embedding["vocab_size"] = self.asr_vocab_size

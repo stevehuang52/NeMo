@@ -34,17 +34,20 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
         super().__init__(cfg=cfg, trainer=trainer)
 
         # Init encoder from SSL checkpoint
-        logging.info(f"Loading pretrained encoder from: {self.cfg.ssl_pretrained.model}")
-        if Path(self.cfg.ssl_pretrained.model).is_file():
-            ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.restore_from(
-                restore_path=self.cfg.ssl_pretrained.model
-            )
+        if self.cfg.ssl_pretrained.model is not None:
+            logging.info(f"Loading pretrained encoder from: {self.cfg.ssl_pretrained.model}")
+            if Path(self.cfg.ssl_pretrained.model).is_file():
+                ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.restore_from(
+                    restore_path=self.cfg.ssl_pretrained.model
+                )
+            else:
+                ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(
+                    model_name=self.cfg.ssl_pretrained.model
+                )
+            self.encoder.load_state_dict(ssl_model.encoder.state_dict(), strict=False)
+            del ssl_model
         else:
-            ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(
-                model_name=self.cfg.ssl_pretrained.model
-            )
-        self.encoder.load_state_dict(ssl_model.encoder.state_dict(), strict=False)
-        del ssl_model
+            logging.info("Not using pretrained encoder.")
 
         if self.cfg.ssl_pretrained.freeze:
             logging.info("Freezing SSL encoder...")
