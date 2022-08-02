@@ -4,10 +4,9 @@ from dataclasses import dataclass, is_dataclass
 from pathlib import Path
 from typing import Optional
 
-import nemo_slu.eval_utils as inference
-import nemo_slu.eval_utils_nlu as inference_nlu
+import nemo_slu.eval_utils_nlu2 as inference
 import torch
-from nemo_slu.eval_utils import InferenceConfig, SLUEvaluator
+from nemo_slu.eval_utils_nlu import InferenceConfig, SLUEvaluator
 from omegaconf import MISSING, OmegaConf, open_dict
 from slurp_eval_tools.util import format_results
 
@@ -24,7 +23,7 @@ class EvaluationConfig(InferenceConfig):
     errors: bool = False
     table_layout: str = "fancy_grid"
     only_score_manifest: bool = False
-    mode: str = "slu"
+    mode: str = "nlu"
 
 
 @hydra_runner(config_name="EvaluationConfig", schema=EvaluationConfig)
@@ -35,15 +34,6 @@ def main(cfg: EvaluationConfig):
 
     if is_dataclass(cfg):
         cfg = OmegaConf.structured(cfg)
-
-    if cfg.audio_dir is not None:
-        raise RuntimeError(
-            "Evaluation script requires ground truth labels to be passed via a manifest file. "
-            "If manifest file is available, submit it via `dataset_manifest` argument."
-        )
-
-    if not os.path.exists(cfg.dataset_manifest):
-        raise FileNotFoundError(f"The dataset manifest file could not be found at path : {cfg.dataset_manifest}")
 
     if not cfg.only_score_manifest:
         # Transcribe speech into an output directory
@@ -67,18 +57,18 @@ def main(cfg: EvaluationConfig):
         for line in f:
             data = json.loads(line)
 
-            if 'pred_text' not in data:
+            if 'pred_semantics' not in data:
                 invalid_manifest = True
                 break
 
-            ground_truth_text.append(data['text'])
-            predicted_text.append(data['pred_text'])
+            ground_truth_text.append(data['semantics'])
+            predicted_text.append(data['pred_semantics'])
 
     # Test for invalid manifest supplied
     if invalid_manifest:
         raise ValueError(
             f"Invalid manifest provided: {transcription_cfg.output_filename} does not "
-            f"contain value for `pred_text`."
+            f"contain value for `pred_semantics`."
         )
 
     # Compute the metrics

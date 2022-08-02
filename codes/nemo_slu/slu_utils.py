@@ -147,6 +147,7 @@ def parse_semantics_str2dict(semantics_str: Union[List[str], str]) -> Dict:
         return semantics_str, invalid
     if isinstance(semantics_str, list):
         semantics_str = " ".join(semantics_str)
+
     try:
         _dict = ast.literal_eval(semantics_str.replace("|", ","))
         if not isinstance(_dict, dict):
@@ -156,7 +157,7 @@ def parse_semantics_str2dict(semantics_str: Union[List[str], str]) -> Dict:
                 "entities": [],
             }
             invalid = True
-    except SyntaxError:  # need this if the output is not a valid dictionary
+    except:  # need this if the output is not a valid dictionary
         _dict = {
             "scenario": "none",
             "action": "none",
@@ -164,10 +165,10 @@ def parse_semantics_str2dict(semantics_str: Union[List[str], str]) -> Dict:
         }
         invalid = True
 
-    if not isinstance(_dict["scenario"], str):
+    if "scenario" not in _dict or not isinstance(_dict["scenario"], str):
         _dict["scenario"] = "none"
         invalid = True
-    if not isinstance(_dict["action"], str):
+    if "action" not in _dict or not isinstance(_dict["action"], str):
         _dict["action"] = "none"
         invalid = True
     if "entities" not in _dict:

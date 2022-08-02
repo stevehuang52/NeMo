@@ -24,11 +24,11 @@
 # Pre-trained models of Conformer-CTC can be found here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/results.html
 # The checkpoint of the large model trained on LibriSpeech with this recipe can be found here: https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_conformer_ctc_large_ls
 
-name: "nlu_ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4_dec3_d2048h8_shareToken"
+name: "nlu_transformer_CosineAnneal_lr3e-4_enc35_dec3_d2048h8"
 
 model:
-  mode: "nlu"
-  share_tokenizer: false
+  mode: "nlu_oracle"
+  share_tokenizer: true
   sample_rate: 16000
   log_prediction: true # enables logging sample predictions in the output during training
   skip_nan_grad: false
@@ -97,9 +97,19 @@ model:
     embedding_dropout: 0.0
     learn_positional_encodings: false
 
+  encoder:
+    _target_: nemo.collections.nlp.modules.common.transformer.TransformerEncoder
+    num_layers: 35
+    hidden_size: ${model.asr_embedding.hidden_size}
+    inner_size: 2048
+    num_attention_heads: 8
+    attn_score_dropout: 0.0
+    attn_layer_dropout: 0.0
+    ffn_dropout: 0.1
+
   decoder:
     _target_: nemo.collections.nlp.modules.common.transformer.TransformerDecoder
-    num_layers: 8
+    num_layers: 3
     hidden_size: ${model.asr_embedding.hidden_size}
     inner_size: 2048
     num_attention_heads: 8

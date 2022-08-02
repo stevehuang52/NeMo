@@ -8,13 +8,13 @@ from typing import Dict, List, Optional, Union
 
 import pytorch_lightning as pl
 import torch
-from omegaconf import MISSING, OmegaConf
+from omegaconf import MISSING, DictConfig, OmegaConf
 from slurp_eval_tools.metrics import ErrorMetric
 from tqdm.auto import tqdm
 
-from .slu_cascading import SLU2NLUEncDecCascadeModel
 from .slu_utils import SearcherConfig, parse_semantics_str2dict
 from nemo.collections.asr.models import ASRModel
+from nemo.collections.nlp.models import IntentSlotClassificationModel
 from nemo.core.config import hydra_runner
 from nemo.utils import logging, model_utils
 
@@ -123,7 +123,7 @@ class InferenceConfig:
     pretrained_name: Optional[str] = None  # Name of a pretrained model
     audio_dir: Optional[str] = None  # Path to a directory which contains audio files
     dataset_manifest: Optional[str] = None  # Path to dataset's JSON manifest
-
+    mode: str = "oracle"
     # General configs
     output_filename: Optional[str] = None
     batch_size: int = 32
@@ -143,7 +143,62 @@ class InferenceConfig:
     searcher: SearcherConfig = SearcherConfig(type="greedy")
 
 
-def slurp_inference(nlu_model, path2manifest: str, batch_size: int = 4, num_workers: int = 0,) -> List[str]:
+def load_manifest(filepath):
+    data = []
+    with open(filepath, "r") as fin:
+        for line in fin.readlines():
+            datum = json.loads(line)
+            data.append(datum)
+    return data
+
+
+def get_query_data(manifest: List[dict], key: str):
+    results = []
+    for datum in manifest:
+        results.append(datum[key])
+    return results
+
+
+def parse_semantics_dict(queries: List[str], intents: List[str], slots: List[str]) -> List[Dict]:
+    results = []
+    for query_i, intent_i, slots_i in zip(queries, intents, slots):
+        datum = {}
+        scenario = intent_i.split("_")[0]
+        action = intent_i.strip(scenario + "_")
+        datum["scenario"] = scenario
+        datum["action"] = action
+
+        query_i = query_i.split()
+        slots_i = slots_i.split()
+        entities = []
+        curr_slot = None
+        curr_filler = []
+        for j in range(len(query_i)):
+            if slots_i[j].startswith("B-"):
+                if curr_slot is not None:
+                    entity = {"type": curr_slot, "filler": " ".join(curr_filler)}
+                    entities.append(entity)
+                curr_slot = slots_i[j].strip("B-")
+                curr_filler = [query_i[j]]
+            elif slots_i[j].startswith("I-") and slots_i[j].strip("I-") == curr_slot:
+                curr_filler.append(query_i[j])
+            elif curr_slot is not None:
+                entity = {"type": curr_slot, "filler": " ".join(curr_filler)}
+                entities.append(entity)
+                curr_slot = None
+                curr_filler = []
+
+        if curr_slot is not None:
+            entity = {"type": curr_slot, "filler": " ".join(curr_filler)}
+            entities.append(entity)
+        datum["entities"] = entities
+        results.append(datum)
+    return results
+
+
+def slurp_inference(
+    nlu_model, path2manifest: str, batch_size: int = 4, num_workers: int = 0, mode: str = "oracle"
+) -> List[str]:
 
     if num_workers is None:
         num_workers = min(batch_size, os.cpu_count() - 1)
@@ -151,8 +206,10 @@ def slurp_inference(nlu_model, path2manifest: str, batch_size: int = 4, num_work
     # We will store transcriptions here
     hypotheses = []
     # Model's mode and device
-    mode = nlu_model.training
+    is_training = nlu_model.training
     device = next(nlu_model.parameters()).device
+
+    test_manifest = load_manifest(path2manifest)
 
     try:
         # Switch model to evaluation mode
@@ -162,39 +219,36 @@ def slurp_inference(nlu_model, path2manifest: str, batch_size: int = 4, num_work
         logging.set_verbosity(logging.WARNING)
 
         config = {
-            'manifest_filepath': path2manifest,
             'batch_size': batch_size,
             'num_workers': num_workers,
+            'shuffle': False,
+            'pin_memory': True,
+            'drop_last': False,
         }
 
-        temporary_datalayer = nlu_model._setup_transcribe_dataloader(config)
-        if "oracle" in nlu_model.mode:
+        config = DictConfig(config)
+
+        if "oracle" in mode:
             print("------- using oracle text -------")
-        for test_batch in tqdm(temporary_datalayer, desc="Transcribing"):
-            _, signal, signal_len, text, text_len, semantics, semantics_len, pred_text, pred_text_len = test_batch
+            key = "text"
+        else:
+            print("------ using predicted text ------")
+            key = "pred_text"
 
-            if "oracle" in nlu_model.mode:
-                input_text, input_text_length = text, text_len
-            else:
-                input_text, input_text_length = pred_text, pred_text_len
+        print("loading manifest...")
+        queries = get_query_data(test_manifest, key)
 
-            predictions = nlu_model.predict(
-                input_signal=signal.to(device),
-                input_signal_length=signal_len.to(device),
-                input_text=input_text.to(device),
-                input_text_length=input_text_length.to(device),
-            )
+        print("predicting...")
+        pred_intents, pred_slots = nlu_model.predict_from_examples(queries, config)
 
-            hypotheses += predictions
-
-            del predictions
-            del test_batch
+        print("parsing output to semantics dict...")
+        hypotheses = parse_semantics_dict(queries, pred_intents, pred_slots)
 
     finally:
         # set mode back to its original value
-        nlu_model.train(mode=mode)
+        nlu_model.train(mode=is_training)
         logging.set_verbosity(logging_level)
-    return hypotheses
+    return hypotheses, pred_intents, pred_slots, queries
 
 
 @hydra_runner(config_name="InferenceConfig", schema=InferenceConfig)
@@ -227,13 +281,13 @@ def main(cfg: InferenceConfig) -> InferenceConfig:
     if cfg.model_path is not None:
         # restore model from .nemo file path
         logging.info(f"Restoring model : {cfg.model_path}")
-        nlu_model = SLU2NLUEncDecCascadeModel.restore_from(
+        nlu_model = IntentSlotClassificationModel.restore_from(
             restore_path=cfg.model_path, map_location=map_location
         )  # type: ASRModel
         model_name = os.path.splitext(os.path.basename(cfg.model_path))[0]
     else:
         # restore model by name
-        nlu_model = SLU2NLUEncDecCascadeModel.from_pretrained(
+        nlu_model = IntentSlotClassificationModel.from_pretrained(
             model_name=cfg.pretrained_name, map_location=map_location
         )  # type: ASRModel
         model_name = cfg.pretrained_name
@@ -241,10 +295,6 @@ def main(cfg: InferenceConfig) -> InferenceConfig:
     trainer = pl.Trainer(devices=device, accelerator=accelerator)
     nlu_model.set_trainer(trainer)
     nlu_model = nlu_model.eval()
-
-    # Setup decoding strategy
-    if hasattr(nlu_model, 'set_decoding_strategy'):
-        nlu_model.set_decoding_strategy(cfg.searcher)
 
     # get audio filenames
     if cfg.audio_dir is not None:
@@ -297,11 +347,12 @@ def main(cfg: InferenceConfig) -> InferenceConfig:
     # transcribe audio
     with autocast():
         with torch.no_grad():
-            predictions = slurp_inference(
+            predictions, pred_intents, pred_slots, queries = slurp_inference(
                 nlu_model=nlu_model,
                 path2manifest=cfg.dataset_manifest,
                 batch_size=cfg.batch_size,
                 num_workers=cfg.num_workers,
+                mode=cfg.mode,
             )
 
     logging.info(f"Finished transcribing {len(filepaths)} files !")
@@ -319,6 +370,9 @@ def main(cfg: InferenceConfig) -> InferenceConfig:
                 for idx, line in enumerate(fr):
                     item = json.loads(line)
                     item['pred_semantics'] = predictions[idx]
+                    item['pred_intent'] = pred_intents[idx]
+                    item['pred_slots'] = pred_slots[idx]
+                    item['query'] = queries[idx]
                     f.write(json.dumps(item) + "\n")
 
     logging.info("Finished writing predictions !")

@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Dict, Optional
 
 import torch
-from genericpath import isfile
 from omegaconf import DictConfig, open_dict
 
 import nemo.collections.asr as nemo_asr
@@ -18,7 +17,7 @@ from nemo.core import adapter_mixins
 from nemo.core.classes import Serialization as ModuleBuilder
 from nemo.core.classes.common import typecheck
 from nemo.core.neural_types import AudioSignal, LabelsType, LengthsType, LogprobsType, NeuralType, SpectrogramType
-from nemo.utils import logging, model_utils
+from nemo.utils import logging
 
 __all__ = ['SLU2ASREncDecBPEModel']
 
@@ -32,17 +31,16 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
                     cfg.encoder._target_ = adapter_metadata.adapter_class_path
 
         super().__init__(cfg=cfg, trainer=trainer)
-
         # Init encoder from SSL checkpoint
         if self.cfg.ssl_pretrained.model is not None:
             logging.info(f"Loading pretrained encoder from: {self.cfg.ssl_pretrained.model}")
             if Path(self.cfg.ssl_pretrained.model).is_file():
                 ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.restore_from(
-                    restore_path=self.cfg.ssl_pretrained.model
+                    restore_path=self.cfg.ssl_pretrained.model, map_location=torch.device("cpu")
                 )
             else:
                 ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(
-                    model_name=self.cfg.ssl_pretrained.model
+                    model_name=self.cfg.ssl_pretrained.model, map_location=torch.device("cpu")
                 )
             self.encoder.load_state_dict(ssl_model.encoder.state_dict(), strict=False)
             del ssl_model

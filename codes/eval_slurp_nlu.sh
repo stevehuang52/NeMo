@@ -6,7 +6,10 @@ DATA_DIR="/home/heh/datasets/slurp_draco"
 # EXP_NAME="ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d512h4"
 # EXP_NAME="ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8_adapter"
 # EXP_NAME="ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4_dec3_d2048h8_freezeEnc"
-EXP_NAME="nlu_ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4_dec3_d2048h8"
+EXP_NAME="nlu_oracle_ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4_dec8_d2048h8_shareToken2"
+
+# EXP_NAME="nlu_ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4_dec3_d2048h8_shareToken"
+dataset_manifest="${DATA_DIR}/test_nlu.json" \
 
 CKPT_DIR="/home/heh/github/NeMo/codes/nemo_experiments/${EXP_NAME}/checkpoints"
 
@@ -15,17 +18,17 @@ python checkpoint_averaging.py ${CKPT_DIR}
 # NEMO_MODEL="${CKPT_DIR}/Conformer-Transformer-SLU2ASR-averaged.nemo"
 NEMO_MODEL="${CKPT_DIR}/${EXP_NAME}-averaged.nemo"
 
-# CUDA_VISIBLE_DEVICES=1 python run_slurp_eval_nlu.py \
-#     dataset_manifest="${CKPT_DIR}/predictions.json" \
-#     model_path=${NEMO_MODEL} \
-#     batch_size=32 \
-#     num_workers=8 \
-#     searcher.type="greedy" \
-#     searcher.beam_size=32 \
-#     searcher.temperature=1.25 \
-#     only_score_manifest=true
+CUDA_VISIBLE_DEVICES=1 python run_slurp_eval_nlu.py \
+    dataset_manifest="${DATA_DIR}/test_nlu_oracle.json" \
+    model_path=${NEMO_MODEL} \
+    batch_size=32 \
+    num_workers=8 \
+    searcher.type="beam" \
+    searcher.beam_size=32 \
+    searcher.temperature=1.25 \
+    only_score_manifest=false
 
 
-# dataset_manifest="${DATA_DIR}/test_slu2asr.json"
+# dataset_manifest="${CKPT_DIR}/predictions.json"
 # dataset_manifest="evaluation_transcripts.json"
 #     dataset_manifest="${DATA_DIR}/test_nlu.json" \

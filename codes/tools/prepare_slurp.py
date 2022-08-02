@@ -36,37 +36,6 @@ def prepare_SLURP(
     if skip_prep:
         return
 
-    vocab = [
-        " ",
-        "a",
-        "b",
-        "c",
-        "d",
-        "e",
-        "f",
-        "g",
-        "h",
-        "i",
-        "j",
-        "k",
-        "l",
-        "m",
-        "n",
-        "o",
-        "p",
-        "q",
-        "r",
-        "s",
-        "t",
-        "u",
-        "v",
-        "w",
-        "x",
-        "y",
-        "z",
-        "'",
-    ]
-
     if not save_folder:
         save_folder = data_folder
     elif not Path(save_folder).is_dir():
@@ -111,7 +80,7 @@ def prepare_SLURP(
                 for slot in range(num_entities):
                     type = sentence_annotation.split("[")[slot + 1].split("]")[0].split(":")[0].strip()
                     filler = sentence_annotation.split("[")[slot + 1].split("]")[0].split(":")[1].strip()
-                    entities.append({"type": type, "filler": filler})
+                    entities.append({"type": type.lower(), "filler": filler.lower()})
                 for recording in obj["recordings"]:
                     IDs.append(id)
                     slurp_id.append(sid)

@@ -77,7 +77,7 @@ def main(cfg: EvaluationConfig):
     if invalid_manifest:
         raise ValueError(
             f"Invalid manifest provided: {transcription_cfg.output_filename} does not "
-            f"contain value for `pred_text`."
+            f"contain value for `pred_semantics`."
         )
 
     # Compute the metrics

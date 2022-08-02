@@ -65,7 +65,7 @@ https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/main/asr/results.ht
 """
 
 import pytorch_lightning as pl
-from nemo_slu.slu_cascading import SLU2NLUEncDecCascadeModel
+from nemo_slu.slu_cascading2 import SLU2NLUEncDecCascadeModel
 from omegaconf import OmegaConf
 
 from nemo.core.config import hydra_runner
