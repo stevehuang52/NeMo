@@ -13,7 +13,7 @@ EXP_NAME="nlu_intent_slot_classification"
 
 CKPT_DIR="/home/heh/github/NeMo/codes/nemo_experiments/${EXP_NAME}/checkpoints"
 
-# python checkpoint_averaging.py ${CKPT_DIR}
+python checkpoint_averaging.py ${CKPT_DIR}
 
 # NEMO_MODEL="${CKPT_DIR}/Conformer-Transformer-SLU2ASR-averaged.nemo"
 NEMO_MODEL="${CKPT_DIR}/${EXP_NAME}-averaged.nemo"
@@ -24,7 +24,7 @@ CUDA_VISIBLE_DEVICES=1 python run_nlu_eval.py \
     batch_size=512 \
     num_workers=8 \
     only_score_manifest=false \
-    mode="pred"
+    mode="oracle"
 
 
 

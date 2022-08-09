@@ -11,30 +11,17 @@ from tqdm import tqdm
 
 
 def prepare_SLURP(
-    data_folder: str,
-    save_folder: Optional[str] = None,
-    slu_type: str = "direct",
-    skip_prep: bool = False,
-    join_semantics: bool = False,
-    audio_prefix: str = "",
+    data_folder: str, save_folder: Optional[str] = None, join_semantics: bool = True, audio_prefix: str = "",
 ):
     """
     This function prepares the SLURP dataset.
     If the folder does not exist, the zip file will be extracted. If the zip file does not exist, it will be downloaded.
-
-    data_folder : path to SLURP dataset.
-    save_folder: path where to save the csv manifest files.
-    slu_type : one of the following:
-
-      "direct":{input=audio, output=semantics}
-      "multistage":{input=audio, output=semantics} (using ASR transcripts in the middle)
-      "decoupled":{input=transcript, output=semantics} (using ground-truth transcripts)
-
-    train_splits : list of splits to be joined to form train .csv
-    skip_prep: If True, data preparation is skipped.
+    Params:
+    -   data_folder: path to SLURP dataset.
+    -   save_folder: path where to save the csv manifest files.
+    -   join_semantics: whether to convert semantics to string representation
+    -   audio_prefix: prefix added to audio paths
     """
-    if skip_prep:
-        return
 
     if not save_folder:
         save_folder = data_folder
@@ -49,7 +36,7 @@ def prepare_SLURP(
     ]
     id = 0
     for split in splits:
-        new_filename = os.path.join(save_folder, split) + f"-{slu_type}.json"
+        new_filename = os.path.join(save_folder, split) + f"-slu.json"
 
         print("Preparing %s..." % new_filename)
 
@@ -95,12 +82,7 @@ def prepare_SLURP(
                     audio_format.append("flac")
                     audio_opts.append(None)
 
-                    transcript_ = obj["sentence"]
-                    if slu_type == "decoupled":
-                        transcript_ = transcript_.upper()
-                    # transcript_ = "".join([c for c in transcript_ if c in vocab])
-
-                    transcript.append(transcript_)
+                    transcript.append(obj["sentence"])
                     transcript_format.append("string")
                     transcript_opts.append(None)
 
@@ -138,4 +120,4 @@ def prepare_SLURP(
 
 if __name__ == "__main__":
     data_root = "/home/heh/datasets/slurp-speechbrain"
-    prepare_SLURP(data_folder=data_root, save_folder="../manifests_slu2asr", join_semantics=True)
+    prepare_SLURP(data_folder=data_root, save_folder="../manifests_slu", join_semantics=True)

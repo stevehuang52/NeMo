@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     manifest_path = Path(args.manifest)
     if manifest_path.is_dir():
-        manifest_list = list(manifest_path.glob("*.json*"))
+        manifest_list = list(manifest_path.glob("*.jsonl"))
     else:
         manifest_list = [str(manifest_path)]
 

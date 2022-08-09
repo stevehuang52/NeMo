@@ -344,17 +344,17 @@ class AudioTextSemanticsDataset(_AudioTextSemanticsDataset):
         use_start_end_token: bool = True,
         mode: str = "slu",
     ):
-        if use_start_end_token and hasattr(semantic_tokenizer, 'bos_token'):
+        if use_start_end_token and hasattr(semantic_tokenizer, 'bos_id') and semantic_tokenizer.bos_id > 0:
             bos_id = semantic_tokenizer.bos_id
         else:
             bos_id = None
 
-        if use_start_end_token and hasattr(semantic_tokenizer, 'eos_token'):
+        if use_start_end_token and hasattr(semantic_tokenizer, 'eos_id') and semantic_tokenizer.eos_id > 0:
             eos_id = semantic_tokenizer.eos_id
         else:
             eos_id = None
 
-        if hasattr(semantic_tokenizer, 'pad_token'):
+        if hasattr(semantic_tokenizer, 'pad_id') and semantic_tokenizer.pad_id > 0:
             pad_id = semantic_tokenizer.pad_id
         else:
             pad_id = 0

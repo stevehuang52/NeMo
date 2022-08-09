@@ -23,7 +23,6 @@ class EvaluationConfig(InferenceConfig):
     errors: bool = False
     table_layout: str = "fancy_grid"
     only_score_manifest: bool = False
-    mode: str = "nlu"
 
 
 @hydra_runner(config_name="EvaluationConfig", schema=EvaluationConfig)

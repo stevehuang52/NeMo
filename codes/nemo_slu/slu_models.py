@@ -31,19 +31,32 @@ class SLU2ASREncDecBPEModel(EncDecCTCModelBPE):
                     cfg.encoder._target_ = adapter_metadata.adapter_class_path
 
         super().__init__(cfg=cfg, trainer=trainer)
+
         # Init encoder from SSL checkpoint
         if self.cfg.ssl_pretrained.model is not None:
             logging.info(f"Loading pretrained encoder from: {self.cfg.ssl_pretrained.model}")
-            if Path(self.cfg.ssl_pretrained.model).is_file():
-                ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.restore_from(
-                    restore_path=self.cfg.ssl_pretrained.model, map_location=torch.device("cpu")
-                )
-            else:
-                ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(
-                    model_name=self.cfg.ssl_pretrained.model, map_location=torch.device("cpu")
-                )
-            self.encoder.load_state_dict(ssl_model.encoder.state_dict(), strict=False)
-            del ssl_model
+            try:
+                if Path(self.cfg.ssl_pretrained.model).is_file():
+                    ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.restore_from(
+                        restore_path=self.cfg.ssl_pretrained.model, map_location=torch.device("cpu")
+                    )
+                elif "stt_" in self.cfg.ssl_pretrained.model:
+                    if "_ctc_" in self.cfg.ssl_pretrained.model:
+                        ssl_model = nemo_asr.models.EncDecCTCModelBPE.from_pretrained(
+                            model_name=self.cfg.ssl_pretrained.model, map_location=torch.device("cpu")
+                        )
+                    else:
+                        ssl_model = nemo_asr.models.EncDecRNNTBPEModel.from_pretrained(
+                            model_name=self.cfg.ssl_pretrained.model, map_location=torch.device("cpu")
+                        )
+                else:
+                    ssl_model = nemo_asr.models.SpeechEncDecSelfSupervisedModel.from_pretrained(
+                        model_name=self.cfg.ssl_pretrained.model, map_location=torch.device("cpu")
+                    )
+                self.encoder.load_state_dict(ssl_model.encoder.state_dict(), strict=False)
+                del ssl_model
+            except:
+                logging.warning(f"Unable to load pretrained model: {self.cfg.ssl_pretrained.model}, skipped.")
         else:
             logging.info("Not using pretrained encoder.")
 

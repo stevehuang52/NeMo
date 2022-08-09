@@ -8,5 +8,5 @@ python ./process_asr_text_tokenizer.py \
   --spe_type="unigram" \
   --log \
   --spe_bos \
-  --spe_eos
-  # --spe_pad
+  --spe_eos \
+  --spe_pad

@@ -141,9 +141,12 @@ class InferenceConfig:
 
     # Decoding strategy for RNNT models
     searcher: SearcherConfig = SearcherConfig(type="greedy")
+    mode: str = "nlu_oracle"
 
 
-def slurp_inference(nlu_model, path2manifest: str, batch_size: int = 4, num_workers: int = 0,) -> List[str]:
+def slurp_inference(
+    nlu_model, path2manifest: str, batch_size: int = 4, num_workers: int = 0, nlu_mode: str = "nlu_oracle"
+) -> List[str]:
 
     if num_workers is None:
         num_workers = min(batch_size, os.cpu_count() - 1)
@@ -168,12 +171,12 @@ def slurp_inference(nlu_model, path2manifest: str, batch_size: int = 4, num_work
         }
 
         temporary_datalayer = nlu_model._setup_transcribe_dataloader(config)
-        if "oracle" in nlu_model.mode:
+        if "oracle" in nlu_mode:
             print("------- using oracle text -------")
         for test_batch in tqdm(temporary_datalayer, desc="Transcribing"):
             _, signal, signal_len, text, text_len, semantics, semantics_len, pred_text, pred_text_len = test_batch
 
-            if "oracle" in nlu_model.mode:
+            if "oracle" in nlu_mode:
                 input_text, input_text_length = text, text_len
             else:
                 input_text, input_text_length = pred_text, pred_text_len
@@ -302,6 +305,7 @@ def main(cfg: InferenceConfig) -> InferenceConfig:
                 path2manifest=cfg.dataset_manifest,
                 batch_size=cfg.batch_size,
                 num_workers=cfg.num_workers,
+                nlu_mode=cfg.mode,
             )
 
     logging.info(f"Finished transcribing {len(filepaths)} files !")
