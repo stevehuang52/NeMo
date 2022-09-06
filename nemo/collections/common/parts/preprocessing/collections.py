@@ -17,6 +17,7 @@ import json
 import os
 from itertools import combinations
 from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
 
 import pandas as pd
 
@@ -354,7 +355,18 @@ class ASRSpeechLabel(SpeechLabel):
             raise ValueError(
                 f"Manifest file has invalid json line " f"structure: {line} without proper audio file key."
             )
-        item['audio_file'] = os.path.expanduser(item['audio_file'])
+        
+        manifest_dir = Path(manifest_file).parent
+        audio_file = Path(item['audio_file'])
+        if (len(str(audio_file)) < 255) and not audio_file.is_file() and not audio_file.is_absolute():
+            # assume the "wavs/" dir and manifest are under the same parent dir
+            audio_file = manifest_dir / audio_file
+            if audio_file.is_file():
+                item['audio_file'] = str(audio_file.absolute())
+            else:
+                item['audio_file'] = os.path.expanduser(item['audio_file'])
+        else:
+            item['audio_file'] = os.path.expanduser(item['audio_file'])
 
         # Duration.
         if 'duration' not in item:
