@@ -17,13 +17,12 @@ from typing import Dict, List, Optional, Union
 import torch
 from omegaconf import DictConfig
 
-from nemo.collections.asr.parts.preprocessing.perturb import process_augmentations
-from nemo.collections.asr.parts.preprocessing.features import WaveformFeaturizer
 from nemo.collections.asr.data.audio_to_label import _speech_collate_fn
+from nemo.collections.asr.parts.preprocessing.features import WaveformFeaturizer
+from nemo.collections.asr.parts.preprocessing.perturb import process_augmentations
 from nemo.collections.common.parts.preprocessing import collections
 from nemo.core.classes import Dataset
 from nemo.utils import logging
-
 
 __all__ = ["AudioToMultiLabelDataset"]
 
@@ -80,7 +79,7 @@ class AudioToMultiLabelDataset(Dataset):
 
     def _label_str_to_tensor(self, label_str: str):
         labels = label_str.split(self.delimiter) if self.delimiter else label_str.split()
-        
+
         if self.is_regression_task:
             labels = [float(s) for s in labels]
             labels = torch.tensor(labels).float()
@@ -129,6 +128,6 @@ def get_audio_multi_label_dataset(cfg: DictConfig) -> AudioToMultiLabelDataset:
         max_duration=cfg.get("max_duration", None),
         trim=cfg.get("trim", False),
         is_regression_task=cfg.get("is_regression_task", False),
-        delimiter=cfg.get("delimiter", None)
+        delimiter=cfg.get("delimiter", None),
     )
     return dataset

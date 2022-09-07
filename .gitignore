@@ -16,6 +16,7 @@ fastspeech_output
 
 manifests/
 results/
+draco*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -54,6 +55,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+manifests*
 
 # Installer logs
 pip-log.txt
@@ -177,4 +179,3 @@ examples/neural_graphs/*.yml
 
 .hydra/
 nemo_experiments/
-

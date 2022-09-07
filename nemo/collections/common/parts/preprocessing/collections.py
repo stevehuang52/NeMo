@@ -16,8 +16,8 @@ import collections
 import json
 import os
 from itertools import combinations
-from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 
@@ -269,6 +269,7 @@ class SpeechLabel(_Collection):
             self.mapping = {}
         output_type = self.OUTPUT_TYPE
         data, duration_filtered = [], 0.0
+        duration_total = 0.0
         for audio_file, duration, command, offset in zip(audio_files, durations, labels, offsets):
             # Duration filters.
             if min_duration is not None and duration < min_duration:
@@ -280,6 +281,7 @@ class SpeechLabel(_Collection):
                 continue
 
             data.append(output_type(audio_file, duration, command, offset))
+            duration_total += duration
 
             if index_by_file_id:
                 file_id, _ = os.path.splitext(os.path.basename(audio_file))
@@ -299,6 +301,7 @@ class SpeechLabel(_Collection):
             "Filtered duration for loading collection is %f.", duration_filtered,
         )
         self.uniq_labels = sorted(set(map(lambda x: x.label, data)))
+        logging.info(f"Loaded audios of {duration_total / 3600 :.2f} hours")
         logging.info("# {} files loaded accounting to # {} labels".format(len(data), len(self.uniq_labels)))
 
         super().__init__(data)
@@ -355,7 +358,7 @@ class ASRSpeechLabel(SpeechLabel):
             raise ValueError(
                 f"Manifest file has invalid json line " f"structure: {line} without proper audio file key."
             )
-        
+
         manifest_dir = Path(manifest_file).parent
         audio_file = Path(item['audio_file'])
         if (len(str(audio_file)) < 255) and not audio_file.is_file() and not audio_file.is_absolute():

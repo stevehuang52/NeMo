@@ -6,7 +6,7 @@ model:
   dropout: &dropout 0.0
   separable: &separable true
   labels: &labels ['0','1']
-  
+
   train_ds:
     manifest_filepath: ???
     sample_rate: 16000
@@ -230,7 +230,7 @@ model:
       repeat: 1
       residual: false
       stride: [1]
-  
+
   decoder:
     _target_: nemo.collections.common.parts.MultiLayerPerceptron
     hidden_size: *enc_filters
@@ -274,11 +274,9 @@ exp_manager:
   create_tensorboard_logger: True
   create_checkpoint_callback: True
   checkpoint_callback_params:
-    monitor: "val_acc"
+    monitor: "val_epoch_top@1"
     mode: "max"
   create_wandb_logger: False
   wandb_logger_kwargs:
     name: null
     project: null
-
-

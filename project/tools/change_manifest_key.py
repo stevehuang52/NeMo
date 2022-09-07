@@ -1,8 +1,9 @@
 import argparse
-from ast import parse
 import json
-from pathlib import Path
+from ast import parse
 from copy import deepcopy
+from pathlib import Path
+
 
 def load_manifest(filepath):
     data = []
@@ -11,11 +12,12 @@ def load_manifest(filepath):
             data.append(json.loads(line.strip()))
     return data
 
+
 def save_manifest(data, filepath):
     with Path(filepath).open("w") as fout:
         for item in data:
             fout.write(f"{json.dumps(item)}\n")
-    
+
 
 def change_key(data, src_key, tgt_key):
     results = []
@@ -26,7 +28,7 @@ def change_key(data, src_key, tgt_key):
                 if src_key in key:
                     src_key = key
                     break
-        
+
         item[tgt_key] = item[src_key]
         item.pop(src_key)
         results.append(item)
@@ -47,7 +49,7 @@ if __name__ == "__main__":
         print(f"Found {len(manifest_list)} files to be processed.")
     else:
         manifest_list = [filepath]
-    
+
     for manifest in manifest_list:
         print(f"Processing: {manifest}")
         data = load_manifest(manifest)

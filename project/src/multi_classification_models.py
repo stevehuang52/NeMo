@@ -23,6 +23,8 @@ from typing import Dict, List, Optional, Union
 import torch
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from pytorch_lightning import Trainer
+from src.audio_to_multi_label import get_audio_multi_label_dataset
+from torchmetrics import AUROC, Accuracy
 
 from nemo.collections.asr.models.classification_models import EncDecClassificationModel
 from nemo.collections.common.losses import CrossEntropyLoss
@@ -31,18 +33,28 @@ from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.core.neural_types import *
 from nemo.utils import logging, model_utils
 
-from src.audio_to_multi_label import get_audio_multi_label_dataset
-
 
 class EncDecMultiClassificationModel(EncDecClassificationModel):
-
     @property
     def output_types(self) -> Optional[Dict[str, NeuralType]]:
         return {"outputs": NeuralType(('B', 'C', 'T'), LogitsType())}
 
+    def __init__(self, cfg: DictConfig, trainer: Trainer = None):
+
+        if cfg.get("is_regression_task", False):
+            raise ValueError(f"EndDecClassificationModel requires the flag is_regression_task to be set as false")
+        self.num_classes = len(cfg.labels)
+        self.eval_loop_cnt = 0
+        super().__init__(cfg=cfg, trainer=trainer)
+
     @classmethod
     def list_available_models(cls) -> Optional[List[PretrainedModelInfo]]:
         return []
+
+    def _setup_metrics(self):
+        self._accuracy = TopKClassificationAccuracy(dist_sync_on_step=True)
+        self._macro_accuracy = Accuracy(num_classes=self.num_classes, average='macro')
+        # self._auroc = AUROC(num_classes=self.num_classes)
 
     def _setup_loss(self):
         return CrossEntropyLoss(logits_ndim=3)
@@ -76,7 +88,7 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         processed_signal, processed_signal_len = self.preprocessor(
             input_signal=input_signal, length=input_signal_length,
         )
-        
+
         # Crop or pad is always applied
         if self.crop_or_pad is not None:
             processed_signal, processed_signal_len = self.crop_or_pad(
@@ -86,7 +98,7 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         if self.spec_augmentation is not None and self.training:
             processed_signal = self.spec_augmentation(input_spec=processed_signal, length=processed_signal_len)
         encoded, encoded_len = self.encoder(audio_signal=processed_signal, length=processed_signal_len)
-        logits = self.decoder(encoded.transpose(1,2))
+        logits = self.decoder(encoded.transpose(1, 2))
         return logits
 
     # PTL-specific methods
@@ -98,22 +110,22 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
 
         loss_value = self.loss(logits=logits, labels=labels, loss_mask=masks)
 
-        self.log('train_loss', loss_value)
-        self.log('learning_rate', self._optimizer.param_groups[0]['lr'])
-        self.log('global_step', self.trainer.global_step)
+        tensorboard_logs = {
+            'train_loss': loss_value,
+            'learning_rate': self._optimizer.param_groups[0]['lr'],
+            'global_step': torch.tensor(self.trainer.global_step, dtype=torch.float32),
+        }
 
         self._accuracy(logits=logits.view(-1, logits.size(-1)), labels=labels.view(-1))
         topk_scores = self._accuracy.compute()
         self._accuracy.reset()
 
         for top_k, score in zip(self._accuracy.top_k, topk_scores):
-            self.log('training_batch_accuracy_top@{}'.format(top_k), score)
+            tensorboard_logs[f'training_batch_accuracy_top@{top_k}'] = score
 
-        return {
-            'loss': loss_value,
-        }
+        return {'loss': loss_value, 'log': tensorboard_logs}
 
-    def validation_step(self, batch, batch_idx, dataloader_idx=0):
+    def validation_step(self, batch, batch_idx, dataloader_idx: int = 0, tag: str = 'val'):
         audio_signal, audio_signal_len, labels, labels_len = batch
         logits = self.forward(input_signal=audio_signal, input_signal_length=audio_signal_len)
         labels, labels_len = self.reshape_labels(logits, labels, labels_len)
@@ -121,27 +133,68 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         loss_value = self.loss(logits=logits, labels=labels, loss_mask=masks)
         acc = self._accuracy(logits=logits.view(-1, logits.size(-1)), labels=labels.view(-1))
         correct_counts, total_counts = self._accuracy.correct_counts_k, self._accuracy.total_counts_k
+
+        self._macro_accuracy.update(preds=logits.view(-1, logits.size(-1)), target=labels.view(-1))
+        stats = self._macro_accuracy._get_final_stats()
+
+        # self._auroc.update(preds=logits.view(-1, logits.size(-1)), target=labels.view(-1))
+        # auroc_preds = self._auroc.preds
+        # auroc_target = self._auroc.target
+
         return {
-            'val_loss': loss_value,
-            'val_correct_counts': correct_counts,
-            'val_total_counts': total_counts,
-            'val_acc': acc,
+            f'{tag}_loss': loss_value,
+            f'{tag}_correct_counts': correct_counts,
+            f'{tag}_total_counts': total_counts,
+            f'{tag}_acc_micro': acc,
+            f'{tag}_acc_stats': stats,
+            # f'{tag}_auroc_preds': auroc_preds,
+            # f'{tag}_auroc_target': auroc_target
         }
 
     def test_step(self, batch, batch_idx, dataloader_idx=0):
-        audio_signal, audio_signal_len, labels, labels_len = batch
-        logits = self.forward(input_signal=audio_signal, input_signal_length=audio_signal_len)
-        labels, labels_len = self.reshape_labels(logits, labels, labels_len)
-        masks = self.get_label_masks(labels, labels_len)
-        loss_value = self.loss(logits=logits, labels=labels, loss_mask=masks)
-        acc = self._accuracy(logits=logits.view(-1, logits.size(-1)), labels=labels.view(-1))
-        correct_counts, total_counts = self._accuracy.correct_counts_k, self._accuracy.total_counts_k
-        return {
-            'test_loss': loss_value,
-            'test_correct_counts': correct_counts,
-            'test_total_counts': total_counts,
-            'test_acc': acc,
+        return self.validation_step(batch, batch_idx, dataloader_idx, tag='test')
+
+    def multi_validation_epoch_end(self, outputs, dataloader_idx: int = 0, tag: str = 'val'):
+        val_loss_mean = torch.stack([x[f'{tag}_loss'] for x in outputs]).mean()
+        correct_counts = torch.stack([x[f'{tag}_correct_counts'] for x in outputs]).sum(axis=0)
+        total_counts = torch.stack([x[f'{tag}_total_counts'] for x in outputs]).sum(axis=0)
+
+        self._accuracy.correct_counts_k = correct_counts
+        self._accuracy.total_counts_k = total_counts
+        topk_scores = self._accuracy.compute()
+
+        self._macro_accuracy.tp = torch.stack([x[f'{tag}_acc_stats'][0] for x in outputs]).sum(axis=0)
+        self._macro_accuracy.fp = torch.stack([x[f'{tag}_acc_stats'][1] for x in outputs]).sum(axis=0)
+        self._macro_accuracy.tn = torch.stack([x[f'{tag}_acc_stats'][2] for x in outputs]).sum(axis=0)
+        self._macro_accuracy.fn = torch.stack([x[f'{tag}_acc_stats'][3] for x in outputs]).sum(axis=0)
+        macro_accuracy_score = self._macro_accuracy.compute()
+
+        # preds = []
+        # target = []
+        # for x in outputs:
+        #     preds += x[f'{tag}_auroc_preds']
+        #     target += x[f'{tag}_auroc_target']
+        # self._auroc.preds = preds
+        # self._auroc.target = target
+        # auroc_score = self._auroc.compute()
+
+        self._accuracy.reset()
+        self._macro_accuracy.reset()
+        # self._auroc.reset()
+
+        tensorboard_log = {
+            f'{tag}_loss': val_loss_mean,
+            f'{tag}_acc_macro': macro_accuracy_score,
+            # f'{tag}_auroc': auroc_score
         }
+
+        for top_k, score in zip(self._accuracy.top_k, topk_scores):
+            tensorboard_log[f'{tag}_acc_micro_top@{top_k}'] = score
+
+        return {'log': tensorboard_log}
+
+    def multi_test_epoch_end(self, outputs, dataloader_idx: int = 0):
+        return self.multi_validation_epoch_end(outputs, dataloader_idx, tag='test')
 
     def reshape_labels(self, logits, labels, labels_len):
         logits_max_len = logits.size(1)
@@ -163,6 +216,3 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
             return self.reshape_labels(logits, labels, labels_len)
         else:
             return labels, labels_len
-
-
-
