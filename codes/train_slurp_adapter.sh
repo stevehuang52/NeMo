@@ -1,5 +1,5 @@
 DATA_DIR="/home/heh/datasets/slurp_draco"
-CUDA_VISIBLE_DEVICES=0 python run_slu_to_asr_bpe.py \
+CUDA_VISIBLE_DEVICES=1 python run_slu_to_asr_bpe.py \
     --config-path="./configs" --config-name=conformer_transformer_bpe_adapter \
     model.train_ds.manifest_filepath="[${DATA_DIR}/train_real_slu2asr.json,${DATA_DIR}/train_synth_slu2asr.json]" \
     model.validation_ds.manifest_filepath="${DATA_DIR}/dev_slu2asr.json" \

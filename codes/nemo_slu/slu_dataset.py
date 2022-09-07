@@ -105,8 +105,7 @@ class _AudioTextSemanticsDataset(Dataset):
 
         s, sl = self.manifest_processor.process_semantics_by_sample(sample=sample)
 
-        pt = sample.pred_text_tokens
-        ptl = len(pt)
+        pt, ptl = self.manifest_processor.process_pred_text_by_sample(sample=sample)
 
         output = (
             torch.tensor(index).long(),
@@ -296,6 +295,27 @@ class ManifestProcessorSLU:
 
     def process_text_by_sample(self, sample: AudioTextSemantics.OUTPUT_TYPE) -> Tuple[List[int], int]:
         t, tl = sample.text_tokens, len(sample.text_tokens)
+
+        if self.bos_id is not None:
+            t = [self.bos_id] + t
+            tl += 1
+        if self.eos_id is not None:
+            t = t + [self.eos_id]
+            tl += 1
+
+        return t, tl
+
+    def process_pred_text_by_id(self, index: int) -> Tuple[List[int], int]:
+        sample = self.collection[index]
+        return self.process_pred_text_by_sample(sample)
+
+    def process_pred_text_by_file_id(self, file_id: str) -> Tuple[List[int], int]:
+        manifest_idx = self.collection.mapping[file_id][0]
+        sample = self.collection[manifest_idx]
+        return self.process_pred_text_by_sample(sample)
+
+    def process_pred_text_by_sample(self, sample: AudioTextSemantics.OUTPUT_TYPE) -> Tuple[List[int], int]:
+        t, tl = sample.pred_text_tokens, len(sample.pred_text_tokens)
 
         if self.bos_id is not None:
             t = [self.bos_id] + t

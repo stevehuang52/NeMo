@@ -58,7 +58,7 @@ class ASRBPEMixin(ABC):
         else:
             self._setup_monolingual_tokenizer(tokenizer_cfg, postfix)
 
-    def _setup_monolingual_tokenizer(self, tokenizer_cfg: DictConfig, postfix: str):
+    def _setup_monolingual_tokenizer(self, tokenizer_cfg: DictConfig, postfix: str = ""):
         # Prevent tokenizer parallelism (unless user has explicitly set it)
         if 'TOKENIZERS_PARALLELISM' not in os.environ:
             os.environ['TOKENIZERS_PARALLELISM'] = 'false'

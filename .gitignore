@@ -18,6 +18,8 @@ fastspeech_output
 *.json
 *.jsonl
 
+model_cards/
+draco*
 an4/
 results/
 decoders/

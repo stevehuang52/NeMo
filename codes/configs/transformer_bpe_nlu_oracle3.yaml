@@ -24,9 +24,11 @@
 # Pre-trained models of Conformer-CTC can be found here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/results.html
 # The checkpoint of the large model trained on LibriSpeech with this recipe can be found here: https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_conformer_ctc_large_ls
 
-name: "stt_en_conformer_large_transformer_CosineAnneal_lr3e-4x2e-4_dec3_d2048h8_asr3_r2"
+name: "nlu_transformer_enc35_dec3_d2048h8_2token1024x512_ep30"
 
 model:
+  mode: "nlu_oracle"
+  share_tokenizer: true
   sample_rate: 16000
   log_prediction: true # enables logging sample predictions in the output during training
   skip_nan_grad: false
@@ -34,13 +36,13 @@ model:
   train_ds:
     manifest_filepath: ???
     sample_rate: ${model.sample_rate}
-    batch_size: 32 # 16~24 for 32GB GPUs
+    batch_size: 128 # 16~24 for 32GB GPUs
     shuffle: true
     num_workers: 8
     pin_memory: true
     use_start_end_token: true
     trim_silence: false
-    max_duration: 10.0
+    max_duration: 11.0
     min_duration: 0.1
     # tarred datasets
     is_tarred: false
@@ -53,7 +55,7 @@ model:
   validation_ds:
     manifest_filepath: ???
     sample_rate: ${model.sample_rate}
-    batch_size: 32 # you may increase batch_size if your memory allows
+    batch_size: 128 # you may increase batch_size if your memory allows
     shuffle: false
     num_workers: 8
     pin_memory: true
@@ -62,7 +64,7 @@ model:
   test_ds:
     manifest_filepath: null
     sample_rate: ${model.sample_rate}
-    batch_size: 32 # you may increase batch_size if your memory allows
+    batch_size: 128 # you may increase batch_size if your memory allows
     shuffle: false
     num_workers: 8
     pin_memory: true
@@ -70,84 +72,48 @@ model:
 
   # recommend small vocab size of 128 or 256 when using 4x sub-sampling
   # you may find more detail on how to train a tokenizer at: /scripts/tokenizers/process_asr_text_tokenizer.py
-  tokenizer:
+  asr_tokenizer:
     dir: ???  # path to directory which contains either tokenizer.model (bpe) or vocab.txt (wpe)
     type: bpe  # Can be either bpe (SentencePiece tokenizer) or wpe (WordPiece tokenizer)
     use_blank: false
 
-  preprocessor:
-    _target_: nemo.collections.asr.modules.AudioToMelSpectrogramPreprocessor
-    sample_rate: ${model.sample_rate}
-    normalize: "per_feature"
-    window_size: 0.025
-    window_stride: 0.01
-    window: "hann"
-    features: 80
-    n_fft: 512
-    log: true
-    frame_splicing: 1
-    dither: 0.00001
-    pad_to: 0
-    pad_value: 0.0
+  nlu_tokenizer:
+    dir: ???  # path to directory which contains either tokenizer.model (bpe) or vocab.txt (wpe)
+    type: bpe  # Can be either bpe (SentencePiece tokenizer) or wpe (WordPiece tokenizer)
+    use_blank: false
 
-  spec_augment:
-    _target_: nemo.collections.asr.modules.SpectrogramAugmentation
-    freq_masks: 2 # set to zero to disable it
-    # you may use lower time_masks for smaller models to have a faster convergence
-    time_masks: 10 # set to zero to disable it
-    freq_width: 27
-    time_width: 0.05
-
-  ssl_pretrained:
-    model: stt_en_conformer_ctc_large  # ssl_en_conformer_large
-    freeze: false
-
-  encoder:
-    _target_: nemo.collections.asr.modules.ConformerEncoder
-    feat_in: ${model.preprocessor.features}
-    feat_out: -1 # you may set it if you need different output size other than the default d_model
-    n_layers: 17  # SSL conformer-large have only 17 layers
-    d_model: 512
-
-    # Sub-sampling params
-    subsampling: striding # vggnet or striding, vggnet may give better results but needs more memory
-    subsampling_factor: 4 # must be power of 2
-    subsampling_conv_channels: -1 # -1 sets it to d_model
-
-    # Feed forward module's params
-    ff_expansion_factor: 4
-
-    # Multi-headed Attention Module's params
-    self_attention_model: rel_pos # rel_pos or abs_pos
-    n_heads: 8 # may need to be lower for smaller d_models
-    # [left, right] specifies the number of steps to be seen from left and right of each step in self-attention
-    att_context_size: [-1, -1] # -1 means unlimited context
-    xscaling: true # scales up the input embeddings by sqrt(d_model)
-    untie_biases: true # unties the biases of the TransformerXL layers
-    pos_emb_max_len: 5000
-
-    # Convolution module's params
-    conv_kernel_size: 31
-    conv_norm_type: 'batch_norm' # batch_norm or layer_norm
-
-    ### regularization
-    dropout: 0.1 # The dropout used in most of the Conformer Modules
-    dropout_emb: 0.0 # The dropout used for embeddings
-    dropout_att: 0.1 # The dropout for multi-headed attention modules
-
-  embedding:
+  asr_embedding:
     _target_: nemo.collections.nlp.modules.common.transformer.TransformerEmbedding
     vocab_size: -1
-    hidden_size: ${model.encoder.d_model}
+    hidden_size: 512
     max_sequence_length: 512
     num_token_types: 1
     embedding_dropout: 0.0
     learn_positional_encodings: false
 
+  nlu_embedding:
+    _target_: nemo.collections.nlp.modules.common.transformer.TransformerEmbedding
+    vocab_size: -1
+    hidden_size: ${model.asr_embedding.hidden_size}
+    max_sequence_length: 512
+    num_token_types: 1
+    embedding_dropout: 0.0
+    learn_positional_encodings: false
+
+  encoder:
+    _target_: nemo.collections.nlp.modules.common.transformer.TransformerEncoder
+    num_layers: 35
+    hidden_size: ${model.asr_embedding.hidden_size}
+    inner_size: 2048
+    num_attention_heads: 8
+    attn_score_dropout: 0.0
+    attn_layer_dropout: 0.0
+    ffn_dropout: 0.0
+
   decoder:
     _target_: nemo.collections.nlp.modules.common.transformer.TransformerDecoder
     num_layers: 3
-    hidden_size: ${model.encoder.d_model}
+    hidden_size: ${model.asr_embedding.hidden_size}
     inner_size: 2048
     num_attention_heads: 8
     attn_score_dropout: 0.0
@@ -156,7 +122,7 @@ model:
 
   classifier:
     _target_: nemo.collections.common.parts.MultiLayerPerceptron
-    hidden_size: ${model.encoder.d_model}
+    hidden_size: ${model.asr_embedding.hidden_size}
     num_classes: -1
     num_layers: 1
     activation: 'relu'
@@ -167,15 +133,11 @@ model:
 
   searcher:
     type: greedy  # choices=[greedy, topk, beam]
-    max_sequence_length: ${model.embedding.max_sequence_length}
+    max_sequence_length: ${model.nlu_embedding.max_sequence_length}
     temperature: 1.0  # for top-k sampling
     beam_size: 1  # K for top-k sampling, N for beam search
     len_pen: 0  # for beam-search
     teacher_force_greedy: true
-
-  optim_param_groups:
-    encoder:
-      lr: 0.0002
 
   optim:
     name: adamw
@@ -190,9 +152,9 @@ model:
     # scheduler setup
     sched:
       name: CosineAnnealing  # WarmupAnnealing
-      warmup_steps: 2000
+      warmup_steps: 500
       warmup_ratio: null
-      min_lr: 1e-5
+      min_lr: 1e-6
 
 trainer:
   devices: -1 # number of GPUs, -1 would use all available GPUs
@@ -236,4 +198,4 @@ exp_manager:
   create_wandb_logger: false
   wandb_logger_kwargs:
     name: ${name}
-    project: SLURP_SLU2ASR
+    project: SLURP_NLU

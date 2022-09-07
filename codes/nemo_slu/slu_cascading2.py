@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Union
 
 import ipdb
 import torch
-from omegaconf import DictConfig, open_dict
+from omegaconf import DictConfig, OmegaConf, open_dict
 
 import nemo.collections.asr as nemo_asr
 from .slu_dataset import get_slu_dataset
@@ -19,7 +19,7 @@ from nemo.collections.asr.models.ctc_bpe_models import EncDecCTCModelBPE
 from nemo.collections.asr.models.rnnt_bpe_models import EncDecRNNTBPEModel
 from nemo.collections.asr.parts.mixins import ASRBPEMixin
 from nemo.collections.asr.parts.preprocessing.perturb import process_augmentations
-from nemo.collections.nlp.models.nlp_model import NLPModel
+from nemo.collections.common import tokenizers
 from nemo.core.classes import Serialization as ModuleBuilder
 from nemo.core.classes.common import typecheck
 from nemo.core.classes.modelPT import ModelPT
@@ -27,26 +27,30 @@ from nemo.core.neural_types import AudioSignal, LabelsType, LengthsType, Logprob
 from nemo.utils import logging, model_utils
 
 
-class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
+class SLU2NLUEncDecCascadeModel(ModelPT):
     MODE_SLU = "slu"
     MODE_NLU = "nlu"
     MODE_NLU_ORACLE = "nlu_oracle"
 
     def __init__(self, cfg: DictConfig, trainer=None):
         self.mode = cfg.get("mode", self.MODE_NLU)
-        share_tokenizer = cfg.get("share_tokenizer", False)
 
-        self._setup_tokenizer(cfg.tokenizer)
-        self.nlu_tokenizer = self.tokenizer
+        if "asr_tokenizer" in cfg and "nlu_tokenizer" in cfg:
+            self.asr_tokenizer = self._setup_single_tokenizer(cfg, "asr_tokenizer")
+            self.nlu_tokenizer = self._setup_single_tokenizer(cfg, "nlu_tokenizer")
+        else:
+            self.nlu_tokenizer = self._setup_single_tokenizer(cfg, "tokenizer")
+            self.asr_tokenizer = self.nlu_tokenizer
 
-        self.asr_tokenizer = self.nlu_tokenizer
-        self.asr_model = None
+        # self._setup_tokenizer(cfg.tokenizer)
+
+        self.asr_vocabulary = self.asr_tokenizer.tokenizer.get_vocab()
+        self.asr_vocab_size = len(self.asr_vocabulary)
 
         self.nlu_vocabulary = self.nlu_tokenizer.tokenizer.get_vocab()
         self.nlu_vocab_size = len(self.nlu_vocabulary)
 
-        # TODO: TEMP
-        self.asr_vocab_size = self.nlu_vocab_size
+        self.asr_model = None
 
         super().__init__(cfg=cfg, trainer=trainer)
 
@@ -70,11 +74,13 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         self.loss = SeqNLLLoss(label_smoothing=self.cfg.get("loss.label_smoothing", 0.0))
 
         self.teacher_force_greedy = self.cfg.searcher.get("teacher_force_greedy", False)
-        self.searcher = SequenceGenerator(cfg.searcher, self.embedding, self.decoder, self.classifier, self.tokenizer)
+        self.searcher = SequenceGenerator(
+            cfg.searcher, self.embedding, self.decoder, self.classifier, self.nlu_tokenizer
+        )
 
         # Setup metric objects
         self._wer = WERBPE(
-            tokenizer=self.tokenizer,
+            tokenizer=self.nlu_tokenizer,
             batch_dim_index=0,
             use_cer=self._cfg.get('use_cer', False),
             ctc_decode=True,
@@ -87,7 +93,7 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         max_delta = getattr(self.searcher, "generator.max_delta_length", cfg.max_delta_length)
         cfg.max_sequence_length = max_len
         cfg.max_delta_length = max_delta
-        self.searcher = SequenceGenerator(cfg, self.embedding, self.decoder, self.classifier, self.tokenizer)
+        self.searcher = SequenceGenerator(cfg, self.embedding, self.decoder, self.classifier, self.nlu_tokenizer)
 
     def get_asr_predictions(self, signal, signal_len):
         if isinstance(self.asr_model, EncDecCTCModelBPE):
@@ -111,11 +117,12 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
         target_semantics_length=None,
     ):
 
-        if self.asr_model is not None:
-            asr_tokens, asr_tokens_len = self.get_asr_predictions(input_signal, input_signal_length)
-        else:
-            asr_tokens, asr_tokens_len = pred_text, pred_text_length
+        # if self.asr_model is not None:
+        #     asr_tokens, asr_tokens_len = self.get_asr_predictions(input_signal, input_signal_length)
+        # else:
+        #     asr_tokens, asr_tokens_len = pred_text, pred_text_length
 
+        asr_tokens, asr_tokens_len = pred_text, pred_text_length
         encoded_len = asr_tokens_len
         asr_embeddings = self.asr_embedding(asr_tokens)
         encoded_mask = get_seq_mask(asr_embeddings, encoded_len)
@@ -504,3 +511,76 @@ class SLU2NLUEncDecCascadeModel(ModelPT, ASRBPEMixin):
     @classmethod
     def list_available_models(cls):
         pass
+
+    def _setup_single_tokenizer(self, cfg, tokenizer_key: str = "tokenizer"):
+        # Prevent tokenizer parallelism (unless user has explicitly set it)
+        if 'TOKENIZERS_PARALLELISM' not in os.environ:
+            os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+
+        if tokenizer_key not in cfg:
+            raise ValueError(f"Tokenizer key not in model config: {tokenizer_key}")
+
+        tokenizer_cfg = cfg.get(tokenizer_key)
+        tokenizer_cfg = OmegaConf.to_container(tokenizer_cfg, resolve=True)  # type: dict
+        tokenizer_dir = tokenizer_cfg.pop('dir')  # Remove tokenizer directory
+        tokenizer_type = tokenizer_cfg.pop('type').lower()  # Remove tokenizer_type
+
+        setattr(self, f"{tokenizer_key}_cfg", tokenizer_cfg)
+        setattr(self, f"{tokenizer_key}_dir", tokenizer_dir)
+        setattr(self, f"{tokenizer_key}_type", tokenizer_type)
+
+        if tokenizer_type == 'bpe':
+            # This is a BPE Tokenizer
+            if 'model_path' in tokenizer_cfg:
+                model_path = tokenizer_cfg.get('model_path')
+            else:
+                model_path = os.path.join(tokenizer_dir, 'tokenizer.model')
+
+            model_path = self.register_artifact(f'{tokenizer_key}.model_path', model_path)
+            setattr(self, f"{tokenizer_key}_model_path", model_path)
+
+            tokenizer = tokenizers.SentencePieceTokenizer(model_path=model_path)
+
+            if 'vocab_path' in tokenizer_cfg:
+                vocab_path = tokenizer_cfg.get('vocab_path')
+            else:
+                vocab_path = os.path.join(tokenizer_dir, 'vocab.txt')
+
+            vocab_path = self.register_artifact(f'{tokenizer_key}.vocab_path', vocab_path)
+            setattr(self, f"{tokenizer_key}_vocab_path", vocab_path)
+
+            try:
+                if 'spe_tokenizer_vocab' in tokenizer_cfg:
+                    spe_vocab_path = tokenizer_cfg.get('spe_tokenizer_vocab')
+                else:
+                    spe_vocab_path = os.path.join(tokenizer_dir, 'tokenizer.vocab')
+                spe_vocab_path = self.register_artifact(f'{tokenizer_key}.spe_tokenizer_vocab', spe_vocab_path)
+                setattr(self, f"{tokenizer_key}_spe_vocab_path", spe_vocab_path)
+            except FileNotFoundError:
+                # fallback case for older checkpoints that did not preserve the tokenizer.vocab
+                setattr(self, f"{tokenizer_key}_spe_vocab_path", None)
+
+            use_blank = tokenizer_cfg.get("use_blank", True)
+            blank_offset = 1 if use_blank else 0
+
+            vocabulary = {}
+            for i in range(tokenizer.vocab_size):
+                piece = tokenizer.ids_to_tokens([i])
+                piece = piece[0]
+                vocabulary[piece] = i + blank_offset
+
+            # wrapper method to get vocabulary conveniently
+            def get_vocab():
+                return vocabulary
+
+            # attach utility values to the tokenizer wrapper
+            tokenizer.tokenizer.vocab_size = len(vocabulary)
+            tokenizer.tokenizer.get_vocab = get_vocab
+            tokenizer.tokenizer.all_special_tokens = tokenizer.special_token_to_id
+        else:
+            raise ValueError("only spe tokenizer is supported")
+
+        logging.info(
+            "Tokenizer {} initialized with {} tokens".format(tokenizer.__class__.__name__, tokenizer.vocab_size)
+        )
+        return tokenizer

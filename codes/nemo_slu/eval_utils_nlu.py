@@ -12,7 +12,7 @@ from omegaconf import MISSING, OmegaConf
 from slurp_eval_tools.metrics import ErrorMetric
 from tqdm.auto import tqdm
 
-from .slu_cascading import SLU2NLUEncDecCascadeModel
+from .slu_cascading2 import SLU2NLUEncDecCascadeModel
 from .slu_utils import SearcherConfig, parse_semantics_str2dict
 from nemo.collections.asr.models import ASRModel
 from nemo.core.config import hydra_runner

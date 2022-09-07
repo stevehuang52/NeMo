@@ -24,7 +24,7 @@
 # Pre-trained models of Conformer-CTC can be found here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/results.html
 # The checkpoint of the large model trained on LibriSpeech with this recipe can be found here: https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_conformer_ctc_large_ls
 
-name: "nlu_transformer_CosineAnneal_lr3e-4_enc35_dec3_d2048h8_r2"
+name: "nlu_transformer_enc3_dec3_d512h4_ep20"
 
 model:
   mode: "nlu_oracle"
@@ -36,7 +36,7 @@ model:
   train_ds:
     manifest_filepath: ???
     sample_rate: ${model.sample_rate}
-    batch_size: 128 # 16~24 for 32GB GPUs
+    batch_size: 32 # 16~24 for 32GB GPUs
     shuffle: true
     num_workers: 8
     pin_memory: true
@@ -77,12 +77,10 @@ model:
     type: bpe  # Can be either bpe (SentencePiece tokenizer) or wpe (WordPiece tokenizer)
     use_blank: false
 
-  asr_model: stt_en_conformer_transducer_large  # stt_en_conformer_ctc_large, stt_en_conformer_transducer_large
-
   asr_embedding:
     _target_: nemo.collections.nlp.modules.common.transformer.TransformerEmbedding
     vocab_size: -1
-    hidden_size: 512
+    hidden_size: 256
     max_sequence_length: 512
     num_token_types: 1
     embedding_dropout: 0.0
@@ -99,20 +97,20 @@ model:
 
   encoder:
     _target_: nemo.collections.nlp.modules.common.transformer.TransformerEncoder
-    num_layers: 35
+    num_layers: 3
     hidden_size: ${model.asr_embedding.hidden_size}
-    inner_size: 2048
-    num_attention_heads: 8
+    inner_size: 512
+    num_attention_heads: 4
     attn_score_dropout: 0.0
     attn_layer_dropout: 0.0
-    ffn_dropout: 0.1
+    ffn_dropout: 0.0
 
   decoder:
     _target_: nemo.collections.nlp.modules.common.transformer.TransformerDecoder
     num_layers: 3
     hidden_size: ${model.asr_embedding.hidden_size}
-    inner_size: 2048
-    num_attention_heads: 8
+    inner_size: 512
+    num_attention_heads: 4
     attn_score_dropout: 0.0
     attn_layer_dropout: 0.0
     ffn_dropout: 0.0

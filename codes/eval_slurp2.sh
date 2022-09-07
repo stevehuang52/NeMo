@@ -10,11 +10,7 @@ DATA_DIR="/home/heh/datasets/slurp_draco"
 # EXP_NAME="ssl_en_conformer_xlarge_transformer_CosineAnneal_lr3e-4x2e-4_dec3_d2048h8"
 # EXP_NAME="ssl_en_conformer_xlarge_transformer_CosineAnneal_lr3e-4x2e-4_dec3_d2048h8"
 # EXP_NAME="ssl_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8_asr3"
-# EXP_NAME="stt_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8_asr3_frz"
-# EXP_NAME="stt_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8_asr3_v512"
-# EXP_NAME="stt_en_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8_ls"
-EXP_NAME="slurp_conformer_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8"
-
+EXP_NAME="stt_en_conformer_ctc_large_transformer_CosineAnneal_lr3e-4x1e-4_dec3_d2048h8_adapter"
 
 CKPT_DIR="/home/heh/github/NeMo/codes/nemo_experiments/${EXP_NAME}/checkpoints"
 
@@ -22,7 +18,7 @@ python checkpoint_averaging.py ${CKPT_DIR}
 
 # NEMO_MODEL="${CKPT_DIR}/Conformer-Transformer-SLU2ASR-averaged.nemo"
 NEMO_MODEL="${CKPT_DIR}/${EXP_NAME}-averaged.nemo"
-CUDA_VISIBLE_DEVICES=0 python run_slurp_eval.py \
+CUDA_VISIBLE_DEVICES=1 python run_slurp_eval.py \
     dataset_manifest="${DATA_DIR}/test_slu2asr.json" \
     model_path=${NEMO_MODEL} \
     batch_size=32 \

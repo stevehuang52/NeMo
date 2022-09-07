@@ -1,30 +1,10 @@
-# It contains the default values for training a Conformer-CTC ASR model, large size (~120M) with CTC loss and sub-word encoding.
+# Example config for speech intent classification and slot filling with Conformer-Transformer architecture.
 
-# Architecture and training config:
-# Default learning parameters in this config are set for effective batch size of 2K. To train it with smaller effective
-# batch sizes, you may need to re-tune the learning parameters or use higher accumulate_grad_batches.
-# Here are the recommended configs for different variants of Conformer-CTC, other parameters are the same as in this config file.
-# One extra layer (compared to original paper) is added to the medium and large variants to compensate for replacing the LSTM decoder with a linear one.
-#
-#  +-------------+---------+---------+----------+------------+-----+
-#  | Model       | d_model | n_heads | n_layers | time_masks | lr  |
-#  +=============+=========+========+===========+============+=====+
-#  | Small  (13M)|   176   |    4   |    16     |     5      | 5.0 |
-#  +-------------+---------+--------+-----------+------------+-----+
-#  | Medium (30M)|   256   |    4   |    18     |     5      | 5.0 |
-#  +-------------+---------+--------+-----------+------------+-----+
-#  | Large (121M)|   512   |    8   |    18     |     10     | 2.0 |
-#  +---------------------------------------------------------------+
-#
-# If you do not want to train with AMP, you may use weight decay of 0.0 or reduce the number of time maskings to 2
-# with time_width=100. It may help when you want to train for fewer epochs and need faster convergence.
-# With weight_decay=0.0, learning rate may need to get reduced to 2.0.
+name: "Conformer-Transformer-BPE"
 
-# You may find more info about Conformer-CTC here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/models.html#conformer-ctc
-# Pre-trained models of Conformer-CTC can be found here: https://docs.nvidia.com/deeplearning/nemo/user-guide/docs/en/stable/asr/results.html
-# The checkpoint of the large model trained on LibriSpeech with this recipe can be found here: https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_conformer_ctc_large_ls
-
-name: "stt_en_conformer_large_transformer_CosineAnneal_lr3e-4x2e-4_dec3_d2048h8_asr3_r2"
+pretrained_encoder:
+  name: stt_en_conformer_ctc_large
+  freeze: false
 
 model:
   sample_rate: 16000
@@ -34,7 +14,7 @@ model:
   train_ds:
     manifest_filepath: ???
     sample_rate: ${model.sample_rate}
-    batch_size: 32 # 16~24 for 32GB GPUs
+    batch_size: 32  # 16 for 32GB GPUs
     shuffle: true
     num_workers: 8
     pin_memory: true
@@ -53,7 +33,7 @@ model:
   validation_ds:
     manifest_filepath: ???
     sample_rate: ${model.sample_rate}
-    batch_size: 32 # you may increase batch_size if your memory allows
+    batch_size: 16 # you may increase batch_size if your memory allows
     shuffle: false
     num_workers: 8
     pin_memory: true
@@ -62,13 +42,12 @@ model:
   test_ds:
     manifest_filepath: null
     sample_rate: ${model.sample_rate}
-    batch_size: 32 # you may increase batch_size if your memory allows
+    batch_size: 16 # you may increase batch_size if your memory allows
     shuffle: false
     num_workers: 8
     pin_memory: true
     use_start_end_token: true
 
-  # recommend small vocab size of 128 or 256 when using 4x sub-sampling
   # you may find more detail on how to train a tokenizer at: /scripts/tokenizers/process_asr_text_tokenizer.py
   tokenizer:
     dir: ???  # path to directory which contains either tokenizer.model (bpe) or vocab.txt (wpe)
@@ -97,10 +76,6 @@ model:
     time_masks: 10 # set to zero to disable it
     freq_width: 27
     time_width: 0.05
-
-  ssl_pretrained:
-    model: stt_en_conformer_ctc_large  # ssl_en_conformer_large
-    freeze: false
 
   encoder:
     _target_: nemo.collections.asr.modules.ConformerEncoder
@@ -163,15 +138,14 @@ model:
     log_softmax: true
 
   loss:
-    label_smoothing: 0.1
+    label_smoothing: 0.0
 
-  searcher:
+  sequence_generator:
     type: greedy  # choices=[greedy, topk, beam]
     max_sequence_length: ${model.embedding.max_sequence_length}
     temperature: 1.0  # for top-k sampling
     beam_size: 1  # K for top-k sampling, N for beam search
     len_pen: 0  # for beam-search
-    teacher_force_greedy: true
 
   optim_param_groups:
     encoder:
@@ -184,7 +158,6 @@ model:
     betas: [0.9, 0.98]
     # less necessity for weight_decay as we already have large augmentations with SpecAug
     # you may need weight_decay for large models, stable AMP training, small datasets, or when lower augmentations are used
-    # weight decay of 0.0 with lr of 2.0 also works fine
     weight_decay: 0.0
 
     # scheduler setup
@@ -225,15 +198,15 @@ exp_manager:
     monitor: "val_wer"
     mode: "min"
     save_top_k: 5
-    always_save_nemo: True # saves the checkpoints as nemo files instead of PTL checkpoints
-    save_best_model: True
+    always_save_nemo: true # saves the checkpoints as nemo files instead of PTL checkpoints
+    save_best_model: true
 
   # you need to set these two to True to continue the training
-  resume_if_exists: true
-  resume_ignore_no_checkpoint: true
+  resume_if_exists: false
+  resume_ignore_no_checkpoint: false
 
   # You may use this section to create a W&B logger
   create_wandb_logger: false
   wandb_logger_kwargs:
-    name: ${name}
-    project: SLURP_SLU2ASR
+    name: null
+    project: null
