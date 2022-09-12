@@ -31,7 +31,7 @@ class AudioToMultiLabelDataset(Dataset):
     def __init__(
         self,
         *,
-        manifest_filepath: str,
+        manifest_filepath: Union[str, List[str]],
         sample_rate: int,
         labels: Optional[List[str]] = None,
         int_values: bool = False,
@@ -43,8 +43,11 @@ class AudioToMultiLabelDataset(Dataset):
         delimiter: str = " ",
     ):
         super().__init__()
+        if isinstance(manifest_filepath, str):
+            manifest_filepath = manifest_filepath.split(',')
+
         self.collection = collections.ASRSpeechLabel(
-            manifests_files=manifest_filepath.split(','),
+            manifests_files=manifest_filepath,
             min_duration=min_duration,
             max_duration=max_duration,
             is_regression_task=is_regression_task,
