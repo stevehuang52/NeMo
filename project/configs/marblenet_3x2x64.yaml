@@ -26,20 +26,14 @@ model:
     bucketing_batch_size: null
     bucketing_weights: null
     augmentor:
-      shift:
-        prob: 0.5
-        min_shift_ms: -10.0
-        max_shift_ms: 10.0
       white_noise:
         prob: 0.5
         min_level: -90
         max_level: -46
-        # norm: true
       gain:
         prob: 0.5
         min_gain_dbfs: -10.0
         max_gain_dbfs: 10.0
-        # norm: true
 
   validation_ds:
     manifest_filepath: ???
@@ -197,6 +191,11 @@ exp_manager:
     save_top_k: 5
     always_save_nemo: true # saves the checkpoints as nemo files instead of PTL checkpoints
     save_best_model: true
+
+  # you need to set these two to True to continue the training
+  resume_if_exists: true
+  resume_ignore_no_checkpoint: true
+
   create_wandb_logger: False
   wandb_logger_kwargs:
     name: null

@@ -14,7 +14,7 @@ fastspeech_output
 .hydra
 .bash_history.local
 
-manifests/
+manifests*
 results/
 draco*
 

@@ -24,7 +24,7 @@ import torch
 from omegaconf import DictConfig, ListConfig, OmegaConf
 from pytorch_lightning import Trainer
 from src.audio_to_multi_label import get_audio_multi_label_dataset
-from torchmetrics import AUROC, Accuracy
+from torchmetrics import Accuracy
 
 from nemo.collections.asr.models.classification_models import EncDecClassificationModel
 from nemo.collections.common.losses import CrossEntropyLoss
@@ -37,7 +37,7 @@ from nemo.utils import logging, model_utils
 class EncDecMultiClassificationModel(EncDecClassificationModel):
     @property
     def output_types(self) -> Optional[Dict[str, NeuralType]]:
-        return {"outputs": NeuralType(('B', 'C', 'T'), LogitsType())}
+        return {"outputs": NeuralType(('B', 'T', 'C'), LogitsType())}
 
     def __init__(self, cfg: DictConfig, trainer: Trainer = None):
 
@@ -54,7 +54,6 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
     def _setup_metrics(self):
         self._accuracy = TopKClassificationAccuracy(dist_sync_on_step=True)
         self._macro_accuracy = Accuracy(num_classes=self.num_classes, average='macro')
-        # self._auroc = AUROC(num_classes=self.num_classes)
 
     def _setup_loss(self):
         return CrossEntropyLoss(logits_ndim=3)
@@ -130,16 +129,16 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         logits = self.forward(input_signal=audio_signal, input_signal_length=audio_signal_len)
         labels, labels_len = self.reshape_labels(logits, labels, labels_len)
         masks = self.get_label_masks(labels, labels_len)
+
         loss_value = self.loss(logits=logits, labels=labels, loss_mask=masks)
-        acc = self._accuracy(logits=logits.view(-1, logits.size(-1)), labels=labels.view(-1))
+
+        metric_logits, metric_labels = self.get_metric_logits_labels(logits, labels, masks)
+
+        acc = self._accuracy(logits=metric_logits, labels=metric_labels)
         correct_counts, total_counts = self._accuracy.correct_counts_k, self._accuracy.total_counts_k
 
-        self._macro_accuracy.update(preds=logits.view(-1, logits.size(-1)), target=labels.view(-1))
+        self._macro_accuracy.update(preds=metric_logits, target=metric_labels)
         stats = self._macro_accuracy._get_final_stats()
-
-        # self._auroc.update(preds=logits.view(-1, logits.size(-1)), target=labels.view(-1))
-        # auroc_preds = self._auroc.preds
-        # auroc_target = self._auroc.target
 
         return {
             f'{tag}_loss': loss_value,
@@ -147,12 +146,7 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
             f'{tag}_total_counts': total_counts,
             f'{tag}_acc_micro': acc,
             f'{tag}_acc_stats': stats,
-            # f'{tag}_auroc_preds': auroc_preds,
-            # f'{tag}_auroc_target': auroc_target
         }
-
-    def test_step(self, batch, batch_idx, dataloader_idx=0):
-        return self.validation_step(batch, batch_idx, dataloader_idx, tag='test')
 
     def multi_validation_epoch_end(self, outputs, dataloader_idx: int = 0, tag: str = 'val'):
         val_loss_mean = torch.stack([x[f'{tag}_loss'] for x in outputs]).mean()
@@ -169,29 +163,22 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         self._macro_accuracy.fn = torch.stack([x[f'{tag}_acc_stats'][3] for x in outputs]).sum(axis=0)
         macro_accuracy_score = self._macro_accuracy.compute()
 
-        # preds = []
-        # target = []
-        # for x in outputs:
-        #     preds += x[f'{tag}_auroc_preds']
-        #     target += x[f'{tag}_auroc_target']
-        # self._auroc.preds = preds
-        # self._auroc.target = target
-        # auroc_score = self._auroc.compute()
-
         self._accuracy.reset()
         self._macro_accuracy.reset()
-        # self._auroc.reset()
 
         tensorboard_log = {
             f'{tag}_loss': val_loss_mean,
             f'{tag}_acc_macro': macro_accuracy_score,
-            # f'{tag}_auroc': auroc_score
         }
 
         for top_k, score in zip(self._accuracy.top_k, topk_scores):
             tensorboard_log[f'{tag}_acc_micro_top@{top_k}'] = score
 
-        return {'log': tensorboard_log}
+        self.log_dict(tensorboard_log, sync_dist=True)
+        return tensorboard_log
+
+    def test_step(self, batch, batch_idx, dataloader_idx=0):
+        return self.validation_step(batch, batch_idx, dataloader_idx, tag='test')
 
     def multi_test_epoch_end(self, outputs, dataloader_idx: int = 0):
         return self.multi_validation_epoch_end(outputs, dataloader_idx, tag='test')
@@ -216,3 +203,24 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
             return self.reshape_labels(logits, labels, labels_len)
         else:
             return labels, labels_len
+
+    def get_metric_logits_labels(self, logits, labels, masks):
+        """
+        Params:
+        -   logits: tensor of shape [B, T, C]
+        -   labels: tensor of shape [B, T]
+        -   masks: tensor of shape [B, T]
+        Returns:
+        -   logits of shape [N, C]
+        -   labels of shape [N,]
+        """
+        C = logits.size(2)
+        logits = logits.view(-1, C)  # [BxT, C]
+        labels = labels.view(-1).contiguous()  # [BxT,]
+        masks = masks.view(-1)  # [BxT,]
+        idx = masks.nonzero()  # [BxT, 1]
+
+        logits = logits.gather(dim=0, index=idx.repeat(1, 2))
+        labels = labels.gather(dim=0, index=idx.view(-1))
+
+        return logits, labels
