@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 import torch
@@ -53,6 +54,8 @@ class AudioToMultiLabelDataset(Dataset):
             is_regression_task=is_regression_task,
         )
 
+        self.collection = self.filter_audio_files(self.collection)
+
         self.featurizer = WaveformFeaturizer(sample_rate=sample_rate, int_values=int_values, augmentor=augmentor)
         self.trim = trim
         self.is_regression_task = is_regression_task
@@ -90,6 +93,17 @@ class AudioToMultiLabelDataset(Dataset):
             labels = [self.label2id[s] for s in labels]
             labels = torch.tensor(labels).long()
         return labels
+
+    def filter_audio_files(self, data_list):
+        results = []
+        cnt = 0
+        for sample in data_list:
+            if Path(sample.audio_file).is_file():
+                results.append(sample)
+            else:
+                cnt += 1
+        logging.info(f"{cnt} audio files were discarded since not found.")
+        return results
 
     def __len__(self):
         return len(self.collection)
