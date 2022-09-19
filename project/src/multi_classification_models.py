@@ -115,7 +115,8 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
             'global_step': torch.tensor(self.trainer.global_step, dtype=torch.float32),
         }
 
-        self._accuracy(logits=logits.view(-1, logits.size(-1)), labels=labels.view(-1))
+        metric_logits, metric_labels = self.get_metric_logits_labels(logits, labels, masks)
+        self._accuracy(logits=metric_logits, labels=metric_labels)
         topk_scores = self._accuracy.compute()
         self._accuracy.reset()
 
