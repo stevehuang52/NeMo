@@ -39,7 +39,7 @@ class AudioToMultiLabelDataset(Dataset):
         augmentor: 'nemo.collections.asr.parts.perturb.AudioAugmentor' = None,
         min_duration: Optional[float] = 0.1,
         max_duration: Optional[float] = None,
-        trim: bool = False,
+        trim_silence: bool = False,
         is_regression_task: bool = False,
         delimiter: str = " ",
     ):
@@ -57,7 +57,7 @@ class AudioToMultiLabelDataset(Dataset):
         self.collection = self.filter_audio_files(self.collection)
 
         self.featurizer = WaveformFeaturizer(sample_rate=sample_rate, int_values=int_values, augmentor=augmentor)
-        self.trim = trim
+        self.trim = trim_silence
         self.is_regression_task = is_regression_task
         self.delimiter = delimiter
 
@@ -143,7 +143,7 @@ def get_audio_multi_label_dataset(cfg: DictConfig) -> AudioToMultiLabelDataset:
         augmentor=augmentor,
         min_duration=cfg.get("min_duration", None),
         max_duration=cfg.get("max_duration", None),
-        trim=cfg.get("trim", False),
+        trim_silence=cfg.get("trim_silence", False),
         is_regression_task=cfg.get("is_regression_task", False),
         delimiter=cfg.get("delimiter", None),
     )
