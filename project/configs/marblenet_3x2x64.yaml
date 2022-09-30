@@ -187,8 +187,8 @@ exp_manager:
   create_tensorboard_logger: True
   create_checkpoint_callback: True
   checkpoint_callback_params:
-    monitor: "val_loss"
-    mode: "min"
+    monitor: "val_acc_macro"
+    mode: "max"
     save_top_k: 5
     always_save_nemo: true # saves the checkpoints as nemo files instead of PTL checkpoints
     save_best_model: true

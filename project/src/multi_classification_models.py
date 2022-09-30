@@ -20,7 +20,7 @@ from math import ceil
 from typing import Dict, List, Optional, Union
 
 import torch
-from omegaconf import DictConfig, ListConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from src.audio_to_multi_label import get_audio_multi_label_dataset
 from torchmetrics import Accuracy
