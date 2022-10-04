@@ -106,7 +106,7 @@ class AudioToMultiLabelDataset(Dataset):
                 cnt += 1
                 discarded.append(sample.audio_file)
         logging.info(f"{cnt} audio files were discarded since not found.\n\n")
-        logging.info(discard[:5])
+        logging.info(discarded[:5])
         logging.info("--------------------------------")
         return results
 
