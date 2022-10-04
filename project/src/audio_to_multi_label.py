@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Union
 
 import torch
 from omegaconf import DictConfig
+from pyrsistent import discard
 
 from nemo.collections.asr.data.audio_to_label import _speech_collate_fn
 from nemo.collections.asr.parts.preprocessing.features import WaveformFeaturizer
@@ -97,12 +98,16 @@ class AudioToMultiLabelDataset(Dataset):
     def filter_audio_files(self, data_list):
         results = []
         cnt = 0
+        discarded = []
         for sample in data_list:
             if Path(sample.audio_file).is_file():
                 results.append(sample)
             else:
                 cnt += 1
+                discarded.append(sample.audio_file)
         logging.info(f"{cnt} audio files were discarded since not found.\n\n")
+        logging.info(discard[:5])
+        logging.info("--------------------------------")
         return results
 
     def __len__(self):

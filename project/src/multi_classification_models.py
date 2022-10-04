@@ -16,7 +16,7 @@ import copy
 import json
 import os
 import tempfile
-from math import ceil
+from math import ceil, floor
 from typing import Dict, List, Optional, Union
 
 import torch
@@ -55,7 +55,12 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         self._macro_accuracy = Accuracy(num_classes=self.num_classes, average='macro')
 
     def _setup_loss(self):
-        return CrossEntropyLoss(logits_ndim=3)
+        if "loss" in self.cfg:
+            weight = self.cfg.loss.get("weight", [1.0, 1.0])
+        else:
+            weight = [1.0, 1.0]
+        weight = torch.tensor(weight).float()
+        return CrossEntropyLoss(logits_ndim=3, weight=weight)
 
     def _setup_dataloader_from_config(self, config: DictConfig):
         OmegaConf.set_struct(config, False)
@@ -193,14 +198,26 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
             if res > 0:
                 labels = labels[:, :-res]
                 mask = labels_len > (labels_max_len - res)
-                labels_len = labels_len - mask * res
+                labels_len = labels_len - mask * (labels_len - (labels_max_len - res))
             labels = labels.view(batch_size, ratio, -1).amax(1)
             labels_len = torch.div(labels_len, ratio, rounding_mode="floor")
-            return labels, labels_len
+            return labels.contiguous(), labels_len.contiguous()
         elif logits_max_len > labels_max_len:
-            ratio = ceil(logits_max_len / labels_max_len)
-            labels = labels.repeat_interleave(ratio, dim=1)
-            return self.reshape_labels(logits, labels, labels_len)
+            ratio = logits_max_len / labels_max_len
+            res = logits_max_len % labels_max_len
+            if ceil(ratio) - ratio < 0.2:  # e.g., ratio is 1.83
+                labels = labels.repeat_interleave(ceil(ratio), dim=1).long()
+                labels = labels[:, :logits_max_len]
+                labels_len = labels_len * ceil(ratio)
+                mask = labels_len > logits_max_len
+                labels_len = labels_len - mask * (labels_len - logits_max_len)
+            else:  # e.g., 2.01
+                labels = labels.repeat_interleave(floor(ratio), dim=1).long()
+                labels_len = labels_len * floor(ratio)
+                if res > 0:
+                    labels = torch.cat([labels, labels[:, -res:]], dim=1)
+                    labels_len = labels_len  # ignore additional "res" labels
+            return labels.contiguous(), labels_len.contiguous()
         else:
             return labels, labels_len
 

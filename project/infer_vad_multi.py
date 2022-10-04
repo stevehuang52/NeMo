@@ -201,7 +201,7 @@ def evaluate_single_manifest(manifest_filepath, cfg, vad_model, out_dir):
         window_length_in_sec=cfg.vad.parameters.window_length_in_sec,
         shift_length_in_sec=cfg.vad.parameters.shift_length_in_sec,
         manifest_vad_input=manifest_vad_input,
-        out_dir=os.path.join(out_dir, "frame_predictions"),
+        out_dir=os.path.join(out_dir, "frames_predictions"),
     )
 
     logging.info(

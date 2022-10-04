@@ -10,4 +10,4 @@ python infer_vad.py \
     vad.model_path=$model_path \
     frame_out_dir="$ckpt_dir/frame_vad_output" \
     num_workers=12 \
-    dataset="./manifests_test/german_test_20ms.json"
+    dataset="./manifests_test/french_test_20ms.json"

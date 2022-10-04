@@ -19,7 +19,7 @@ import os
 import shutil
 from collections import defaultdict
 from itertools import repeat
-from math import ceil
+from math import ceil, floor
 from typing import Dict, Tuple
 
 import IPython.display as ipd
@@ -67,9 +67,16 @@ def align_labels_to_frames(probs, labels):
         labels = labels.view(-1, ratio).amax(1)
         return labels.long().tolist()
     elif frames_len > labels_len:
-        ratio = ceil(frames_len / labels_len)
-        labels = labels.repeat_interleave(ratio, dim=0)
-        return align_labels_to_frames(probs.tolist(), labels.tolist())
+        ratio = frames_len / labels_len
+        res = frames_len % labels_len
+        if ceil(ratio) - ratio < 0.2:  # e.g., ratio is 1.83
+            labels = labels.repeat_interleave(ceil(ratio), dim=0).long().tolist()
+            labels = labels[:frames_len]
+        else:
+            labels = labels.repeat_interleave(floor(ratio), dim=0).long().tolist()
+            if res > 0:
+                labels += labels[-res:]
+        return labels
     else:
         return labels.long().tolist()
 
