@@ -57,10 +57,9 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
     def _setup_loss(self):
         if "loss" in self.cfg:
             weight = self.cfg.loss.get("weight", [1.0, 1.0])
+            return CrossEntropyLoss(logits_ndim=3, weight=weight)
         else:
-            weight = [1.0, 1.0]
-        weight = torch.tensor(weight).float()
-        return CrossEntropyLoss(logits_ndim=3, weight=weight)
+            return CrossEntropyLoss(logits_ndim=3)
 
     def _setup_dataloader_from_config(self, config: DictConfig):
         OmegaConf.set_struct(config, False)

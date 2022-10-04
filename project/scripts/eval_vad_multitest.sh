@@ -10,4 +10,6 @@ python infer_vad_multi.py \
     --config-path="./configs" --config-name="vad_inference" \
     vad.model_path=$model_path \
     frame_out_dir="${ckpt_dir}/frame_vad_multi_output" \
-    dataset="[${data_dir}/french_test_20ms.json,${data_dir}/german_test_20ms.json,${data_dir}/mandarin_test_20ms.json,${data_dir}/russian_test_20ms.json,${data_dir}/spanish_test_20ms.json]"
+    dataset="[${data_dir}/ami_eval_20ms.json,${data_dir}/ch120_CH109_20ms.json]"
+
+    # dataset="[${data_dir}/french_test_20ms.json,${data_dir}/german_test_20ms.json,${data_dir}/mandarin_test_20ms.json,${data_dir}/russian_test_20ms.json,${data_dir}/spanish_test_20ms.json]"
