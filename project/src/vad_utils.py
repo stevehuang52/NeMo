@@ -1091,7 +1091,9 @@ def generate_vad_frame_pred(
                 probs = probs.squeeze(0)  # [1,T,C] -> [T,C]
             pred = probs[:, 1]  # [T,]
 
-            if status[i] == 'start':
+            if window_length_in_sec == 0:
+                to_save = pred
+            elif status[i] == 'start':
                 to_save = pred[:-trunc]
             elif status[i] == 'next':
                 to_save = pred[trunc:-trunc_l]
@@ -1107,6 +1109,10 @@ def generate_vad_frame_pred(
                 for p in to_save:
                     fout.write(f'{p:0.4f}\n')
             all_probs[data[i]].extend(to_save)
+
+            # print(data[i], len(to_save))
+            # import ipdb; ipdb.set_trace()
+            # print("----------")
 
         del test_batch
         if status[i] == 'end' or status[i] == 'single':

@@ -142,10 +142,10 @@ def main(cfg):
         labels = all_labels_map[key]
         labels_aligned = align_labels_to_frames(probs, labels)
         ratios.append(len(probs) / len(labels))
-        if "10179_11051_000008" in key:
-            import ipdb
+        # if "10179_11051_000008" in key:
+        #     import ipdb
 
-            ipdb.set_trace()
+        #     ipdb.set_trace()
 
         all_labels_map[key] = labels_aligned
         groundtruth += labels_aligned

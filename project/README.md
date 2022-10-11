@@ -33,7 +33,7 @@ python tools/clean_manifest.py manifests_draco/french_train_40ms.json \
 
 
 
-
+########################### proj_name="Stream_VAD", exp_dir="drc_Multilang_sgdlr1e-3_wd1e-4_augx_b128_gacc1_ep50_w8"
 [NeMo I 2022-10-04 14:56:10 infer_vad_multi:116] ================= french_test_20ms =================
 [NeMo I 2022-10-04 14:56:10 infer_vad_multi:117] AUROC: 0.9558
 [NeMo I 2022-10-04 14:56:10 infer_vad_multi:118] Classification report with threshold=0.50
@@ -119,3 +119,105 @@ python tools/clean_manifest.py manifests_draco/french_train_40ms.json \
         accuracy                           0.89  23847316
        macro avg       0.87      0.80      0.83  23847316
     weighted avg       0.88      0.89      0.88  23847316
+
+[NeMo I 2022-10-10 13:34:03 infer_vad_multi:100] ====================================================
+[NeMo I 2022-10-10 13:34:03 infer_vad_multi:101] Finalizing individual results...
+[NeMo I 2022-10-10 13:34:13 infer_vad_multi:116] ================= ami_eval_10ms =================
+[NeMo I 2022-10-10 13:34:13 infer_vad_multi:117] AUROC: 0.9466
+[NeMo I 2022-10-10 13:34:13 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-10 13:34:13 infer_vad_multi:119]               precision    recall  f1-score   support
+
+               0       0.55      0.88      0.68    762396
+               1       0.98      0.87      0.92   4238736
+
+        accuracy                           0.87   5001132
+       macro avg       0.76      0.87      0.80   5001132
+    weighted avg       0.91      0.87      0.88   5001132
+
+[NeMo I 2022-10-10 13:34:13 infer_vad_multi:125] Detection Error Rate: DetER=15.1767, False Alarm=1.7453, Miss=13.4314
+[NeMo I 2022-10-10 13:34:13 infer_vad_multi:126] ==========================================
+[NeMo I 2022-10-10 13:34:25 infer_vad_multi:116] ================= ch120_CH109_10ms =================
+[NeMo I 2022-10-10 13:34:25 infer_vad_multi:117] AUROC: 0.8774
+[NeMo I 2022-10-10 13:34:25 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-10 13:34:25 infer_vad_multi:119]               precision    recall  f1-score   support
+
+               0       0.72      0.38      0.50    799798
+               1       0.91      0.98      0.94   5227642
+
+        accuracy                           0.90   6027440
+       macro avg       0.81      0.68      0.72   6027440
+    weighted avg       0.89      0.90      0.88   6027440
+
+[NeMo I 2022-10-10 13:34:25 infer_vad_multi:125] Detection Error Rate: DetER=11.6203, False Alarm=9.6153, Miss=2.0050
+[NeMo I 2022-10-10 13:34:25 infer_vad_multi:126] ==========================================
+[NeMo I 2022-10-10 13:34:25 infer_vad_multi:128] ================== Aggregrated Results ===================
+[NeMo I 2022-10-10 13:34:25 infer_vad_multi:132] ============================================================
+[NeMo I 2022-10-10 13:34:25 infer_vad_multi:133]  DetER=11.6203, False Alarm=9.6153, Miss=2.0050
+[NeMo I 2022-10-10 13:34:25 infer_vad_multi:134] ============================================================
+[NeMo I 2022-10-10 13:34:49 infer_vad_multi:139] AUROC: 0.8904
+[NeMo I 2022-10-10 13:34:49 infer_vad_multi:140] Classification report with threshold=0.50
+[NeMo I 2022-10-10 13:34:49 infer_vad_multi:141]
+                  precision    recall  f1-score   support
+
+               0       0.59      0.62      0.61   1562194
+               1       0.94      0.93      0.93   9466378
+
+        accuracy                           0.89  11028572
+       macro avg       0.76      0.78      0.77  11028572
+    weighted avg       0.89      0.89      0.89  11028572
+
+
+
+
+
+
+
+
+
+
+################################# marblenet_3x2x64_mandarin_40ms_all
+[NeMo I 2022-10-10 12:15:25 infer_vad_multi:100] ====================================================
+[NeMo I 2022-10-10 12:15:25 infer_vad_multi:101] Finalizing individual results...
+[NeMo I 2022-10-10 12:15:35 infer_vad_multi:116] ================= ami_eval_10ms =================
+[NeMo I 2022-10-10 12:15:35 infer_vad_multi:117] AUROC: 0.9500
+[NeMo I 2022-10-10 12:15:35 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-10 12:15:35 infer_vad_multi:119]               precision    recall  f1-score   support
+
+               0       0.56      0.92      0.70    762396
+               1       0.98      0.87      0.92   4238736
+
+        accuracy                           0.88   5001132
+       macro avg       0.77      0.90      0.81   5001132
+    weighted avg       0.92      0.88      0.89   5001132
+
+[NeMo I 2022-10-10 12:15:35 infer_vad_multi:125] Detection Error Rate: DetER=13.5513, False Alarm=1.3435, Miss=12.2078
+[NeMo I 2022-10-10 12:15:35 infer_vad_multi:126] ==========================================
+[NeMo I 2022-10-10 12:15:47 infer_vad_multi:116] ================= ch120_CH109_10ms =================
+[NeMo I 2022-10-10 12:15:47 infer_vad_multi:117] AUROC: 0.9320
+[NeMo I 2022-10-10 12:15:47 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-10 12:15:47 infer_vad_multi:119]               precision    recall  f1-score   support
+
+               0       0.84      0.37      0.52    799798
+               1       0.91      0.99      0.95   5227642
+
+        accuracy                           0.91   6027440
+       macro avg       0.88      0.68      0.73   6027440
+    weighted avg       0.90      0.91      0.89   6027440
+
+[NeMo I 2022-10-10 12:15:47 infer_vad_multi:125] Detection Error Rate: DetER=11.1276, False Alarm=10.3724, Miss=0.7552
+[NeMo I 2022-10-10 12:15:47 infer_vad_multi:126] ==========================================
+[NeMo I 2022-10-10 12:15:47 infer_vad_multi:128] ================== Aggregrated Results ===================
+[NeMo I 2022-10-10 12:15:47 infer_vad_multi:132] ============================================================
+[NeMo I 2022-10-10 12:15:47 infer_vad_multi:133]  DetER=11.1276, False Alarm=10.3724, Miss=0.7552
+[NeMo I 2022-10-10 12:15:47 infer_vad_multi:134] ============================================================
+[NeMo I 2022-10-10 12:16:10 infer_vad_multi:139] AUROC: 0.9289
+[NeMo I 2022-10-10 12:16:10 infer_vad_multi:140] Classification report with threshold=0.50
+[NeMo I 2022-10-10 12:16:10 infer_vad_multi:141]
+                  precision    recall  f1-score   support
+
+               0       0.63      0.64      0.63   1562194
+               1       0.94      0.94      0.94   9466378
+
+        accuracy                           0.89  11028572
+       macro avg       0.78      0.79      0.79  11028572
+    weighted avg       0.90      0.89      0.90  11028572

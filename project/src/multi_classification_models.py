@@ -204,13 +204,13 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         elif logits_max_len > labels_max_len:
             ratio = logits_max_len / labels_max_len
             res = logits_max_len % labels_max_len
-            if ceil(ratio) - ratio < 0.2:  # e.g., ratio is 1.83
+            if ceil(ratio) - ratio < 0.1:  # e.g., ratio is 1.93
                 labels = labels.repeat_interleave(ceil(ratio), dim=1).long()
                 labels = labels[:, :logits_max_len]
                 labels_len = labels_len * ceil(ratio)
                 mask = labels_len > logits_max_len
                 labels_len = labels_len - mask * (labels_len - logits_max_len)
-            else:  # e.g., 2.01
+            else:  # e.g., ratio is 2.01
                 labels = labels.repeat_interleave(floor(ratio), dim=1).long()
                 labels_len = labels_len * floor(ratio)
                 if res > 0:

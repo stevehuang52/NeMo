@@ -87,7 +87,10 @@ def read_one_audiosegment(manifest, target_sr, rng, tarred_audio=False, audio_da
         offset = 0 if audio_record.offset is None else audio_record.offset
         duration = 0 if audio_record.duration is None else audio_record.duration
 
-    return AudioSegment.from_file(audio_file, target_sr=target_sr, offset=offset, duration=duration)
+    segment = AudioSegment.from_file(audio_file, target_sr=target_sr, offset=offset, duration=duration)
+    if segment.duration == 0.0:
+        return read_one_audiosegment(manifest, target_sr, rng, tarred_audio, audio_dataset)
+    return segment
 
 
 class Perturbation(object):
@@ -692,9 +695,9 @@ class TranscodePerturbation(Perturbation):
 
 class RandomSegmentPerturbation(Perturbation):
     """
-    Returns a random segment from input of duration "duration_sec". 
+    Returns a random segment from input of duration "duration_sec".
     If duration_sec > input audio length, pad_to_duration determines the outcome.
-    
+
     RandomSegmentPerturbation is intended for self-supervised learning.
     Not for supervised, as extracting corresponding text is not facilitated.
 
