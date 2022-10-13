@@ -51,7 +51,7 @@ from nemo.utils import logging
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-@hydra_runner(config_path="../conf/vad", config_name="vad_inference_postprocessing.yaml")
+@hydra_runner(config_path="./configs", config_name="vad_inference_postprocessing.yaml")
 def main(cfg):
     if not cfg.dataset:
         raise ValueError("You must input the path of json file of evaluation data")
@@ -123,7 +123,7 @@ def main(cfg):
         FA = der_report.iloc[[-1]][('false alarm', '%')].item()
         MISS = der_report.iloc[[-1]][('miss', '%')].item()
         logging.info(f"Detection Error Rate: DetER={DetER:0.4f}, False Alarm={FA:0.4f}, Miss={MISS:0.4f}")
-        logging.info("==========================================")
+        logging.info("==========================================\n\n")
 
     logging.info("================== Aggregrated Results ===================")
     DetER = all_der_report.iloc[[-1]][('detection error rate', '%')].item()

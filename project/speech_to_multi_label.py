@@ -6,6 +6,8 @@ from nemo.core.config import hydra_runner
 from nemo.utils import logging
 from nemo.utils.exp_manager import exp_manager
 
+pl.seed_everything(0)
+
 
 @hydra_runner(config_path="./configs", config_name="quartznet_15x5")
 def main(cfg):

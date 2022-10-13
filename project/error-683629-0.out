@@ -1,0 +1,260 @@
+pyxis: importing docker image ...
+wandb: Appending key for api.wandb.ai to your netrc file: /root/.netrc
+wandb: Appending key for api.wandb.ai to your netrc file: /root/.netrc
+wandb: Appending key for api.wandb.ai to your netrc file: /root/.netrc
+wandb: Appending key for api.wandb.ai to your netrc file: /root/.netrc
+wandb: Appending key for api.wandb.ai to your netrc file: /root/.netrc
+wandb: Appending key for api.wandb.ai to your netrc file: /root/.netrc
+wandb: Appending key for api.wandb.ai to your netrc file: /root/.netrc
+wandb: Appending key for api.wandb.ai to your netrc file: /root/.netrc
+[NeMo W 2022-10-07 11:05:55 optimizers:77] Could not import distributed_fused_adam optimizer from Apex
+Multiprocessing is handled by SLURM.
+GPU available: True (cuda), used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+HPU available: False, using: 0 HPUs
+`Trainer(val_check_interval=1.0)` was configured so validation will run at the end of the training epoch..
+[NeMo W 2022-10-07 11:05:59 exp_manager:570] No version folders would be created under the log folder as 'resume_if_exists' is enabled.
+[NeMo W 2022-10-07 11:05:59 exp_manager:422] There was no checkpoint folder at checkpoint_dir :/results/drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4/checkpoints. Training from scratch.
+wandb: Currently logged in as: stevehuanghe. Use `wandb login --relogin` to force relogin
+wandb: - Waiting for wandb.init()...wandb: wandb version 0.13.4 is available!  To upgrade, please run:
+wandb:  $ pip install wandb --upgrade
+wandb: Tracking run with wandb version 0.13.3
+wandb: Run data is saved locally in /results/wandb/run-20221007_110601-22kv3qs3
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4
+wandb: ⭐️ View project at https://wandb.ai/stevehuanghe/Frame_VAD
+wandb: 🚀 View run at https://wandb.ai/stevehuanghe/Frame_VAD/runs/22kv3qs3
+[NeMo W 2022-10-07 11:06:10 nemo_logging:349] /opt/conda/lib/python3.8/site-packages/pytorch_lightning/loggers/logger.py:229: LightningDeprecationWarning: `LoggerCollection` is deprecated in v1.6 and will be removed in v1.8. Directly pass a list of loggers to the Trainer and access the list via the `trainer.loggers` attribute.
+      rank_zero_deprecation(
+
+[NeMo W 2022-10-07 11:06:10 nemo_logging:349] /opt/conda/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py:2274: LightningDeprecationWarning: `Trainer.weights_save_path` has been deprecated in v1.6 and will be removed in v1.8.
+      rank_zero_deprecation("`Trainer.weights_save_path` has been deprecated in v1.6 and will be removed in v1.8.")
+
+[NeMo W 2022-10-07 11:06:10 exp_manager:900] The checkpoint callback was told to monitor a validation value and trainer's max_steps was set to -1. Please ensure that max_steps will run for at least 1 epochs to ensure that checkpointing will not error out.
+Initializing distributed: GLOBAL_RANK: 1, MEMBER: 2/8
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+[NeMo W 2022-10-07 11:45:47 nemo_logging:349] /opt/conda/lib/python3.8/site-packages/torchmetrics/utilities/prints.py:36: UserWarning: Torchmetrics v0.9 introduced a new argument class property called `full_state_update` that has
+                    not been set for this class (TopKClassificationAccuracy). The property determines if `update` by
+                    default needs access to the full metric state. If this is not the case, significant speedups can be
+                    achieved and we recommend setting this to `False`.
+                    We provide an checking function
+                    `from torchmetrics.utilities import check_forward_full_state_property`
+                    that can be used to check if the `full_state_update=True` (old and potential slower behaviour,
+                    default for now) or if `full_state_update=False` can be used safely.
+
+      warnings.warn(*args, **kwargs)
+
+Initializing distributed: GLOBAL_RANK: 6, MEMBER: 7/8
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+Initializing distributed: GLOBAL_RANK: 0, MEMBER: 1/8
+[W socket.cpp:426] [c10d] The server socket cannot be initialized on [::]:61037 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+Initializing distributed: GLOBAL_RANK: 4, MEMBER: 5/8
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+Initializing distributed: GLOBAL_RANK: 3, MEMBER: 4/8
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+Initializing distributed: GLOBAL_RANK: 5, MEMBER: 6/8
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+Initializing distributed: GLOBAL_RANK: 7, MEMBER: 8/8
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+Initializing distributed: GLOBAL_RANK: 2, MEMBER: 3/8
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+[W socket.cpp:601] [c10d] The client socket cannot be initialized to connect to [rno1-m02-d08-dgx1-079.nsv.rno1.nvmetal.net]:61037 (errno: 97 - Address family not supported by protocol).
+----------------------------------------------------------------------------------------------------
+distributed_backend=nccl
+All distributed processes registered. Starting with 8 processes
+----------------------------------------------------------------------------------------------------
+
+LOCAL_RANK: 1 - CUDA_VISIBLE_DEVICES: [0,1,2,3,4,5,6,7]
+LOCAL_RANK: 2 - CUDA_VISIBLE_DEVICES: [0,1,2,3,4,5,6,7]
+LOCAL_RANK: 7 - CUDA_VISIBLE_DEVICES: [0,1,2,3,4,5,6,7]
+LOCAL_RANK: 3 - CUDA_VISIBLE_DEVICES: [0,1,2,3,4,5,6,7]
+LOCAL_RANK: 6 - CUDA_VISIBLE_DEVICES: [0,1,2,3,4,5,6,7]
+LOCAL_RANK: 5 - CUDA_VISIBLE_DEVICES: [0,1,2,3,4,5,6,7]
+LOCAL_RANK: 4 - CUDA_VISIBLE_DEVICES: [0,1,2,3,4,5,6,7]
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1,2,3,4,5,6,7]
+
+  | Name              | Type                              | Params
+------------------------------------------------------------------------
+0 | spec_augmentation | SpectrogramAugmentation           | 0
+1 | preprocessor      | AudioToMelSpectrogramPreprocessor | 0
+2 | encoder           | ConvASREncoder                    | 91.1 K
+3 | decoder           | MultiLayerPerceptron              | 258
+4 | loss              | CrossEntropyLoss                  | 0
+5 | _accuracy         | TopKClassificationAccuracy        | 0
+6 | _macro_accuracy   | Accuracy                          | 0
+------------------------------------------------------------------------
+91.4 K    Trainable params
+0         Non-trainable params
+91.4 K    Total params
+0.366     Total estimated model params size (MB)
+SLURM auto-requeueing enabled. Setting signal handlers.
+SLURM auto-requeueing enabled. Setting signal handlers.
+SLURM auto-requeueing enabled. Setting signal handlers.
+SLURM auto-requeueing enabled. Setting signal handlers.
+SLURM auto-requeueing enabled. Setting signal handlers.
+SLURM auto-requeueing enabled. Setting signal handlers.
+SLURM auto-requeueing enabled. Setting signal handlers.
+SLURM auto-requeueing enabled. Setting signal handlers.
+[NeMo W 2022-10-07 11:45:57 nemo_logging:349] /opt/conda/lib/python3.8/site-packages/torch/nn/parallel/scatter_gather.py:9: UserWarning: is_namedtuple is deprecated, please use the python checks instead
+      warnings.warn("is_namedtuple is deprecated, please use the python checks instead")
+
+[NeMo W 2022-10-07 11:46:18 nemo_logging:349] /opt/conda/lib/python3.8/site-packages/torchmetrics/utilities/prints.py:36: UserWarning: The ``compute`` method of metric TopKClassificationAccuracy was called before the ``update`` method which may lead to errors, as metric states have not yet been updated.
+      warnings.warn(*args, **kwargs)
+
+[NeMo W 2022-10-07 11:46:18 nemo_logging:349] /opt/conda/lib/python3.8/site-packages/torchmetrics/utilities/prints.py:36: UserWarning: The ``compute`` method of metric Accuracy was called before the ``update`` method which may lead to errors, as metric states have not yet been updated.
+      warnings.warn(*args, **kwargs)
+
+[W reducer.cpp:1298] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+[W reducer.cpp:1298] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+[W reducer.cpp:1298] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+[W reducer.cpp:1298] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+[W reducer.cpp:1298] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+[W reducer.cpp:1298] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+[W reducer.cpp:1298] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+[W reducer.cpp:1298] Warning: find_unused_parameters=True was specified in DDP constructor, but did not find any unused parameters in the forward pass. This flag results in an extra traversal of the autograd graph every iteration,  which can adversely affect performance. If your model indeed never has any unused parameters in the forward pass, consider turning this flag off. Note that this warning may be a false positive if your model has flow control causing later iterations to have unused parameters. (function operator())
+Epoch 0, global step 379: 'val_acc_macro' reached 0.80168 (best 0.80168), saving model to '/results/drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4/checkpoints/drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4--val_acc_macro=0.8017-epoch=0.ckpt' as top 3
+Epoch 1, global step 758: 'val_acc_macro' reached 0.84905 (best 0.84905), saving model to '/results/drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4/checkpoints/drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4--val_acc_macro=0.8490-epoch=1.ckpt' as top 3
+Epoch 2, global step 1137: 'val_acc_macro' reached 0.83892 (best 0.84905), saving model to '/results/drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4/checkpoints/drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4--val_acc_macro=0.8389-epoch=2.ckpt' as top 3
+Epoch 3, global step 1516: 'val_acc_macro' reached 0.84749 (best 0.84905), saving model to '/results/drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4/checkpoints/drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4--val_acc_macro=0.8475-epoch=3.ckpt' as top 3
+Error executing job with overrides: ['exp_manager.create_wandb_logger=true', 'exp_manager.wandb_logger_kwargs.project=Frame_VAD', 'exp_manager.wandb_logger_kwargs.name=drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4', 'exp_manager.name=drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep50_all_w4', '++exp_manager.resume_if_exists=true', '++exp_manager.resume_ignore_no_checkpoint=true', '++exp_manager.use_datetime_version=false', '++trainer.log_every_n_steps=100', '++exp_manager.checkpoint_callback_params.save_top_k=3', '++trainer.benchmark=false', '++trainer.precision=32', '++model.log_prediction=true', 'model.train_ds.pin_memory=true', 'model.test_ds.pin_memory=true', 'model.validation_ds.pin_memory=true', 'model.train_ds.num_workers=4', 'model.validation_ds.num_workers=4', 'model.test_ds.num_workers=4', 'exp_manager.exp_dir=/results/', '++trainer.check_val_every_n_epoch=1', 'trainer.num_nodes=1', 'model.train_ds.is_tarred=false', 'model.train_ds.tarred_audio_filepaths=na', 'model.train_ds.manifest_filepath=[/manifests/vad/fisher_2004_40ms.json,/manifests/vad/fisher_2005_40ms.json,/manifests/vad/icsi_all_40ms.json,/manifests/vad/ami_train_40ms.json,/manifests/vad/french_train_40ms_cleaned.json,/manifests/vad/german_train_40ms.json,/manifests/vad/mandarin_train_40ms.json,/manifests/vad/russian_train_40ms.json,/manifests/vad/spanish_train_40ms.json]', 'model.validation_ds.manifest_filepath=[/manifests/vad/ch120_moved_40ms.json,/manifests/vad/ami_dev_40ms.json,/manifests/vad/french_dev_40ms.json,/manifests/vad/german_dev_40ms.json,/manifests/vad/mandarin_dev_40ms.json,/manifests/vad/russian_dev_40ms.json,/manifests/vad/spanish_dev_40ms.json]', 'model.test_ds.manifest_filepath=[/manifests/vad/ch120_moved_40ms.json,/manifests/vad/ami_dev_40ms.json,/manifests/vad/french_dev_40ms.json,/manifests/vad/german_dev_40ms.json,/manifests/vad/mandarin_dev_40ms.json,/manifests/vad/russian_dev_40ms.json,/manifests/vad/spanish_dev_40ms.json]', 'trainer.max_epochs=50', 'trainer.accumulate_grad_batches=1', 'model.train_ds.batch_size=512', 'model.train_ds.bucketing_batch_size=', 'model.train_ds.bucketing_strategy=', 'model.validation_ds.batch_size=512', 'model.test_ds.batch_size=512', 'model.optim.name=sgd', 'model.optim.lr=1e-3', 'model.optim.weight_decay=1e-4']
+Traceback (most recent call last):
+  File "project/speech_to_multi_label.py", line 29, in <module>
+    main()  # noqa pylint: disable=no-value-for-parameter
+  File "/code/nemo/core/config/hydra_runner.py", line 104, in wrapper
+    _run_hydra(
+  File "/opt/conda/lib/python3.8/site-packages/hydra/_internal/utils.py", line 377, in _run_hydra
+    run_and_report(
+  File "/opt/conda/lib/python3.8/site-packages/hydra/_internal/utils.py", line 214, in run_and_report
+    raise ex
+  File "/opt/conda/lib/python3.8/site-packages/hydra/_internal/utils.py", line 211, in run_and_report
+    return func()
+  File "/opt/conda/lib/python3.8/site-packages/hydra/_internal/utils.py", line 378, in <lambda>
+    lambda: hydra.run(
+  File "/opt/conda/lib/python3.8/site-packages/hydra/_internal/hydra.py", line 111, in run
+    _ = ret.return_value
+  File "/opt/conda/lib/python3.8/site-packages/hydra/core/utils.py", line 233, in return_value
+    raise self._return_value
+  File "/opt/conda/lib/python3.8/site-packages/hydra/core/utils.py", line 160, in run_job
+    ret.return_value = task_function(task_cfg)
+  File "project/speech_to_multi_label.py", line 21, in main
+    trainer.fit(asr_model)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 696, in fit
+    self._call_and_handle_interrupt(
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 650, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 735, in _fit_impl
+    results = self._run(model, ckpt_path=self.ckpt_path)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1166, in _run
+    results = self._run_stage()
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1252, in _run_stage
+    return self._run_train()
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1283, in _run_train
+    self.fit_loop.run()
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/loops/loop.py", line 200, in run
+    self.advance(*args, **kwargs)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/loops/fit_loop.py", line 271, in advance
+    self._outputs = self.epoch_loop.run(self._data_fetcher)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/loops/loop.py", line 200, in run
+    self.advance(*args, **kwargs)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/loops/epoch/training_epoch_loop.py", line 174, in advance
+    batch = next(data_fetcher)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/utilities/fetching.py", line 184, in __next__
+    return self.fetching_function()
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/utilities/fetching.py", line 263, in fetching_function
+    self._fetch_next_batch(self.dataloader_iter)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/utilities/fetching.py", line 277, in _fetch_next_batch
+    batch = next(iterator)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/trainer/supporters.py", line 557, in __next__
+    return self.request_next_batch(self.loader_iters)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/trainer/supporters.py", line 569, in request_next_batch
+    return apply_to_collection(loader_iters, Iterator, next)
+  File "/opt/conda/lib/python3.8/site-packages/pytorch_lightning/utilities/apply_func.py", line 99, in apply_to_collection
+    return function(data, *args, **kwargs)
+  File "/opt/conda/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 681, in __next__
+    data = self._next_data()
+  File "/opt/conda/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 1354, in _next_data
+    return self._process_data(data)
+  File "/opt/conda/lib/python3.8/site-packages/torch/utils/data/dataloader.py", line 1400, in _process_data
+    data.reraise()
+  File "/opt/conda/lib/python3.8/site-packages/torch/_utils.py", line 543, in reraise
+    raise exception
+zipfile.BadZipFile: Caught BadZipFile in DataLoader worker process 3.
+Original Traceback (most recent call last):
+  File "/opt/conda/lib/python3.8/site-packages/torch/utils/data/_utils/worker.py", line 302, in _worker_loop
+    data = fetcher.fetch(index)
+  File "/opt/conda/lib/python3.8/site-packages/torch/utils/data/_utils/fetch.py", line 49, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/opt/conda/lib/python3.8/site-packages/torch/utils/data/_utils/fetch.py", line 49, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/code/project/src/audio_to_multi_label.py", line 124, in __getitem__
+    features = self.featurizer.process(sample.audio_file, offset=offset, duration=sample.duration, trim=self.trim)
+  File "/code/nemo/collections/asr/parts/preprocessing/features.py", line 123, in process
+    audio = AudioSegment.from_file(
+  File "/code/nemo/collections/asr/parts/preprocessing/segment.py", line 208, in from_file
+    return cls(
+  File "/code/nemo/collections/asr/parts/preprocessing/segment.py", line 84, in __init__
+    samples = librosa.core.resample(samples, orig_sr=sample_rate, target_sr=target_sr)
+  File "/opt/conda/lib/python3.8/site-packages/librosa/util/decorators.py", line 88, in inner_f
+    return f(*args, **kwargs)
+  File "/opt/conda/lib/python3.8/site-packages/librosa/core/audio.py", line 647, in resample
+    y_hat = resampy.resample(y, orig_sr, target_sr, filter=res_type, axis=-1)
+  File "/opt/conda/lib/python3.8/site-packages/resampy/core.py", line 168, in resample
+    resample_f_s(
+  File "/opt/conda/lib/python3.8/site-packages/numba/np/ufunc/gufunc.py", line 190, in __call__
+    self.add(sig)
+  File "/opt/conda/lib/python3.8/site-packages/numba/np/ufunc/gufunc.py", line 63, in add
+    self.gufunc_builder.add(fty)
+  File "/opt/conda/lib/python3.8/site-packages/numba/np/ufunc/ufuncbuilder.py", line 241, in add
+    cres, args, return_type = _compile_element_wise_function(
+  File "/opt/conda/lib/python3.8/site-packages/numba/np/ufunc/ufuncbuilder.py", line 173, in _compile_element_wise_function
+    cres = nb_func.compile(sig, **targetoptions)
+  File "/opt/conda/lib/python3.8/site-packages/numba/np/ufunc/ufuncbuilder.py", line 121, in compile
+    return self._compile_core(sig, flags, locals)
+  File "/opt/conda/lib/python3.8/site-packages/numba/np/ufunc/ufuncbuilder.py", line 154, in _compile_core
+    cres = compiler.compile_extra(typingctx, targetctx,
+  File "/opt/conda/lib/python3.8/site-packages/numba/core/compiler.py", line 714, in compile_extra
+    pipeline = pipeline_class(typingctx, targetctx, library,
+  File "/opt/conda/lib/python3.8/site-packages/numba/core/compiler.py", line 409, in __init__
+    targetctx.refresh()
+  File "/opt/conda/lib/python3.8/site-packages/numba/core/base.py", line 270, in refresh
+    self.load_additional_registries()
+  File "/opt/conda/lib/python3.8/site-packages/numba/core/cpu.py", line 97, in load_additional_registries
+    numba.core.entrypoints.init_all()
+  File "/opt/conda/lib/python3.8/site-packages/numba/core/entrypoints.py", line 48, in init_all
+    eps = importlib_metadata.entry_points()
+  File "/opt/conda/lib/python3.8/site-packages/importlib_metadata/__init__.py", line 1047, in entry_points
+    return SelectableGroups.load(eps).select(**params)
+  File "/opt/conda/lib/python3.8/site-packages/importlib_metadata/__init__.py", line 477, in load
+    ordered = sorted(eps, key=by_group)
+  File "/opt/conda/lib/python3.8/site-packages/importlib_metadata/__init__.py", line 1044, in <genexpr>
+    eps = itertools.chain.from_iterable(
+  File "/opt/conda/lib/python3.8/site-packages/importlib_metadata/_itertools.py", line 16, in unique_everseen
+    k = key(element)
+  File "/opt/conda/lib/python3.8/site-packages/importlib_metadata/__init__.py", line 961, in _normalized_name
+    or super()._normalized_name
+  File "/opt/conda/lib/python3.8/site-packages/importlib_metadata/__init__.py", line 628, in _normalized_name
+    return Prepared.normalize(self.name)
+  File "/opt/conda/lib/python3.8/site-packages/importlib_metadata/__init__.py", line 623, in name
+    return self.metadata['Name']
+  File "/opt/conda/lib/python3.8/site-packages/importlib_metadata/__init__.py", line 612, in metadata
+    or self.read_text('PKG-INFO')
+  File "/opt/conda/lib/python3.8/site-packages/importlib_metadata/__init__.py", line 945, in read_text
+    return self._path.joinpath(filename).read_text(encoding='utf-8')
+  File "/opt/conda/lib/python3.8/site-packages/zipp.py", line 265, in read_text
+    with self.open('r', *args, **kwargs) as strm:
+  File "/opt/conda/lib/python3.8/site-packages/zipp.py", line 237, in open
+    stream = self.root.open(self.at, zip_mode, pwd=pwd)
+  File "/opt/conda/lib/python3.8/zipfile.py", line 1535, in open
+    raise BadZipFile("Bad magic number for file header")
+zipfile.BadZipFile: Bad magic number for file header
+
+slurmstepd: error: *** STEP 683629.0 ON rno1-m02-d08-dgx1-079 CANCELLED AT 2022-10-07T14:11:52 ***

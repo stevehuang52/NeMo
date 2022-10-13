@@ -20,6 +20,7 @@ import shutil
 from collections import defaultdict
 from itertools import repeat
 from math import ceil, floor
+from pathlib import Path
 from typing import Dict, Tuple
 
 import IPython.display as ipd
@@ -805,10 +806,9 @@ def get_parameter_grid(params: dict) -> list:
 
 def vad_tune_threshold_on_dev(
     params: dict,
-    vad_pred: str,
-    groundtruth_RTTM: str,
-    result_file: str = "res",
-    vad_pred_method: str = "frame",
+    pred_frames_dir: str,
+    gt_frames_dir: str,
+    result_file: str = "grid_search_results",
     focus_metric: str = "DetER",
     frame_length_in_sec: float = 0.01,
     num_workers: int = 20,
@@ -817,8 +817,9 @@ def vad_tune_threshold_on_dev(
     Tune thresholds on dev set. Return best thresholds which gives the lowest detection error rate (DetER) in thresholds.
     Args:
         params (dict): dictionary of parameters to be tuned on.
-        vad_pred_method (str): suffix of prediction file. Use to locate file. Should be either in "frame", "mean" or "median".
+        vad_pred (str): directory of vad output
         groundtruth_RTTM_dir (str): directory of ground-truth rttm files or a file contains the paths of them.
+        vad_pred_method (str): suffix of prediction file. Use to locate file. Should be either in "frame", "mean" or "median".
         focus_metric (str): metrics we care most when tuning threshold. Should be either in "DetER", "FA", "MISS"
         frame_length_in_sec (float): frame length.
         num_workers (int): number of workers.
@@ -832,31 +833,44 @@ def vad_tune_threshold_on_dev(
     except:
         raise ValueError("Please check if the parameters are valid")
 
-    paired_filenames, groundtruth_RTTM_dict, vad_pred_dict = pred_rttm_map(vad_pred, groundtruth_RTTM, vad_pred_method)
     metric = detection.DetectionErrorRate()
     params_grid = get_parameter_grid(params)
 
     for param in params_grid:
+        logging.info(f"Evaluating for params: {param}")
         for i in param:
             if type(param[i]) == np.float64 or type(param[i]) == np.int64:
                 param[i] = float(param[i])
         try:
             # Generate speech segments by performing binarization on the VAD prediction according to param.
             # Filter speech segments according to param and write the result to rttm-like table.
-            vad_table_dir = generate_vad_segment_table(
-                vad_pred, param, frame_length_in_sec=frame_length_in_sec, num_workers=num_workers
+            pred_segment_dir = str(Path(pred_frames_dir) / Path("pred_segments_temp"))
+            if Path(pred_segment_dir).is_dir():
+                shutil.rmtree(str(pred_segment_dir), ignore_errors=True)
+            pred_segment_dir = generate_vad_segment_table(
+                pred_frames_dir,
+                param,
+                frame_length_in_sec=frame_length_in_sec,
+                num_workers=num_workers,
+                out_dir=pred_segment_dir,
             )
+
+            gt_segment_dir = Path(gt_frames_dir) / Path("gt_segments_temp")
+            if Path(gt_segment_dir).is_dir():
+                shutil.rmtree(str(gt_segment_dir), ignore_errors=True)
+            gt_segment_dir = generate_gt_segment_table(
+                gt_frames_dir, frame_length_in_sec=frame_length_in_sec, num_workers=num_workers, out_dir=gt_segment_dir
+            )
+
+            paired_files = find_paired_files(pred_dir=pred_segment_dir, gt_dir=gt_segment_dir)
             # add reference and hypothesis to metrics
-            for filename in paired_filenames:
-                groundtruth_RTTM_file = groundtruth_RTTM_dict[filename]
-                vad_table_filepath = os.path.join(vad_table_dir, filename + ".txt")
-                reference, hypothesis = vad_construct_pyannote_object_per_file(
-                    vad_table_filepath, groundtruth_RTTM_file
-                )
+            for key, gt_file, pred_file in paired_files:
+                reference, hypothesis = vad_frame_construct_pyannote_object_per_file(pred_file, gt_file)
                 metric(reference, hypothesis)  # accumulation
 
             # delete tmp table files
-            shutil.rmtree(vad_table_dir, ignore_errors=True)
+            shutil.rmtree(str(pred_segment_dir), ignore_errors=True)
+            shutil.rmtree(str(gt_segment_dir), ignore_errors=True)
 
             report = metric.report(display=False)
             DetER = report.iloc[[-1]][('detection error rate', '%')].item()
@@ -1110,10 +1124,6 @@ def generate_vad_frame_pred(
                     fout.write(f'{p:0.4f}\n')
             all_probs[data[i]].extend(to_save)
 
-            # print(data[i], len(to_save))
-            # import ipdb; ipdb.set_trace()
-            # print("----------")
-
         del test_batch
         if status[i] == 'end' or status[i] == 'single':
             logging.debug(f"Overall length of prediction of {data[i]} is {all_len}!")
@@ -1244,3 +1254,70 @@ def construct_manifest_eval(
             fout.flush()
 
     return aligned_vad_asr_output_manifest
+
+
+def generate_gt_segment_table(
+    vad_pred_dir: str, frame_length_in_sec: float, num_workers: int, out_dir: str = None,
+):
+    params = {
+        "onset": 0.5,  # onset threshold for detecting the beginning and end of a speech
+        "offset": 0.5,  # offset threshold for detecting the end of a speech.
+        "pad_onset": 0.0,  # adding durations before each speech segment
+        "pad_offset": 0.0,  # adding durations after each speech segment
+        "min_duration_on": 0.0,  # threshold for small non_speech deletion
+        "min_duration_off": 0.0,  # threshold for short speech segment deletion
+        "filter_speech_first": False,
+    }
+    vad_table_dir = generate_vad_segment_table(
+        vad_pred_dir, params, frame_length_in_sec=frame_length_in_sec, num_workers=num_workers, out_dir=out_dir
+    )
+    return vad_table_dir
+
+
+def find_paired_files(pred_dir, gt_dir):
+    pred_files = list(Path(pred_dir).glob("*.txt"))
+    gt_files = list(Path(gt_dir).glob("*.txt"))
+
+    gt_file_map = {}
+    for filepath in gt_files:
+        fname = Path(filepath).stem
+        gt_file_map[fname] = str(filepath)
+
+    pred_file_map = {}
+    for filepath in pred_files:
+        fname = Path(filepath).stem
+        pred_file_map[fname] = str(filepath)
+
+    results = []
+    for key in gt_file_map:
+        if key in pred_file_map:
+            results.append((key, gt_file_map[key], pred_file_map[key]))
+    return results
+
+
+def vad_frame_construct_pyannote_object_per_file(
+    pred_table_path: str, gt_table_path: str
+) -> Tuple[Annotation, Annotation]:
+    """
+    Construct a Pyannote object for evaluation.
+    Args:
+        pred_table_path(str) : path of vad rttm-like table.
+        gt_table_path(str): path of groundtruth rttm file.
+    Returns:
+        reference(pyannote.Annotation): groundtruth
+        hypothesis(pyannote.Annotation): prediction
+    """
+
+    pred = pd.read_csv(pred_table_path, sep=" ", header=None)
+    label = pd.read_csv(gt_table_path, sep=" ", header=None)
+
+    # construct reference
+    reference = Annotation()
+    for index, row in label.iterrows():
+        reference[Segment(float(row[0]), float(row[0]) + float(row[1]))] = 'Speech'
+
+    # construct hypothsis
+    hypothesis = Annotation()
+    for index, row in pred.iterrows():
+        hypothesis[Segment(float(row[0]), float(row[0]) + float(row[1]))] = 'Speech'
+    return reference, hypothesis

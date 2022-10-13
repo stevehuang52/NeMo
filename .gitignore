@@ -13,7 +13,7 @@ runs
 fastspeech_output
 .hydra
 .bash_history.local
-
+*.txt
 manifests*
 results/
 draco*
