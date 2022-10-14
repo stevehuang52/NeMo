@@ -1,6 +1,7 @@
 # DATA_DIR="/media/data/datasets/mandarin/aishell2"
-DATA_DIR="/media/data/projects/NeMo-vad/project/manifests_local"
-NAME="marblenet_3x2x64_multilang_40ms_all"
+# DATA_DIR="/media/data/projects/NeMo-vad/project/manifests_local"
+DATA_DIR="./manifests_local"
+NAME="marblenet_3x2x64_multilang_40ms_all_debug"
 BATCH_SIZE=1024
 CUDA_VISIBLE_DEVICES=0,1 python speech_to_multi_label.py \
     --config-path="./configs" --config-name="marblenet_3x2x64" \

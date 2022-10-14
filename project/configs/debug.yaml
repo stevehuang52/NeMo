@@ -1,5 +1,13 @@
 name: &name "MarbleNet-3x2x64"
 
+data:
+  root_dir: ./synth_audio
+  num_samples: 1000000
+  sample_rate: 32000
+  sample_duration: 20
+  total_duration: 21
+
+
 model:
   sample_rate: 16000
   repeat: 2
@@ -19,7 +27,7 @@ model:
     tarred_audio_filepaths: null
     tarred_shard_strategy: "scatter"
     shuffle_n: 2048
-    num_workers: 4
+    num_workers: 8
     pin_memory: true
     # bucketing params
     bucketing_strategy: "synced_randomized"
@@ -168,7 +176,7 @@ model:
 
 trainer:
   devices: -1 # number of gpus, -1 to use all gpus
-  max_epochs: 100
+  max_epochs: 50
   max_steps: -1 # computed at runtime if not set
   num_nodes: 1
   accelerator: auto
