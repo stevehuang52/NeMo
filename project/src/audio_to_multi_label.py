@@ -17,7 +17,6 @@ from typing import Dict, List, Optional, Union
 
 import torch
 from omegaconf import DictConfig
-from pyrsistent import discard
 
 from nemo.collections.asr.data.audio_to_label import _speech_collate_fn
 from nemo.collections.asr.parts.preprocessing.features import WaveformFeaturizer
