@@ -88,7 +88,7 @@ def read_one_audiosegment(manifest, target_sr, rng, tarred_audio=False, audio_da
         duration = 0 if audio_record.duration is None else audio_record.duration
 
     segment = AudioSegment.from_file(audio_file, target_sr=target_sr, offset=offset, duration=duration)
-    if segment.duration == 0.0:
+    if np.mean(segment._samples ** 2) == 0.0:
         return read_one_audiosegment(manifest, target_sr, rng, tarred_audio, audio_dataset)
     return segment
 
