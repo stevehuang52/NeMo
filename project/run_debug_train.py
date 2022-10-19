@@ -16,14 +16,15 @@ pl.seed_everything(0)
 def main(cfg):
 
     data_cfg = cfg.data
-    manifest_path = Path(data_cfg.root_dir) / Path("manifest.json")
-    generate_dataset(
-        data_cfg.root_dir,
-        data_cfg.num_samples,
-        data_cfg.sample_duration,
-        data_cfg.total_duration,
-        data_cfg.sample_rate,
-    )
+    manifest_path = str(Path(data_cfg.root_dir) / Path("synth_manifest.json"))
+    # generate_dataset(
+    #     data_cfg.root_dir,
+    #     data_cfg.num_samples,
+    #     data_cfg.sample_duration,
+    #     data_cfg.total_duration,
+    #     data_cfg.sample_rate,
+    # )
+
     OmegaConf.set_struct(cfg, False)
     cfg.model.train_ds.manifest_filepath = manifest_path
     cfg.model.validation_ds.manifest_filepath = manifest_path
@@ -40,9 +41,9 @@ def main(cfg):
 
     trainer.fit(asr_model)
 
-    if hasattr(cfg.model, 'test_ds') and cfg.model.test_ds.manifest_filepath is not None:
-        if asr_model.prepare_test(trainer):
-            trainer.test(asr_model)
+    # if hasattr(cfg.model, 'test_ds') and cfg.model.test_ds.manifest_filepath is not None:
+    #     if asr_model.prepare_test(trainer):
+    #         trainer.test(asr_model)
 
 
 if __name__ == '__main__':

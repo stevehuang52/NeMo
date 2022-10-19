@@ -317,3 +317,21 @@ python tools/clean_manifest.py manifests_draco/french_train_40ms.json \
         accuracy                           0.78  22030070
        macro avg       0.74      0.73      0.73  22030070
     weighted avg       0.78      0.78      0.78  22030070
+
+
+
+
+{'min_duration_off': 0.0, 'min_duration_on': 0.15, 'offset': 0.9, 'onset': 0.6, 'pad_offset': 0.3, 'pad_onset': 0.4, 'filter_speech_first': True}, {'DetER (%)': 7.097828212929912, 'FA (%)': 4.51764277262578, 'MISS (%)': 2.5801854403041333}
+[NeMo I 2022-10-18 10:31:47 infer_vad_multi:116] ================= ami_eval_10ms =================
+[NeMo I 2022-10-18 10:31:47 infer_vad_multi:117] AUROC: 0.9500
+[NeMo I 2022-10-18 10:31:47 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-18 10:31:47 infer_vad_multi:119]               precision    recall  f1-score   support
+
+               0       0.56      0.92      0.70    762396
+               1       0.98      0.87      0.92   4238736
+
+        accuracy                           0.88   5001132
+       macro avg       0.77      0.90      0.81   5001132
+    weighted avg       0.92      0.88      0.89   5001132
+
+[NeMo I 2022-10-18 10:31:47 infer_vad_multi:125] Detection Error Rate: DetER=7.9298, False Alarm=5.0006, Miss=2.9293
