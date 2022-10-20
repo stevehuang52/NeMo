@@ -1,5 +1,5 @@
 echo $PWD
-sudo docker run --gpus all -it --rm --shm-size=64g --ulimit memlock=-1 --ulimit stack=67108864 --device=/dev/snd \
+docker run --gpus all -it --rm --shm-size=64g --ulimit memlock=-1 --ulimit stack=67108864 --net=host --ipc=host \
 -v $PWD:/NeMo \
 -v $PWD/project/synth_audio_train:$PWD/project/synth_audio_train \
 -v $PWD/project/synth_audio_val:$PWD/project/synth_audio_val \

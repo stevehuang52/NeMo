@@ -1,6 +1,6 @@
 DATA_DIR="./manifests_local"
-NAME="marblenet_3x2x64_multilang_40ms_all_noise_debug2"
-BATCH_SIZE=512  # 1024
+NAME="marblenet_3x2x64_multilang_40ms_all_noise"
+BATCH_SIZE=512
 NUM_WORKERS=8
 PIN_MEMORY=true
 CUDA_VISIBLE_DEVICES=0,1 python speech_to_multi_label.py \
@@ -20,6 +20,6 @@ CUDA_VISIBLE_DEVICES=0,1 python speech_to_multi_label.py \
     model.test_ds.pin_memory=$PIN_MEMORY \
     trainer.max_epochs=50 \
     exp_manager.name=${NAME} \
-    exp_manager.create_wandb_logger=false \
+    exp_manager.create_wandb_logger=true \
     exp_manager.wandb_logger_kwargs.name=${NAME} \
     exp_manager.wandb_logger_kwargs.project="Frame_VAD"
