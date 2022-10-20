@@ -66,8 +66,6 @@ def generate_dataset(root_dir, num_samples, sample_duration, total_duration=900,
 
     with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as p:
         manifest_data = list(tqdm(p.imap(process, candidates), total=len(candidates)))
-    # pool = multiprocessing.Pool(multiprocessing.cpu_count())
-    # manifest_data = pool.map(process, candidates)
 
     total_hours = sample_duration * len(manifest_data) / 3600
     logging.info(f"Generated audio dataset of {total_hours:.2f} hours.")
@@ -76,3 +74,32 @@ def generate_dataset(root_dir, num_samples, sample_duration, total_duration=900,
             fout.write(f"{json.dumps(item)}\n")
 
     return str(manifest_path)
+
+
+def generate_simple_dataset(
+    root_dir,
+    num_samples,
+    sample_duration,
+    manifest_name="synth_manifest.json",
+    total_duration=900,
+    sample_rate=32000,
+    num_audios=10,
+):
+    root_dir = Path(root_dir)
+
+    if root_dir.is_dir():
+        logging.info("Found existing output dir, removing...")
+        shutil.rmtree(str(root_dir), ignore_errors=True)
+
+    logging.info("Creating output dir...")
+    root_dir.mkdir(parents=True)
+    wav_dir = root_dir / Path("wavs")
+    wav_dir.mkdir(parents=True, exist_ok=True)
+
+    manifest_path = root_dir / Path(manifest_name)
+
+    for i in range(num_audios):
+        audio_filepath = Path(wav_dir) / Path(f"audio_{i}.wav")
+        create_audio_file(str(audio_filepath), sample_rate, total_duration)
+
+    manifest_data = []

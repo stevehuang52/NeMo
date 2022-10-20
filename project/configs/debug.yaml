@@ -1,12 +1,13 @@
-name: &name "MarbleNet-3x2x64-synth555-debug"
+name: &name "MarbleNet-3x2x64-synth555-noisy-debug-r2"
 
 data:
+  skip: false
+  data_only: false
   root_dir: ./synth_audio
   num_samples: 100000
   sample_rate: 32000
   sample_duration: 20
-  total_duration: 21
-
+  total_duration: 22
 
 model:
   sample_rate: 16000
@@ -42,12 +43,12 @@ model:
         prob: 0.5
         min_gain_dbfs: -10.0
         max_gain_dbfs: 10.0
-      # noise:
-      #   prob: 0.5
-      #   manifest_path: ./manifests_local/freesound_nonspeech_train_FL200.json
-      #   min_snr_db: 0
-      #   max_snr_db: 30
-      #   max_gain_db: 300.0
+      noise:
+        prob: 0.5
+        manifest_path: ./manifests_local/freesound_nonspeech_train_FL200_local.json
+        min_snr_db: 0
+        max_snr_db: 30
+        max_gain_db: 300.0
 
   validation_ds:
     manifest_filepath: ???
@@ -192,7 +193,7 @@ trainer:
   logger: False  # Provided by exp_manager
   log_every_n_steps: 10  # Interval of logging.
   val_check_interval: 1.0  # Set to 0.25 to check 4 times per epoch, or an int for number of iterations
-  check_val_every_n_epoch: 1
+  check_val_every_n_epoch: 5
   benchmark: false # needs to be false for models with variable-length speech input as it slows down training
 
 exp_manager:

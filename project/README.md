@@ -335,3 +335,74 @@ python tools/clean_manifest.py manifests_draco/french_train_40ms.json \
     weighted avg       0.92      0.88      0.89   5001132
 
 [NeMo I 2022-10-18 10:31:47 infer_vad_multi:125] Detection Error Rate: DetER=7.9298, False Alarm=5.0006, Miss=2.9293
+
+
+
+
+
+with noise aug, 22 epochs
+[NeMo I 2022-10-19 16:03:05 infer_vad_multi:100] ====================================================
+[NeMo I 2022-10-19 16:03:05 infer_vad_multi:101] Finalizing individual results...
+[NeMo I 2022-10-19 16:22:07 infer_vad_multi:116] ================= ava_eval_10ms =================
+[NeMo I 2022-10-19 16:22:07 infer_vad_multi:117] AUROC: 0.8749
+[NeMo I 2022-10-19 16:22:07 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-19 16:22:07 infer_vad_multi:119]               precision    recall  f1-score   support
+    
+               0       0.85      0.42      0.56   5061417
+               1       0.65      0.93      0.77   5919315
+    
+        accuracy                           0.70  10980732
+       macro avg       0.75      0.68      0.67  10980732
+    weighted avg       0.74      0.70      0.67  10980732
+    
+[NeMo I 2022-10-19 16:22:07 infer_vad_multi:125] Detection Error Rate: DetER=66.6590, False Alarm=66.1520, Miss=0.5070
+[NeMo I 2022-10-19 16:22:07 infer_vad_multi:126] ==========================================
+    
+    
+[NeMo I 2022-10-19 16:31:54 infer_vad_multi:116] ================= ami_eval_10ms =================
+[NeMo I 2022-10-19 16:31:54 infer_vad_multi:117] AUROC: 0.9398
+[NeMo I 2022-10-19 16:31:54 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-19 16:31:54 infer_vad_multi:119]               precision    recall  f1-score   support
+    
+               0       0.58      0.89      0.70    762396
+               1       0.98      0.88      0.93   4238736
+    
+        accuracy                           0.88   5001132
+       macro avg       0.78      0.89      0.81   5001132
+    weighted avg       0.92      0.88      0.89   5001132
+    
+[NeMo I 2022-10-19 16:31:54 infer_vad_multi:125] Detection Error Rate: DetER=8.1966, False Alarm=5.4654, Miss=2.7311
+[NeMo I 2022-10-19 16:31:54 infer_vad_multi:126] ==========================================
+    
+    
+[NeMo I 2022-10-19 16:37:59 infer_vad_multi:116] ================= ch120_CH109_10ms =================
+[NeMo I 2022-10-19 16:37:59 infer_vad_multi:117] AUROC: 0.9090
+[NeMo I 2022-10-19 16:37:59 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-19 16:37:59 infer_vad_multi:119]               precision    recall  f1-score   support
+    
+               0       0.85      0.32      0.47    799798
+               1       0.91      0.99      0.95   5227642
+    
+        accuracy                           0.90   6027440
+       macro avg       0.88      0.66      0.71   6027440
+    weighted avg       0.90      0.90      0.88   6027440
+    
+[NeMo I 2022-10-19 16:37:59 infer_vad_multi:125] Detection Error Rate: DetER=14.0187, False Alarm=13.7322, Miss=0.2865
+[NeMo I 2022-10-19 16:37:59 infer_vad_multi:126] ==========================================
+    
+    
+[NeMo I 2022-10-19 16:37:59 infer_vad_multi:128] ================== Aggregrated Results ===================
+[NeMo I 2022-10-19 16:37:59 infer_vad_multi:132] ============================================================
+[NeMo I 2022-10-19 16:37:59 infer_vad_multi:133]  DetER=14.0187, False Alarm=13.7322, Miss=0.2865
+[NeMo I 2022-10-19 16:37:59 infer_vad_multi:134] ============================================================
+[NeMo I 2022-10-19 17:12:52 infer_vad_multi:139] AUROC: 0.8863
+[NeMo I 2022-10-19 17:12:52 infer_vad_multi:140] Classification report with threshold=0.50
+[NeMo I 2022-10-19 17:12:52 infer_vad_multi:141] 
+                  precision    recall  f1-score   support
+    
+               0       0.77      0.46      0.58   6623611
+               1       0.80      0.94      0.87  15385693
+    
+        accuracy                           0.80  22009304
+       macro avg       0.79      0.70      0.72  22009304
+    weighted avg       0.79      0.80      0.78  22009304

@@ -71,6 +71,7 @@ def create_manifest(input_manifest, noise_manifest, snrs, out_path):
 def process_row(row):
     audio_file = row['audio_filepath']
     global sample_rate
+
     data_orig = AudioSegment.from_file(audio_file, target_sr=sample_rate, offset=0)
     for snr in row['snrs']:
         min_snr_db = snr
@@ -110,9 +111,14 @@ def add_noise(infile, snrs, noise_manifest, out_dir, num_workers=1):
             row['noise_manifest'] = noise_manifest
             row['input_manifest'] = infile
             allrows.append(row)
-    pool = multiprocessing.Pool(num_workers)
-    pool.map(process_row, allrows)
-    pool.close()
+
+    if num_workers <= 1:
+        for row in allrows:
+            process_row(row)
+    else:
+        pool = multiprocessing.Pool(num_workers)
+        pool.map(process_row, allrows)
+        pool.close()
     print('Done!')
 
 

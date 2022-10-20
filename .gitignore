@@ -58,6 +58,7 @@ MANIFEST
 *.manifest
 *.spec
 manifests*
+synth_audio*
 
 # Installer logs
 pip-log.txt

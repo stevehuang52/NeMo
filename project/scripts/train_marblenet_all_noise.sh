@@ -1,7 +1,7 @@
 DATA_DIR="./manifests_local"
 NAME="marblenet_3x2x64_multilang_40ms_all_noise_debug2"
 BATCH_SIZE=512  # 1024
-NUM_WORKERS=4
+NUM_WORKERS=8
 PIN_MEMORY=true
 CUDA_VISIBLE_DEVICES=0,1 python speech_to_multi_label.py \
     --config-path="./configs" --config-name="marblenet_3x2x64_noise" \
