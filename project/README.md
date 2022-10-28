@@ -406,3 +406,73 @@ with noise aug, 22 epochs
         accuracy                           0.80  22009304
        macro avg       0.79      0.70      0.72  22009304
     weighted avg       0.79      0.80      0.78  22009304
+
+
+
+##################### 45 epochs
+NeMo I 2022-10-24 15:16:05 infer_vad_multi:100] ====================================================
+[NeMo I 2022-10-24 15:16:05 infer_vad_multi:101] Finalizing individual results...
+[NeMo I 2022-10-24 15:22:21 infer_vad_multi:116] ================= ava_eval_10ms =================
+[NeMo I 2022-10-24 15:22:21 infer_vad_multi:117] AUROC: 0.8877
+[NeMo I 2022-10-24 15:22:21 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-24 15:22:21 infer_vad_multi:119]               precision    recall  f1-score   support
+    
+               0       0.84      0.57      0.68   5061417
+               1       0.71      0.91      0.80   5919315
+    
+        accuracy                           0.75  10980732
+       macro avg       0.78      0.74      0.74  10980732
+    weighted avg       0.77      0.75      0.74  10980732
+    
+[NeMo I 2022-10-24 15:22:21 infer_vad_multi:125] Detection Error Rate: DetER=55.1552, False Alarm=54.0244, Miss=1.1307
+[NeMo I 2022-10-24 15:22:21 infer_vad_multi:126] ==========================================
+    
+    
+[NeMo I 2022-10-24 15:40:23 infer_vad_multi:116] ================= ami_eval_10ms =================
+[NeMo I 2022-10-24 15:40:23 infer_vad_multi:117] AUROC: 0.9527
+[NeMo I 2022-10-24 15:40:23 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-24 15:40:23 infer_vad_multi:119]               precision    recall  f1-score   support
+    
+               0       0.59      0.92      0.72    762396
+               1       0.98      0.89      0.93   4238736
+    
+        accuracy                           0.89   5001132
+       macro avg       0.79      0.90      0.83   5001132
+    weighted avg       0.92      0.89      0.90   5001132
+    
+[NeMo I 2022-10-24 15:40:23 infer_vad_multi:125] Detection Error Rate: DetER=7.6236, False Alarm=4.7849, Miss=2.8387
+[NeMo I 2022-10-24 15:40:23 infer_vad_multi:126] ==========================================
+    
+    
+[NeMo I 2022-10-24 15:57:23 infer_vad_multi:116] ================= ch120_CH109_10ms =================
+[NeMo I 2022-10-24 15:57:23 infer_vad_multi:117] AUROC: 0.9422
+[NeMo I 2022-10-24 15:57:23 infer_vad_multi:118] Classification report with threshold=0.50
+[NeMo I 2022-10-24 15:57:23 infer_vad_multi:119]               precision    recall  f1-score   support
+    
+               0       0.86      0.25      0.38    799798
+               1       0.90      0.99      0.94   5227642
+    
+        accuracy                           0.89   6027440
+       macro avg       0.88      0.62      0.66   6027440
+    weighted avg       0.89      0.89      0.87   6027440
+    
+[NeMo I 2022-10-24 15:57:23 infer_vad_multi:125] Detection Error Rate: DetER=14.0608, False Alarm=13.9549, Miss=0.1059
+[NeMo I 2022-10-24 15:57:23 infer_vad_multi:126] ==========================================
+    
+    
+[NeMo I 2022-10-24 15:57:23 infer_vad_multi:128] ================== Aggregrated Results ===================
+[NeMo I 2022-10-24 15:57:23 infer_vad_multi:132] ============================================================
+[NeMo I 2022-10-24 15:57:23 infer_vad_multi:133]  DetER=14.0608, False Alarm=13.9549, Miss=0.1059
+[NeMo I 2022-10-24 15:57:23 infer_vad_multi:134] ============================================================
+[NeMo I 2022-10-24 17:51:45 infer_vad_multi:139] AUROC: 0.9089
+[NeMo I 2022-10-24 17:51:45 infer_vad_multi:140] Classification report with threshold=0.50
+[NeMo I 2022-10-24 17:51:45 infer_vad_multi:141] 
+                  precision    recall  f1-score   support
+    
+               0       0.78      0.57      0.66   6623611
+               1       0.83      0.93      0.88  15385693
+    
+        accuracy                           0.82  22009304
+       macro avg       0.81      0.75      0.77  22009304
+    weighted avg       0.82      0.82      0.81  22009304
+    

@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG BASE_IMAGE=nvcr.io/nvidia/pytorch:22.09-py3
+ARG BASE_IMAGE=gitlab-master.nvidia.com/dl/dgx/cuda:11.8-devel-ubuntu20.04--6083422
+#nvcr.io/nvidia/pytorch:22.09-py3
 
 
 # build an image that includes only the nemo dependencies, ensures that dependencies
