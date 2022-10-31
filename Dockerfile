@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ARG BASE_IMAGE=gitlab-master.nvidia.com/dl/dgx/cuda:11.8-devel-ubuntu20.04--6083422
+ARG BASE_IMAGE=gitlab-master.nvidia.com/dl/dgx/pytorch:22.10-py3-devel
 #nvcr.io/nvidia/pytorch:22.09-py3
 
 

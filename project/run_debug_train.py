@@ -7,6 +7,7 @@ pl.seed_everything(0)
 from omegaconf import OmegaConf
 from src.generate_data import generate_dataset
 from src.multi_classification_models import EncDecMultiClassificationModel
+from src.audio_to_multi_label import get_audio_multi_label_dataset
 
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
