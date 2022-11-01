@@ -18,9 +18,11 @@ from nemo.utils.exp_manager import exp_manager
 def main(cfg):
 
     data_cfg = cfg.data
+    train_data_dir = cfg.data.train_dir
+    val_data_dir = cfg.data.val_dir
     if not data_cfg.skip:
         generate_dataset(
-            "synth_audio_train",
+            train_data_dir,
             data_cfg.num_samples,
             data_cfg.sample_duration,
             data_cfg.total_duration,
@@ -28,18 +30,16 @@ def main(cfg):
         )
 
         generate_dataset(
-            "synth_audio_val", 500, data_cfg.sample_duration, data_cfg.total_duration, data_cfg.sample_rate,
+            val_data_dir, 100, data_cfg.sample_duration, data_cfg.total_duration, data_cfg.sample_rate,
         )
 
     if not data_cfg.data_only:
         OmegaConf.set_struct(cfg, False)
-        cfg.model.train_ds.manifest_filepath = str(Path("synth_audio_train") / Path("synth_manifest.json"))
-        cfg.model.validation_ds.manifest_filepath = str(Path("synth_audio_val") / Path("synth_manifest.json"))
+        cfg.model.train_ds.manifest_filepath = str(Path(train_data_dir) / Path("synth_manifest.json"))
+        cfg.model.validation_ds.manifest_filepath = str(Path(val_data_dir) / Path("synth_manifest.json"))
 
         if "augmentor" in cfg.model.train_ds and "noise" in cfg.model.train_ds.augmentor:
-            cfg.model.train_ds.augmentor.noise.manifest_path = str(
-                Path("synth_audio_val") / Path("synth_manifest.json")
-            )
+            cfg.model.train_ds.augmentor.noise.manifest_path = str(Path(val_data_dir) / Path("synth_manifest.json"))
         OmegaConf.set_struct(cfg, True)
 
         logging.info(f'Hydra config: {OmegaConf.to_yaml(cfg)}')

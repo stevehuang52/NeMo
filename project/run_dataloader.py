@@ -12,10 +12,10 @@ train_ds_cfg = {
     "manifest_filepath": "./synth_audio_train/synth_manifest.json",
     "sample_rate": 16000,
     "labels": ['0', '1'],
-    "batch_size": 128,
+    "batch_size": 256,
     "shuffle": False,
     "shuffle_n": 2048,
-    "num_workers": 8,
+    "num_workers": 12,
     "pin_memory": True,
 }
 train_ds_cfg = OmegaConf.create(train_ds_cfg)

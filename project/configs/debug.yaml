@@ -1,13 +1,15 @@
-name: &name "MarbleNet-3x2x64-synth555-noisy-debug-r3"
+name: &name "MarbleNet-3x2x64-synth-debug"
 
 data:
   skip: false
   data_only: false
   root_dir: ./synth_audio
-  num_samples: 100000
+  num_samples: 100
   sample_rate: 32000
-  sample_duration: 20
-  total_duration: 22
+  sample_duration: 3.0
+  total_duration: 3.2
+  train_dir: synth_audio_train_3s_100
+  val_dir: synth_audio_val_3s_100
 
 model:
   sample_rate: 16000
@@ -21,7 +23,7 @@ model:
     manifest_filepath: ???
     sample_rate: ${model.sample_rate}
     labels: ${model.labels}
-    batch_size: 128
+    batch_size: 32
     shuffle: false
     # tarred datasets
     is_tarred: false
@@ -54,9 +56,9 @@ model:
     manifest_filepath: ???
     sample_rate: ${model.sample_rate}
     labels: ${model.labels}
-    batch_size: 128
+    batch_size: 16
     shuffle: false
-    num_workers: 2
+    num_workers: 8
     pin_memory: true
     val_loss_idx: 0
 
@@ -64,9 +66,9 @@ model:
     manifest_filepath: null
     sample_rate: ${model.sample_rate}
     labels: ${model.labels}
-    batch_size: 128
+    batch_size: 16
     shuffle: false
-    num_workers: 2
+    num_workers: 8
     pin_memory: true
     test_loss_idx: 0
 
@@ -182,7 +184,7 @@ model:
       last_epoch: -1
 
 trainer:
-  devices: -1 # number of gpus, -1 to use all gpus
+  devices: 1 # number of gpus, -1 to use all gpus
   max_epochs: 50
   max_steps: -1 # computed at runtime if not set
   num_nodes: 1
@@ -199,8 +201,8 @@ trainer:
 exp_manager:
   exp_dir: null
   name: *name
-  create_tensorboard_logger: True
-  create_checkpoint_callback: True
+  create_tensorboard_logger: False
+  create_checkpoint_callback: False
   checkpoint_callback_params:
     monitor: "val_acc_macro"
     mode: "max"
@@ -209,7 +211,7 @@ exp_manager:
     save_best_model: true
 
   # you need to set these two to True to continue the training
-  resume_if_exists: true
+  resume_if_exists: False
   resume_ignore_no_checkpoint: true
 
   create_wandb_logger: False

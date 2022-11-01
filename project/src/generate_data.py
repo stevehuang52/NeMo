@@ -13,7 +13,7 @@ from nemo.utils import logging
 
 
 def create_audio_file(filepath, sample_rate, duration):
-    data = np.random.uniform(-1, 1, size=(sample_rate * duration,))
+    data = np.random.uniform(-1, 1, size=(int(np.ceil(sample_rate * duration)),))
     # Write out audio as 24bit PCM WAV
     sf.write(filepath, data, sample_rate, subtype='PCM_24')
 
@@ -54,8 +54,8 @@ def generate_dataset(root_dir, num_samples, sample_duration, total_duration=900,
     cfg = {
         "wav_dir": wav_dir,
         "sample_rate": sample_rate,
-        "sample_duration": sample_duration,
-        "total_duration": total_duration,
+        "sample_duration": float(sample_duration),
+        "total_duration": float(total_duration),
     }
 
     logging.info("Start generating data...")
