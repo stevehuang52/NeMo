@@ -1,4 +1,4 @@
-CUDA_VISIBLE_DEVICES=0 torchrun \
+CUDA_LAUNCH_BLOCKING=1 torchrun \
     --standalone \
     --nnodes=1 \
     --nproc_per_node=1 \
