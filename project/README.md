@@ -1,10 +1,10 @@
 
 
 ## TODO
-- [ ] Run grid-search
-- [ ] Try 20s segments for testing, compare with 400s
-- [ ] Train with weighted cross-entropy loss
-- [ ] Process AVA data, and eval
+- [x] Run grid-search
+- [x] Try 20s segments for testing, compare with 400s
+- [x] Train with weighted cross-entropy loss
+- [x] Process AVA data, and eval
 
 
 - [x] Visualize multilingual test data predictions & labels to see where the model falls short
