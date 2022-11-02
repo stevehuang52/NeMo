@@ -72,8 +72,8 @@ def main(cfg):
         if hasattr(cfg.model, 'test_ds') and cfg.model.test_ds.manifest_filepath is not None:
             if model.prepare_test(trainer):
                 trainer.test(model)
-    elif mode == "torchrun":
-        train_with_torchrun(cfg)
+    elif mode == "torch_ddp":
+        train_with_torch_ddp(cfg)
     else:
         typecheck.disable_checks()
         model = EncDecMultiClassificationModel(cfg=cfg.model)
@@ -92,6 +92,7 @@ def main(cfg):
         max_epochs = cfg.trainer.max_epochs
         for i in range(max_epochs):
             logging.info(f"Training epoch {i+1}/{max_epochs}...")
+            model.train()
             for batch in tqdm(train_dl, ncols=70, total=len(train_dl), leave=True):
                 audio_signal, audio_signal_len, labels, labels_len = batch
 
@@ -101,7 +102,6 @@ def main(cfg):
                 labels_len = labels_len.to("cuda")
 
                 optim.zero_grad()
-                model.train()
 
                 logits = model.forward(input_signal=audio_signal, input_signal_length=audio_signal_len)
                 labels, labels_len = model.reshape_labels(logits, labels, labels_len)
@@ -112,8 +112,24 @@ def main(cfg):
 
                 optim.step()
 
+            logging.info(f"Evaluating epoch {i+1}/{max_epochs}...")
+            model.eval()
+            for batch in tqdm(val_dl, ncols=70, total=len(train_dl), leave=True):
+                audio_signal, audio_signal_len, labels, labels_len = batch
 
-def train_with_torchrun(cfg):
+                audio_signal = audio_signal.to("cuda")
+                audio_signal_len = audio_signal_len.to("cuda")
+                labels = labels.to("cuda")
+                labels_len = labels_len.to("cuda")
+
+                logits = model.forward(input_signal=audio_signal, input_signal_length=audio_signal_len)
+                labels, labels_len = model.reshape_labels(logits, labels, labels_len)
+                masks = model.get_label_masks(labels, labels_len)
+
+                loss = model.loss(logits=logits, labels=labels, loss_mask=masks)
+
+
+def train_with_torch_ddp(cfg):
     typecheck.disable_checks()
     cfg = OmegaConf.to_container(cfg, resolve=True)
     cfg = OmegaConf.create(cfg)
@@ -165,10 +181,10 @@ def train_with_torchrun(cfg):
         if dist.is_initialized():
             train_sampler.set_epoch(epoch)
         # train for one epoch
-        model.train()
         if dist.get_rank() == 0:
             logging.info(f"Training epoch {epoch+1} of {max_epochs}")
-        for i, batch in enumerate(train_loader):
+        model.train()
+        for batch in train_loader:
             audio_signal, audio_signal_len, labels, labels_len = batch
             audio_signal = audio_signal.to(device, non_blocking=True)
             audio_signal_len = audio_signal_len.to(device, non_blocking=True)
@@ -184,6 +200,22 @@ def train_with_torchrun(cfg):
             loss = loss_fn(logits=logits, labels=labels, loss_mask=masks)
             loss.backward()
             optim.step()
+
+        if dist.get_rank() == 0:
+            logging.info(f"Evaluating epoch {epoch+1} of {max_epochs}")
+        model.eval()
+        for batch in val_loader:
+            audio_signal, audio_signal_len, labels, labels_len = batch
+            audio_signal = audio_signal.to(device, non_blocking=True)
+            audio_signal_len = audio_signal_len.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
+            labels_len = labels_len.to(device, non_blocking=True)
+
+            logits = model(input_signal=audio_signal, input_signal_length=audio_signal_len)
+            labels, labels_len = reshape_labels_fn(logits, labels, labels_len)
+            masks = get_label_masks_fn(labels, labels_len)
+
+            loss = loss_fn(logits=logits, labels=labels, loss_mask=masks)
 
 
 if __name__ == '__main__':
