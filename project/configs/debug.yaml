@@ -1,5 +1,7 @@
 name: &name "MarbleNet-3x2x64-synth-debug"
 
+mode: ptl
+
 data:
   skip: false
   data_only: false
@@ -174,14 +176,14 @@ model:
     momentum: 0.9
 
     # scheduler setup
-    sched:
-      name: PolynomialHoldDecayAnnealing
-      # Scheduler params
-      power: 2.0
-      warmup_ratio: 0.05
-      hold_ratio: 0.45
-      min_lr: 0.001
-      last_epoch: -1
+    # sched:
+    #   name: PolynomialHoldDecayAnnealing
+    #   # Scheduler params
+    #   power: 2.0
+    #   warmup_ratio: 0.05
+    #   hold_ratio: 0.45
+    #   min_lr: 0.001
+    #   last_epoch: -1
 
 trainer:
   devices: 1 # number of gpus, -1 to use all gpus
