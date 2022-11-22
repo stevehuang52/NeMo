@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from nemo.collections.asr.data import feature_to_label
+from typing import Optional
+
+from nemo.collections.asr.data.feature_to_label import FeatureToLabelDataset, FeatureToSeqSpeakerLabelDataset
 
 
-def get_feature_seq_speakerlabel_dataset(
-    feature_loader, config: dict
-) -> feature_to_label.FeatureToSeqSpeakerLabelDataset:
+def get_feature_seq_speakerlabel_dataset(feature_loader, config: dict) -> FeatureToSeqSpeakerLabelDataset:
     """
     Instantiates a FeatureSeqSpeakerLabelDataset.
     Args:
@@ -25,7 +25,18 @@ def get_feature_seq_speakerlabel_dataset(
     Returns:
         An instance of FeatureToSeqSpeakerLabelDataset.
     """
-    dataset = feature_to_label.FeatureToSeqSpeakerLabelDataset(
+    dataset = FeatureToSeqSpeakerLabelDataset(
         manifest_filepath=config['manifest_filepath'], labels=config['labels'], feature_loader=feature_loader,
+    )
+    return dataset
+
+
+def get_feature_label_dataset(config: dict, augmentor: Optional['AudioAugmentor'] = None) -> FeatureToLabelDataset:
+    dataset = FeatureToLabelDataset(
+        manifest_filepath=config['manifest_filepath'],
+        labels=config['labels'],
+        augmentor=augmentor,
+        window_length_in_sec=config.get("window_length_in_sec", 0.63),
+        shift_length_in_sec=config.get("shift_length_in_sec", 0.01),
     )
     return dataset

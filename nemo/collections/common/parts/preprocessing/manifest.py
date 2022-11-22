@@ -84,26 +84,14 @@ def __parse_item(line: str, manifest_file: str) -> Dict[str, Any]:
         item['audio_file'] = item.pop('audio_filename')
     elif 'audio_filepath' in item:
         item['audio_file'] = item.pop('audio_filepath')
-    else:
+    elif 'audio_file' not in item:
         raise ValueError(
             f"Manifest file {manifest_file} has invalid json line structure: {line} without proper audio file key."
         )
 
-    # If the audio path is a relative path and does not exist,
-    # try to attach the parent directory of manifest to the audio path.
-    # Revert to the original path if the new path still doesn't exist.
-    # Assume that the audio path is like "wavs/xxxxxx.wav".
+    # resolve possible relative filepaths, do nothing if the filepath is absolute or using tarred datasets
     manifest_dir = Path(manifest_file).parent
-    audio_file = Path(item['audio_file'])
-    if (len(str(audio_file)) < 255) and not audio_file.is_file() and not audio_file.is_absolute():
-        # assume the "wavs/" dir and manifest are under the same parent dir
-        audio_file = manifest_dir / audio_file
-        if audio_file.is_file():
-            item['audio_file'] = str(audio_file.absolute())
-        else:
-            item['audio_file'] = expanduser(item['audio_file'])
-    else:
-        item['audio_file'] = expanduser(item['audio_file'])
+    item['audio_file'] = resolve_relative_path(item['audio_file'], manifest_dir)
 
     # Duration.
     if 'duration' not in item:
@@ -119,16 +107,63 @@ def __parse_item(line: str, manifest_file: str) -> Dict[str, Any]:
             item['text'] = f.read().replace('\n', '')
     elif 'normalized_text' in item:
         item['text'] = item['normalized_text']
+    else:
+        item['text'] = ""
+
+    # Optional RTTM file
+    if 'rttm_file' in item:
+        pass
+    elif 'rttm_filename' in item:
+        item['rttm_file'] = item.pop('rttm_filename')
+    elif 'rttm_filepath' in item:
+        item['rttm_file'] = item.pop('rttm_filepath')
+    else:
+        item['rttm_file'] = None
+    item['rttm_file'] = resolve_relative_path(item['rttm_file'], manifest_dir)
+
+    # Optional audio feature file
+    if 'feature_file' in item:
+        pass
+    elif 'feature_filename' in item:
+        item['feature_file'] = item.pop('feature_filename')
+    elif 'feature_filepath' in item:
+        item['feature_file'] = item.pop('feature_filepath')
+    else:
+        item['feature_file'] = None
+    item['feature_file'] = resolve_relative_path(item['feature_file'], manifest_dir)
 
     item = dict(
         audio_file=item['audio_file'],
         duration=item['duration'],
-        text=item.get('text', ""),
+        text=item['text'],
+        rttm_file=item['rttm_file'],
+        feature_file=item['feature_file'],
         offset=item.get('offset', None),
         speaker=item.get('speaker', None),
         orig_sr=item.get('orig_sample_rate', None),
         token_labels=item.get('token_labels', None),
         lang=item.get('lang', None),
     )
-
     return item
+
+
+def resolve_relative_path(filepath: Union[str, Path], manifest_dir: Union[str, Path]) -> str:
+    """
+    If the audio path is a relative path and does not exist,
+    try to attach the parent directory of manifest to the audio path.
+    Revert to the original path if the new path still doesn't exist.
+    Assume that the audio path is like "wavs/xxxxxx.wav".
+    """
+    if not filepath:
+        return filepath
+
+    filepath = Path(filepath)
+    if (len(str(filepath)) < 255) and not filepath.is_file() and not filepath.is_absolute():
+        # assume the "wavs/" dir and manifest are under the same parent dir
+        filepath_new = manifest_dir / filepath
+        if filepath_new.is_file():
+            return str(filepath_new.absolute())
+        else:
+            return expanduser(str(filepath))
+    else:
+        return expanduser(str(filepath))
