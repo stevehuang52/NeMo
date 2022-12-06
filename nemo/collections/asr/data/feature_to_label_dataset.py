@@ -13,7 +13,11 @@
 # limitations under the License.
 from typing import Optional
 
-from nemo.collections.asr.data.feature_to_label import FeatureToLabelDataset, FeatureToSeqSpeakerLabelDataset
+from nemo.collections.asr.data.feature_to_label import (
+    FeatureToLabelDataset,
+    FeatureToMultiLabelDataset,
+    FeatureToSeqSpeakerLabelDataset,
+)
 
 
 def get_feature_seq_speakerlabel_dataset(feature_loader, config: dict) -> FeatureToSeqSpeakerLabelDataset:
@@ -38,5 +42,17 @@ def get_feature_label_dataset(config: dict, augmentor: Optional['AudioAugmentor'
         augmentor=augmentor,
         window_length_in_sec=config.get("window_length_in_sec", 0.63),
         shift_length_in_sec=config.get("shift_length_in_sec", 0.01),
+    )
+    return dataset
+
+
+def get_feature_multi_label_dataset(
+    config: dict, augmentor: Optional['AudioAugmentor'] = None
+) -> FeatureToMultiLabelDataset:
+    dataset = FeatureToMultiLabelDataset(
+        manifest_filepath=config['manifest_filepath'],
+        labels=config['labels'],
+        augmentor=augmentor,
+        delimiter=config.get("delimiter", " "),
     )
     return dataset

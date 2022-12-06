@@ -91,7 +91,7 @@ class ExternalFeatureLoader(object):
             return_mean_std: whether to return mean and std
         """
         x_mean = x.mean(dim=1, keepdim=True)
-        x_std = x.std(dim=1, keepdim=True) + 1e-8  # make sure x_std is not zero
+        x_std = x.std(dim=1, keepdim=True) + 1e-5  # make sure x_std is not zero
         if return_mean_std:
             return (x - x_mean) / x_std, x_mean, x_std
         else:

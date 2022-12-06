@@ -1,18 +1,19 @@
 import json
 import os
 import time
+from collections import defaultdict
 from pathlib import Path
 
 import torch
 from torch.profiler import ProfilerActivity, profile, record_function
 from tqdm import tqdm
 
+from nemo.collections.asr.models.multi_classification_models import EncDecMultiClassificationModel
 from nemo.collections.asr.parts.utils.vad_utils import (
     extract_audio_features,
     generate_overlap_vad_seq,
     generate_vad_segment_table,
     get_vad_stream_status,
-    init_vad_model,
     prepare_manifest,
     setup_feature_segment_infer_dataloader,
 )
@@ -75,7 +76,7 @@ def main(cfg):
         )
 
     torch.set_grad_enabled(False)
-    vad_model = init_vad_model(cfg.vad.model_path)
+    vad_model = EncDecMultiClassificationModel.restore_from(cfg.vad.model_path)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     vad_model = vad_model.to(device)
@@ -152,8 +153,8 @@ def main(cfg):
         t0 = time.time()
         pred_dir = generate_vad_frame_pred(
             vad_model=vad_model,
-            window_length_in_sec=cfg.vad.parameters.window_length_in_sec,
-            shift_length_in_sec=cfg.vad.parameters.shift_length_in_sec,
+            window_length_in_sec=0.0,
+            shift_length_in_sec=0.01,
             manifest_vad_input=manifest_vad_input,
             out_dir=str(pred_dir),
             use_feat=use_feat,
@@ -171,7 +172,7 @@ def main(cfg):
     logging.info(f"Time elapsed: {t1 - t0: .2f} seconds")
     logging.info("-------------------------------------")
 
-    frame_length_in_sec = cfg.vad.parameters.shift_length_in_sec
+    frame_length_in_sec = 0.01
 
     # overlap smoothing filter
     if cfg.vad.parameters.smoothing:
@@ -183,8 +184,8 @@ def main(cfg):
             frame_pred_dir=pred_dir,
             smoothing_method=cfg.vad.parameters.smoothing,
             overlap=cfg.vad.parameters.overlap,
-            window_length_in_sec=cfg.vad.parameters.window_length_in_sec,
-            shift_length_in_sec=cfg.vad.parameters.shift_length_in_sec,
+            window_length_in_sec=0.0,
+            shift_length_in_sec=0.01,
             num_workers=cfg.num_workers,
             out_dir=cfg.smoothing_out_dir,
         )
@@ -195,7 +196,6 @@ def main(cfg):
         logging.info(f"Time elapsed: {t1 - t0: .2f} seconds")
         logging.info("-------------------------------------")
         pred_dir = smoothing_pred_dir
-        frame_length_in_sec = 0.01
 
     logging.info(f"Generating segment tables with postprocessing params: {cfg.vad.parameters.postprocessing}")
     segment_dir = Path(cfg.output_dir) / Path("segment_predictions")
@@ -300,9 +300,15 @@ def generate_vad_frame_pred(
 
                 with record_function("infer_other"):
                     probs = torch.softmax(log_probs, dim=-1)
+                    if len(probs.shape) == 3:
+                        # squeeze the batch dimension, since batch size is 1
+                        probs = probs.squeeze(0)  # [1,T,C] -> [T,C]
+
                     pred = probs[:, 1]
 
-                    if status[i] == 'start':
+                    if window_length_in_sec == 0:
+                        to_save = pred
+                    elif status[i] == 'start':
                         to_save = pred[:-trunc]
                     elif status[i] == 'next':
                         to_save = pred[trunc:-trunc_l]
@@ -311,6 +317,7 @@ def generate_vad_frame_pred(
                     else:
                         to_save = pred
 
+                    to_save = to_save.cpu().tolist()
                     all_len += len(to_save)
                     outpath = os.path.join(out_dir, data[i] + ".frame")
                     with open(outpath, "a", encoding='utf-8') as fout:

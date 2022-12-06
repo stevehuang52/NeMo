@@ -1,22 +1,19 @@
 import contextlib
 import json
-import math
 import os
-import random
+import time
 from dataclasses import dataclass, is_dataclass
 from pathlib import Path
 from typing import Optional
 
-import pytorch_lightning as pl
 import torch
-import torch.nn as nn
-from jiwer import wer
 from omegaconf import OmegaConf
+from torch.profiler import ProfilerActivity, profile, record_function
 from tqdm import tqdm
 
 from nemo.collections.asr.data import feature_to_text_dataset
 from nemo.collections.asr.metrics.rnnt_wer import RNNTDecodingConfig
-from nemo.collections.asr.metrics.wer import CTCDecodingConfig
+from nemo.collections.asr.metrics.wer import CTCDecodingConfig, word_error_rate
 from nemo.collections.asr.models import ASRModel
 from nemo.core.config import hydra_runner
 from nemo.utils import logging, model_utils
@@ -29,7 +26,9 @@ class TranscriptionConfig:
     pretrained_name: Optional[str] = None  # Name of a pretrained model
     dataset_manifest: Optional[str] = None  # Path to dataset's JSON manifest
 
-    use_rttm: bool = True
+    use_noise: bool = False
+    use_rttm: bool = True  # whether to use RTTM
+    use_feature: bool = True  # whether to use preprocessed audio features
     normalize: Optional[str] = "post_norm"  # choices=[pre_norm, post_norm]
     frame_unit_time_secs: float = 0.01  # unit time per frame in seconds
 
@@ -129,32 +128,48 @@ def main(cfg):
         if cfg.pred_name_postfix is not None:
             cfg.output_filename = cfg.dataset_manifest.replace('.json', f'_{cfg.pred_name_postfix}.json')
         else:
-            cfg.output_filename = cfg.dataset_manifest.replace('.json', f'_{model_name}.json')
+            tag = f"_{cfg.normalize}"
+            if cfg.use_rttm:
+                tag += "_rttm"
+            if not cfg.use_feature:
+                tag += "_audio"
+            cfg.output_filename = cfg.dataset_manifest.replace('.json', f'{tag}_{model_name}.json')
 
     # Setup dataloader
-    data_config = {
-        "manifest_filepath": cfg.dataset_manifest,
-        "normalize": cfg.normalize,
-        "frame_unit_time_secs": cfg.frame_unit_time_secs,
-        "use_rttm": cfg.use_rttm,
-    }
-    logging.info(f"use_rttm={cfg.use_rttm}")
-    if hasattr(asr_model, "tokenizer"):
-        dataset = feature_to_text_dataset.get_bpe_dataset(config=data_config, tokenizer=asr_model.tokenizer)
-    else:
-        data_config["labels"] = asr_model.decoder.vocabulary
-        dataset = feature_to_text_dataset.get_char_dataset(config=data_config)
-    logging.info(f"Transcribing {len(dataset)} files...")
+    if cfg.use_feature:
+        logging.info("Using preprocessed audio features as input...")
+        data_config = {
+            "manifest_filepath": cfg.dataset_manifest,
+            "normalize": cfg.normalize,
+            "frame_unit_time_secs": cfg.frame_unit_time_secs,
+            "use_rttm": cfg.use_rttm,
+        }
+        logging.info(f"use_rttm={cfg.use_rttm}")
+        if hasattr(asr_model, "tokenizer"):
+            dataset = feature_to_text_dataset.get_bpe_dataset(config=data_config, tokenizer=asr_model.tokenizer)
+        else:
+            data_config["labels"] = asr_model.decoder.vocabulary
+            dataset = feature_to_text_dataset.get_char_dataset(config=data_config)
 
-    dataloader = torch.utils.data.DataLoader(
-        dataset=dataset,
-        batch_size=cfg['batch_size'],
-        collate_fn=dataset._collate_fn,
-        drop_last=False,
-        shuffle=False,
-        num_workers=cfg.get('num_workers', 0),
-        pin_memory=cfg.get('pin_memory', False),
-    )
+        dataloader = torch.utils.data.DataLoader(
+            dataset=dataset,
+            batch_size=cfg['batch_size'],
+            collate_fn=dataset._collate_fn,
+            drop_last=False,
+            shuffle=False,
+            num_workers=cfg.get('num_workers', 0),
+            pin_memory=cfg.get('pin_memory', False),
+        )
+    else:
+        logging.info("Using raw audios as input...")
+        config = {
+            "manifest_filepath": cfg.dataset_manifest,
+            "batch_size": cfg['batch_size'],
+            "num_workers": cfg.get('num_workers', 0),
+        }
+        dataloader = asr_model._setup_transcribe_dataloader(config)
+
+    logging.info(f"Transcribing...")
 
     # setup AMP (optional)
     if cfg.amp and torch.cuda.is_available() and hasattr(torch.cuda, 'amp') and hasattr(torch.cuda.amp, 'autocast'):
@@ -168,46 +183,76 @@ def main(cfg):
 
     hypotheses = []
     all_hypotheses = []
-    with autocast():
-        with torch.no_grad():
-            for test_batch in tqdm(dataloader, desc="Transcribing"):
-                outputs = asr_model.forward(
-                    processed_signal=test_batch[0].to(map_location),
-                    processed_signal_length=test_batch[1].to(map_location),
-                )
+    with profile(
+        activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True
+    ) as prof:
+        t0 = time.time()
+        with autocast():
+            with torch.no_grad():
+                with record_function("infer_loop"):
+                    for test_batch in tqdm(dataloader, desc="Transcribing"):
+                        with record_function("infer_model"):
+                            if cfg.use_feature:
+                                outputs = asr_model.forward(
+                                    processed_signal=test_batch[0].to(map_location),
+                                    processed_signal_length=test_batch[1].to(map_location),
+                                )
+                            else:
+                                outputs = asr_model.forward(
+                                    input_signal=test_batch[0].to(map_location),
+                                    input_signal_length=test_batch[1].to(map_location),
+                                )
 
-                logits, logits_len = outputs[0], outputs[1]
+                        with record_function("infer_other"):
+                            logits, logits_len = outputs[0], outputs[1]
 
-                current_hypotheses, all_hyp = decode_function(logits, logits_len, return_hypotheses=return_hypotheses,)
+                            current_hypotheses, all_hyp = decode_function(
+                                logits, logits_len, return_hypotheses=return_hypotheses,
+                            )
 
-                if return_hypotheses and not is_rnnt:
-                    # dump log probs per file
-                    for idx in range(logits.shape[0]):
-                        current_hypotheses[idx].y_sequence = logits[idx][: logits_len[idx]]
-                        if current_hypotheses[idx].alignments is None:
-                            current_hypotheses[idx].alignments = current_hypotheses[idx].y_sequence
+                            if return_hypotheses and not is_rnnt:
+                                # dump log probs per file
+                                for idx in range(logits.shape[0]):
+                                    current_hypotheses[idx].y_sequence = logits[idx][: logits_len[idx]]
+                                    if current_hypotheses[idx].alignments is None:
+                                        current_hypotheses[idx].alignments = current_hypotheses[idx].y_sequence
 
-                hypotheses += current_hypotheses
-                if all_hyp is not None:
-                    all_hypotheses += all_hyp
-                else:
-                    all_hypotheses += current_hypotheses
+                            hypotheses += current_hypotheses
+                            if all_hyp is not None:
+                                all_hypotheses += all_hyp
+                            else:
+                                all_hypotheses += current_hypotheses
 
-                del logits
-                del test_batch
+                            del logits
+                            del test_batch
+        t1 = time.time()
+    logging.info(f"Time elapsed: {t1 - t0: .2f} seconds")
+    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+    print("--------------------------------------------------------------------\n")
+    # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
+    # print("--------------------------------------------------------------------\n")
 
     # Save output to manifest
     manifest_data = load_manifest(cfg.dataset_manifest)
     groundtruth = []
     for i in range(len(manifest_data)):
         manifest_data[i]["pred_text"] = hypotheses[i]
-        groundtruth.append(manifest_data[i]["text"])
+        groundtruth.append(clean_label(manifest_data[i]["text"]))
     save_manifest(manifest_data, cfg.output_filename)
     logging.info(f"Output saved at {cfg.output_filename}")
-    wer_score = wer(truth=groundtruth, hypothesis=hypotheses)
-    logging.info("-----------------------------------------")
-    logging.info(f"WER={wer_score:.4f}")
-    logging.info("-----------------------------------------")
+
+    if cfg.use_noise:
+        hypotheses = " ".join(hypotheses)
+        words = hypotheses.split()
+        logging.info("-----------------------------------------")
+        logging.info(f"Number of hallucinated words={len(words)}")
+        logging.info(f"concatenated predictions: {hypotheses}")
+        logging.info("-----------------------------------------")
+    else:
+        wer_score = word_error_rate(hypotheses=hypotheses, references=groundtruth)
+        logging.info("-----------------------------------------")
+        logging.info(f"WER={wer_score:.4f}")
+        logging.info("-----------------------------------------")
 
 
 def save_manifest(manifest_data, out_file):
@@ -225,6 +270,68 @@ def load_manifest(manifest_file):
                 continue
             data.append(json.loads(line))
     return data
+
+
+def clean_label(_str, num_to_words=True):
+    """
+    Remove unauthorized characters in a string, lower it and remove unneeded spaces
+    Parameters
+    ----------
+    _str : the original string
+    Returns
+    -------
+    string
+    """
+    replace_with_space = [char for char in '/?*\",.:=?_{|}~¨«·»¡¿„…‧‹›≪≫!:;ː→']
+    replace_with_blank = [char for char in '`¨´‘’“”`ʻ‘’“"‘”']
+    replace_with_apos = [char for char in '‘’ʻ‘’‘']
+    _str = _str.strip()
+    _str = _str.lower()
+    for i in replace_with_blank:
+        _str = _str.replace(i, "")
+    for i in replace_with_space:
+        _str = _str.replace(i, " ")
+    for i in replace_with_apos:
+        _str = _str.replace(i, "'")
+    if num_to_words:
+        _str = convert_num_to_words(_str)
+    return " ".join(_str.split())
+
+
+def convert_num_to_words(_str):
+    """
+    Convert digits to corresponding words
+    Parameters
+    ----------
+    _str : the original string
+    Returns
+    -------
+    string
+    """
+    num_to_words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+    _str = _str.strip()
+    words = _str.split()
+    out_str = ""
+    num_word = []
+    for word in words:
+        if word.isnumeric():
+            num = int(word)
+            while num:
+                digit = num % 10
+                digit_word = num_to_words[digit]
+                num_word.append(digit_word)
+                num = int(num / 10)
+                if not (num):
+                    num_str = ""
+                    num_word = num_word[::-1]
+                    for ele in num_word:
+                        num_str += ele + " "
+                    out_str += num_str + " "
+                    num_word.clear()
+        else:
+            out_str += word + " "
+    out_str = out_str.strip()
+    return out_str
 
 
 if __name__ == "__main__":

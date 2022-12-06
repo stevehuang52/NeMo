@@ -69,6 +69,8 @@ class _FeatureTextDataset(Dataset):
     """
 
     ZERO_LEVEL_SPEC_DB_VAL = -16.635  # Log-Melspectrogram value for zero signal
+    NORM_MODES = ["pre_norm", "post_norm"]
+    MASK_MODES = ["zero", "avg", "min"]
 
     @property
     def output_types(self) -> Optional[Dict[str, NeuralType]]:
@@ -88,6 +90,7 @@ class _FeatureTextDataset(Dataset):
         parser: Union[str, Callable],
         normalize: str = "post_norm",
         use_rttm: bool = False,
+        mask_mode: str = "zero",
         frame_unit_time_secs: float = 0.01,
         sample_rate: Optional[int] = 16000,
         augmentor: 'nemo.collections.asr.parts.perturb.FeatureAugmentor' = None,
@@ -107,9 +110,13 @@ class _FeatureTextDataset(Dataset):
         self.sample_rate = sample_rate
         self.normalize = normalize
         self.use_rttm = use_rttm
+        self.mask_mode = mask_mode
 
-        if normalize is not None and normalize not in ["pre_norm", "post_norm"]:
-            raise ValueError(f"Only support `normalize` in one of [`pre_norm`, `post_norm`]")
+        if normalize is not None and normalize not in self.NORM_MODES:
+            raise ValueError(f"`normalize` must be one of {self.NORM_MODES}, got `{normalize}` instead")
+
+        if use_rttm and mask_mode not in self.MASK_MODES:
+            raise ValueError(f"`mask_mode` must be one of {self.MASK_MODES}, got `{mask_mode}` instead")
 
         self.frame_unit_time_secs = frame_unit_time_secs
 
@@ -146,7 +153,8 @@ class _FeatureTextDataset(Dataset):
 
         # Feature normalization
         if self.normalize is None:
-            pass
+            if self.use_rttm and sample.rttm_file:
+                f = self.mask_features_from_rttm(f, offset, sample.rttm_file, self.ZERO_LEVEL_SPEC_DB_VAL)
         elif self.normalize == "post_norm":
             # (Optional) Masking based on RTTM file
             if self.use_rttm and sample.rttm_file:

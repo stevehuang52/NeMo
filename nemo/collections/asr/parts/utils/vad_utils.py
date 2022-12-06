@@ -32,7 +32,10 @@ from pyannote.metrics import detection
 from sklearn.model_selection import ParameterGrid
 from tqdm import tqdm
 
-from nemo.collections.asr.data.feature_to_label_dataset import get_feature_label_dataset
+from nemo.collections.asr.data.feature_to_label_dataset import (
+    get_feature_label_dataset,
+    get_feature_multi_label_dataset,
+)
 from nemo.collections.asr.models import EncDecClassificationModel
 from nemo.collections.asr.parts.preprocessing.perturb import process_augmentations
 from nemo.utils import logging
@@ -1275,6 +1278,30 @@ def setup_feature_segment_infer_dataloader(config):
 
     logging.info("Perform segment-level VAD")
     dataset = get_feature_label_dataset(config=config, augmentor=augmentor)
+    collate_func = dataset._collate_fn
+
+    return torch.utils.data.DataLoader(
+        dataset=dataset,
+        batch_size=1,
+        collate_fn=collate_func,
+        drop_last=config.get('drop_last', False),
+        shuffle=False,
+        num_workers=config.get('num_workers', 0),
+        pin_memory=config.get('pin_memory', False),
+    )
+
+
+def setup_feature_frame_infer_dataloader(config):
+    if 'augmentor' in config:
+        augmentor = process_augmentations(config['augmentor'])
+    else:
+        augmentor = None
+    if 'manifest_filepath' in config and config['manifest_filepath'] is None:
+        logging.warning(f"Could not load dataset as `manifest_filepath` is None. Provided config : {config}")
+        return None
+
+    logging.info("Perform frame-level VAD")
+    dataset = get_feature_multi_label_dataset(config=config, augmentor=augmentor)
     collate_func = dataset._vad_segment_collate_fn
 
     return torch.utils.data.DataLoader(

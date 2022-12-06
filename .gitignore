@@ -16,6 +16,9 @@ fastspeech_output
 
 vad_output/
 vad_output*
+*.json
+manifests_*
+*.nemo
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

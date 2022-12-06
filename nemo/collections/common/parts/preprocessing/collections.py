@@ -267,6 +267,7 @@ class SpeechLabel(_Collection):
             self.mapping = {}
         output_type = self.OUTPUT_TYPE
         data, duration_filtered = [], 0.0
+        total_duration = 0.0
         for audio_file, duration, command, offset in zip(audio_files, durations, labels, offsets):
             # Duration filters.
             if min_duration is not None and duration < min_duration:
@@ -278,6 +279,7 @@ class SpeechLabel(_Collection):
                 continue
 
             data.append(output_type(audio_file, duration, command, offset))
+            total_duration += duration
 
             if index_by_file_id:
                 file_id, _ = os.path.splitext(os.path.basename(audio_file))
@@ -296,6 +298,7 @@ class SpeechLabel(_Collection):
         logging.info(
             "Filtered duration for loading collection is %f.", duration_filtered,
         )
+        logging.info(f"Dataset loaded with {len(data)} items, total duration of {total_duration / 3600: .2f} hours.")
         self.uniq_labels = sorted(set(map(lambda x: x.label, data)))
         logging.info("# {} files loaded accounting to # {} labels".format(len(data), len(self.uniq_labels)))
 
