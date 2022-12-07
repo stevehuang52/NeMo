@@ -3,6 +3,7 @@ name: &name "vad_inference_postprocessing"
 manifest_filepath: null # Path of json file of evaluation data. Audio files should have unique names
 num_workers: 8
 sample_rate: 16000
+profiling: True
 
 # functionality
 gen_seg_table: True # whether to converting frame level prediction to speech/no-speech segment in start and end times format

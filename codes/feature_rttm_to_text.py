@@ -26,11 +26,12 @@ class TranscriptionConfig:
     pretrained_name: Optional[str] = None  # Name of a pretrained model
     dataset_manifest: Optional[str] = None  # Path to dataset's JSON manifest
 
-    use_noise: bool = False
+    use_noise: bool = False  # whether input is pure noise or not
     use_rttm: bool = True  # whether to use RTTM
     use_feature: bool = True  # whether to use preprocessed audio features
     normalize: Optional[str] = "post_norm"  # choices=[pre_norm, post_norm]
     frame_unit_time_secs: float = 0.01  # unit time per frame in seconds
+    profiling: bool = False  # whether to enable pytorch profiling
 
     # General configs
     output_filename: Optional[str] = None
@@ -47,10 +48,6 @@ class TranscriptionConfig:
     # If `cuda` is a negative number, inference will be on CPU only.
     cuda: Optional[int] = None
     amp: bool = False
-    audio_type: str = "wav"
-
-    # Recompute model transcription, even if the output folder exists with scores.
-    overwrite_transcripts: bool = True
 
     # Decoding strategy for CTC models
     ctc_decoding: CTCDecodingConfig = CTCDecodingConfig()
@@ -70,6 +67,22 @@ def main(cfg):
         raise ValueError("Both cfg.model_path and cfg.pretrained_name cannot be None!")
     if cfg.dataset_manifest is None:
         raise ValueError("cfg.dataset_manifest cannot be None!")
+
+    # setup profiling
+    if cfg.profiling:
+        logging.info("Profiling enabled")
+        profile_fn = profile
+        record_fn = record_function
+    else:
+        logging.info("Profiling disabled")
+
+        @contextlib.contextmanager
+        def profile_fn(*args, **kwargs):
+            yield
+
+        @contextlib.contextmanager
+        def record_fn(*args, **kwargs):
+            yield
 
     # setup GPU
     if cfg.cuda is None:
@@ -183,15 +196,15 @@ def main(cfg):
 
     hypotheses = []
     all_hypotheses = []
-    with profile(
+    with profile_fn(
         activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True
     ) as prof:
         t0 = time.time()
         with autocast():
             with torch.no_grad():
-                with record_function("infer_loop"):
+                with record_fn("infer_loop"):
                     for test_batch in tqdm(dataloader, desc="Transcribing"):
-                        with record_function("infer_model"):
+                        with record_fn("infer_model"):
                             if cfg.use_feature:
                                 outputs = asr_model.forward(
                                     processed_signal=test_batch[0].to(map_location),
@@ -203,7 +216,7 @@ def main(cfg):
                                     input_signal_length=test_batch[1].to(map_location),
                                 )
 
-                        with record_function("infer_other"):
+                        with record_fn("infer_other"):
                             logits, logits_len = outputs[0], outputs[1]
 
                             current_hypotheses, all_hyp = decode_function(
@@ -227,10 +240,9 @@ def main(cfg):
                             del test_batch
         t1 = time.time()
     logging.info(f"Time elapsed: {t1 - t0: .2f} seconds")
-    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-    print("--------------------------------------------------------------------\n")
-    # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
-    # print("--------------------------------------------------------------------\n")
+    if cfg.profiling:
+        print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+        print("--------------------------------------------------------------------\n")
 
     # Save output to manifest
     manifest_data = load_manifest(cfg.dataset_manifest)
@@ -244,9 +256,11 @@ def main(cfg):
     if cfg.use_noise:
         hypotheses = " ".join(hypotheses)
         words = hypotheses.split()
+        chars = "".join(words)
         logging.info("-----------------------------------------")
+        logging.info(f"Number of hallucinated characters={len(chars)}")
         logging.info(f"Number of hallucinated words={len(words)}")
-        logging.info(f"concatenated predictions: {hypotheses}")
+        logging.info(f"Concatenated predictions: {hypotheses}")
         logging.info("-----------------------------------------")
     else:
         wer_score = word_error_rate(hypotheses=hypotheses, references=groundtruth)

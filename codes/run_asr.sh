@@ -1,6 +1,6 @@
 python feature_rttm_to_text.py \
     pretrained_name="stt_en_conformer_ctc_large" \
-    dataset_manifest=./vad_output_frame_musan/manifest_vad_feat_rttm.json \
+    dataset_manifest=./vad_output_musan/manifest_vad_feat_rttm.json \
     num_workers=8 \
     normalize=post_norm \
     use_noise=True \

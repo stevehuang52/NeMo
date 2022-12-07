@@ -1,9 +1,12 @@
 import json
 import os
 import time
+from dataclasses import dataclass, is_dataclass
 from pathlib import Path
+from typing import Callable
 
 import torch
+from omegaconf import OmegaConf
 from torch.profiler import ProfilerActivity, profile, record_function
 from tqdm import tqdm
 
@@ -31,6 +34,26 @@ except ImportError:
 
 @hydra_runner(config_path="./configs", config_name="vad_inference_postprocess.yaml")
 def main(cfg):
+
+    if is_dataclass(cfg):
+        cfg = OmegaConf.structured(cfg)
+
+    # setup profiling
+    if cfg.profiling:
+        logging.info("Profiling enabled")
+        profile_fn = profile
+        record_fn = record_function
+    else:
+        logging.info("Profiling disabled")
+
+        @contextmanager
+        def profile_fn(*args, **kwargs):
+            yield
+
+        @contextmanager
+        def record_fn(*args, **kwargs):
+            yield
+
     if not cfg.manifest_filepath:
         raise ValueError("You must input the path of json file of evaluation data")
 
@@ -146,7 +169,7 @@ def main(cfg):
     pred_dir = Path(cfg.output_dir) / Path("frame_pred")
     pred_dir.mkdir(parents=True, exist_ok=True)
 
-    with profile(
+    with profile_fn(
         activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True
     ) as prof:
         t0 = time.time()
@@ -157,13 +180,13 @@ def main(cfg):
             manifest_vad_input=manifest_vad_input,
             out_dir=str(pred_dir),
             use_feat=use_feat,
+            record_fn=record_fn,
         )
         t1 = time.time()
-    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-    print("--------------------------------------------------------------------\n")
-    # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
-    # print("--------------------------------------------------------------------\n")
-    # prof.export_chrome_trace("trace.json")
+
+    if cfg.profiling:
+        print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
+        print("--------------------------------------------------------------------\n")
 
     logging.info(
         f"Finished generating VAD frame level prediction with window_length_in_sec={cfg.vad.parameters.window_length_in_sec} and shift_length_in_sec={cfg.vad.parameters.shift_length_in_sec}"
@@ -271,6 +294,7 @@ def generate_vad_frame_pred(
     manifest_vad_input: str,
     out_dir: str,
     use_feat: bool = False,
+    record_fn: Callable = None,
 ) -> str:
     """
     Generate VAD frame level prediction and write to out_dir
@@ -288,17 +312,17 @@ def generate_vad_frame_pred(
 
     status = get_vad_stream_status(data)
 
-    with record_function("infer_loop"):
+    with record_fn("infer_loop"):
         for i, test_batch in enumerate(tqdm(vad_model.test_dataloader(), total=len(vad_model.test_dataloader()))):
             test_batch = [x.to(vad_model.device) for x in test_batch]
             with autocast():
-                with record_function("infer_model"):
+                with record_fn("infer_model"):
                     if use_feat:
                         log_probs = vad_model(processed_signal=test_batch[0], processed_signal_length=test_batch[1])
                     else:
                         log_probs = vad_model(input_signal=test_batch[0], input_signal_length=test_batch[1])
 
-                with record_function("infer_other"):
+                with record_fn("infer_other"):
                     probs = torch.softmax(log_probs, dim=-1)
                     pred = probs[:, 1]
 

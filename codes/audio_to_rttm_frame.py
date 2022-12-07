@@ -162,9 +162,6 @@ def main(cfg):
         t1 = time.time()
     print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
     print("--------------------------------------------------------------------\n")
-    # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
-    # print("--------------------------------------------------------------------\n")
-    # prof.export_chrome_trace("trace.json")
 
     logging.info(
         f"Finished generating VAD frame level prediction with window_length_in_sec={cfg.vad.parameters.window_length_in_sec} and shift_length_in_sec={cfg.vad.parameters.shift_length_in_sec}"
