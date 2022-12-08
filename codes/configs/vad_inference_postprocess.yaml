@@ -3,7 +3,7 @@ name: &name "vad_inference_postprocessing"
 manifest_filepath: null # Path of json file of evaluation data. Audio files should have unique names
 num_workers: 8
 sample_rate: 16000
-profiling: True
+profiling: False # whether to enable model profiling
 
 # functionality
 gen_seg_table: True # whether to converting frame level prediction to speech/no-speech segment in start and end times format
@@ -30,7 +30,7 @@ vad:
       min_duration_on: 0.5 # threshold for small non_speech deletion
       min_duration_off: 0.5 # threshold for short speech segment deletion
       filter_speech_first: True
-      use_rttm: True
+      use_rttm: True  # set True to output rttm files
 
 prepared_manifest_vad_input: null # if not specify, it will automatically generated be "manifest_vad_input.json"
 output_dir: "vad_output"
@@ -40,15 +40,3 @@ out_manifest_filepath: null # if not specify it will automatically be "vad_out.j
 
 # json manifest line example
 # {"audio_filepath": "/path/to/audio_file", "offset": 0, "duration": null, "label": "infer", "text": "-"}
-
-
-
-
-# postprocessing:
-#   onset: 0.5 # onset threshold for detecting the beginning and end of a speech
-#   offset: 0.5 # offset threshold for detecting the end of a speech.
-#   pad_onset: 0.0 # adding durations before each speech segment
-#   pad_offset: 0.0 # adding durations after each speech segment
-#   min_duration_on: 0.5 # threshold for small non_speech deletion
-#   min_duration_off: 0.5 # threshold for short speech segment deletion
-#   filter_speech_first: True
