@@ -1,0 +1,266 @@
+
+  | Name              | Type                              | Params
+------------------------------------------------------------------------
+0 | spec_augmentation | SpectrogramAugmentation           | 0     
+1 | preprocessor      | AudioToMelSpectrogramPreprocessor | 0     
+2 | encoder           | ConvASREncoder                    | 91.1 K
+3 | decoder           | MultiLayerPerceptron              | 258   
+4 | loss              | CrossEntropyLoss                  | 0     
+5 | _accuracy         | TopKClassificationAccuracy        | 0     
+------------------------------------------------------------------------
+91.4 K    Trainable params
+0         Non-trainable params
+91.4 K    Total params
+0.366     Total estimated model params size (MB)
+Sanity Checking DataLoader 0:  50%|████████████████████████████                            | 1/2 [00:00<00:00,  3.52it/s]Error executing job with overrides: ['trainer.devices=1', 'mode=ptl']
+Traceback (most recent call last):
+  File "run_debug_train.py", line 63, in main
+    trainer.fit(model)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 603, in fit
+    call._call_and_handle_interrupt(
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/call.py", line 36, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 90, in launch
+    return function(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 645, in _fit_impl
+    self._run(model, ckpt_path=self.ckpt_path)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 1098, in _run
+    results = self._run_stage()
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 1177, in _run_stage
+    self._run_train()
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 1190, in _run_train
+    self._run_sanity_check()
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 1262, in _run_sanity_check
+    val_loop.run()
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/loops/loop.py", line 199, in run
+    self.advance(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/loops/dataloader/evaluation_loop.py", line 152, in advance
+    dl_outputs = self.epoch_loop.run(self._data_fetcher, dl_max_batches, kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/loops/loop.py", line 199, in run
+    self.advance(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/loops/epoch/evaluation_epoch_loop.py", line 121, in advance
+    batch = next(data_fetcher)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/utilities/fetching.py", line 184, in __next__
+    return self.fetching_function()
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/utilities/fetching.py", line 265, in fetching_function
+    self._fetch_next_batch(self.dataloader_iter)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/utilities/fetching.py", line 280, in _fetch_next_batch
+    batch = next(iterator)
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/dataloader.py", line 628, in __next__
+    data = self._next_data()
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/dataloader.py", line 1313, in _next_data
+    return self._process_data(data)
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/dataloader.py", line 1359, in _process_data
+    data.reraise()
+  File "/usr/local/lib/python3.8/dist-packages/torch/_utils.py", line 543, in reraise
+    raise exception
+zipfile.BadZipFile: Caught BadZipFile in DataLoader worker process 1.
+Original Traceback (most recent call last):
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/_utils/worker.py", line 302, in _worker_loop
+    data = fetcher.fetch(index)
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/_utils/fetch.py", line 58, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/_utils/fetch.py", line 58, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/NeMo/project/src/audio_to_multi_label.py", line 123, in __getitem__
+    features = self.featurizer.process(sample.audio_file, offset=offset, duration=sample.duration, trim=self.trim)
+  File "/usr/local/lib/python3.8/dist-packages/nemo/collections/asr/parts/preprocessing/features.py", line 166, in process
+    audio = AudioSegment.from_file(
+  File "/usr/local/lib/python3.8/dist-packages/nemo/collections/asr/parts/preprocessing/segment.py", line 245, in from_file
+    return cls(
+  File "/usr/local/lib/python3.8/dist-packages/nemo/collections/asr/parts/preprocessing/segment.py", line 102, in __init__
+    samples = librosa.core.resample(samples, orig_sr=sample_rate, target_sr=target_sr)
+  File "/usr/local/lib/python3.8/dist-packages/librosa/util/decorators.py", line 88, in inner_f
+    return f(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/librosa/core/audio.py", line 647, in resample
+    y_hat = resampy.resample(y, orig_sr, target_sr, filter=res_type, axis=-1)
+  File "/usr/local/lib/python3.8/dist-packages/resampy/core.py", line 168, in resample
+    resample_f_s(
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/gufunc.py", line 190, in __call__
+    self.add(sig)
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/gufunc.py", line 63, in add
+    self.gufunc_builder.add(fty)
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/ufuncbuilder.py", line 241, in add
+    cres, args, return_type = _compile_element_wise_function(
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/ufuncbuilder.py", line 173, in _compile_element_wise_function
+    cres = nb_func.compile(sig, **targetoptions)
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/ufuncbuilder.py", line 121, in compile
+    return self._compile_core(sig, flags, locals)
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/ufuncbuilder.py", line 154, in _compile_core
+    cres = compiler.compile_extra(typingctx, targetctx,
+  File "/usr/local/lib/python3.8/dist-packages/numba/core/compiler.py", line 714, in compile_extra
+    pipeline = pipeline_class(typingctx, targetctx, library,
+  File "/usr/local/lib/python3.8/dist-packages/numba/core/compiler.py", line 409, in __init__
+    targetctx.refresh()
+  File "/usr/local/lib/python3.8/dist-packages/numba/core/base.py", line 270, in refresh
+    self.load_additional_registries()
+  File "/usr/local/lib/python3.8/dist-packages/numba/core/cpu.py", line 97, in load_additional_registries
+    numba.core.entrypoints.init_all()
+  File "/usr/local/lib/python3.8/dist-packages/numba/core/entrypoints.py", line 48, in init_all
+    eps = importlib_metadata.entry_points()
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 856, in entry_points
+    return EntryPoints(eps).select(**params)
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 853, in <genexpr>
+    eps = itertools.chain.from_iterable(
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/_itertools.py", line 16, in unique_everseen
+    k = key(element)
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/_py39compat.py", line 18, in normalized_name
+    return dist._normalized_name
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 778, in _normalized_name
+    or super()._normalized_name
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 445, in _normalized_name
+    return Prepared.normalize(self.name)
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 440, in name
+    return self.metadata['Name']
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 429, in metadata
+    or self.read_text('PKG-INFO')
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 762, in read_text
+    return self._path.joinpath(filename).read_text(encoding='utf-8')
+  File "/usr/local/lib/python3.8/dist-packages/zipp/__init__.py", line 288, in read_text
+    with self.open('r', *args, **kwargs) as strm:
+  File "/usr/local/lib/python3.8/dist-packages/zipp/__init__.py", line 257, in open
+    stream = self.root.open(self.at, zip_mode, pwd=pwd)
+  File "/usr/lib/python3.8/zipfile.py", line 1532, in open
+    raise BadZipFile("Truncated file header")
+zipfile.BadZipFile: Truncated file header
+
+
+
+
+
+###################################################################
+
+
+
+
+
+
+  | Name              | Type                              | Params
+------------------------------------------------------------------------
+0 | spec_augmentation | SpectrogramAugmentation           | 0     
+1 | preprocessor      | AudioToMelSpectrogramPreprocessor | 0     
+2 | encoder           | ConvASREncoder                    | 91.1 K
+3 | decoder           | MultiLayerPerceptron              | 258   
+4 | loss              | CrossEntropyLoss                  | 0     
+5 | _accuracy         | TopKClassificationAccuracy        | 0     
+------------------------------------------------------------------------
+91.4 K    Trainable params
+0         Non-trainable params
+91.4 K    Total params
+0.366     Total estimated model params size (MB)
+Sanity Checking DataLoader 0:  50%|█████████████████████████████████▌                                 | 1/2 [00:00<00:00,  3.78it/s]Error executing job with overrides: ['trainer.devices=1', 'mode=ptl']
+Traceback (most recent call last):
+  File "run_debug_train.py", line 63, in main
+    trainer.fit(model)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 603, in fit
+    call._call_and_handle_interrupt(
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/call.py", line 36, in _call_and_handle_interrupt
+    return trainer.strategy.launcher.launch(trainer_fn, *args, trainer=trainer, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/strategies/launchers/subprocess_script.py", line 90, in launch
+    return function(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 645, in _fit_impl
+    self._run(model, ckpt_path=self.ckpt_path)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 1098, in _run
+    results = self._run_stage()
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 1177, in _run_stage
+    self._run_train()
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 1190, in _run_train
+    self._run_sanity_check()
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/trainer/trainer.py", line 1262, in _run_sanity_check
+    val_loop.run()
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/loops/loop.py", line 199, in run
+    self.advance(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/loops/dataloader/evaluation_loop.py", line 152, in advance
+    dl_outputs = self.epoch_loop.run(self._data_fetcher, dl_max_batches, kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/loops/loop.py", line 199, in run
+    self.advance(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/loops/epoch/evaluation_epoch_loop.py", line 121, in advance
+    batch = next(data_fetcher)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/utilities/fetching.py", line 184, in __next__
+    return self.fetching_function()
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/utilities/fetching.py", line 265, in fetching_function
+    self._fetch_next_batch(self.dataloader_iter)
+  File "/usr/local/lib/python3.8/dist-packages/pytorch_lightning/utilities/fetching.py", line 280, in _fetch_next_batch
+    batch = next(iterator)
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/dataloader.py", line 628, in __next__
+    data = self._next_data()
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/dataloader.py", line 1313, in _next_data
+    return self._process_data(data)
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/dataloader.py", line 1359, in _process_data
+    data.reraise()
+  File "/usr/local/lib/python3.8/dist-packages/torch/_utils.py", line 543, in reraise
+    raise exception
+OSError: Caught OSError in DataLoader worker process 1.
+Original Traceback (most recent call last):
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/_utils/worker.py", line 302, in _worker_loop
+    data = fetcher.fetch(index)
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/_utils/fetch.py", line 58, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/usr/local/lib/python3.8/dist-packages/torch/utils/data/_utils/fetch.py", line 58, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+  File "/NeMo/project/src/audio_to_multi_label.py", line 123, in __getitem__
+    features = self.featurizer.process(sample.audio_file, offset=offset, duration=sample.duration, trim=self.trim)
+  File "/usr/local/lib/python3.8/dist-packages/nemo/collections/asr/parts/preprocessing/features.py", line 166, in process
+    audio = AudioSegment.from_file(
+  File "/usr/local/lib/python3.8/dist-packages/nemo/collections/asr/parts/preprocessing/segment.py", line 245, in from_file
+    return cls(
+  File "/usr/local/lib/python3.8/dist-packages/nemo/collections/asr/parts/preprocessing/segment.py", line 102, in __init__
+    samples = librosa.core.resample(samples, orig_sr=sample_rate, target_sr=target_sr)
+  File "/usr/local/lib/python3.8/dist-packages/librosa/util/decorators.py", line 88, in inner_f
+    return f(*args, **kwargs)
+  File "/usr/local/lib/python3.8/dist-packages/librosa/core/audio.py", line 647, in resample
+    y_hat = resampy.resample(y, orig_sr, target_sr, filter=res_type, axis=-1)
+  File "/usr/local/lib/python3.8/dist-packages/resampy/core.py", line 168, in resample
+    resample_f_s(
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/gufunc.py", line 190, in __call__
+    self.add(sig)
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/gufunc.py", line 63, in add
+    self.gufunc_builder.add(fty)
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/ufuncbuilder.py", line 241, in add
+    cres, args, return_type = _compile_element_wise_function(
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/ufuncbuilder.py", line 173, in _compile_element_wise_function
+    cres = nb_func.compile(sig, **targetoptions)
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/ufuncbuilder.py", line 121, in compile
+    return self._compile_core(sig, flags, locals)
+  File "/usr/local/lib/python3.8/dist-packages/numba/np/ufunc/ufuncbuilder.py", line 154, in _compile_core
+    cres = compiler.compile_extra(typingctx, targetctx,
+  File "/usr/local/lib/python3.8/dist-packages/numba/core/compiler.py", line 714, in compile_extra
+    pipeline = pipeline_class(typingctx, targetctx, library,
+  File "/usr/local/lib/python3.8/dist-packages/numba/core/compiler.py", line 409, in __init__
+    targetctx.refresh()
+  File "/usr/local/lib/python3.8/dist-packages/numba/core/base.py", line 270, in refresh
+    self.load_additional_registries()
+  File "/usr/local/lib/python3.8/dist-packages/numba/core/cpu.py", line 97, in load_additional_registries
+    numba.core.entrypoints.init_all()
+  File "/usr/local/lib/python3.8/dist-packages/numba/core/entrypoints.py", line 48, in init_all
+    eps = importlib_metadata.entry_points()
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 856, in entry_points
+    return EntryPoints(eps).select(**params)
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 853, in <genexpr>
+    eps = itertools.chain.from_iterable(
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/_itertools.py", line 16, in unique_everseen
+    k = key(element)
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/_py39compat.py", line 18, in normalized_name
+    return dist._normalized_name
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 778, in _normalized_name
+    or super()._normalized_name
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 445, in _normalized_name
+    return Prepared.normalize(self.name)
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 440, in name
+    return self.metadata['Name']
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 429, in metadata
+    or self.read_text('PKG-INFO')
+  File "/usr/local/lib/python3.8/dist-packages/importlib_metadata/__init__.py", line 762, in read_text
+    return self._path.joinpath(filename).read_text(encoding='utf-8')
+  File "/usr/local/lib/python3.8/dist-packages/zipp/__init__.py", line 289, in read_text
+    return strm.read()
+  File "/usr/lib/python3.8/zipfile.py", line 926, in read
+    buf += self._read1(self.MAX_N)
+  File "/usr/lib/python3.8/zipfile.py", line 1008, in _read1
+    data += self._read2(n - len(data))
+  File "/usr/lib/python3.8/zipfile.py", line 1040, in _read2
+    data = self._fileobj.read(n)
+  File "/usr/lib/python3.8/zipfile.py", line 763, in read
+    self._file.seek(self._pos)
+OSError: [Errno 22] Invalid argument
+

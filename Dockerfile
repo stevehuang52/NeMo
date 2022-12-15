@@ -87,7 +87,7 @@ RUN python -c "import nemo.collections.nlp as nemo_nlp" && \
 
 # Pinned to numba==0.53.1 to avoid bug in training with num_workers > 0
 # The bug still exists with PTL 1.8.4, this is just a temporary workaround.
-RUN pip install numba==0.53.1
+# RUN pip install numba==0.53.1
 
 # copy scripts/examples/tests into container for end user
 WORKDIR /workspace/nemo
