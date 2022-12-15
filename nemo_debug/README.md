@@ -13,11 +13,11 @@ Under the NeMo git root directory:
 2. Start the docker container 
 ```
 docker run --gpus all -it --rm --shm-size=64g --ulimit memlock=-1 --ulimit stack=67108864 --net=host --ipc=host \
-    -v $PWD:/code \
+    -v $PWD:/NeMo \
     -v $PWD/synth_audio_train:$PWD/synth_audio_train \
     -v $PWD/synth_audio_val:$PWD/synth_audio_val \
     nemo-main-debug /bin/bash
 ```
-3. Start the debug script: `cd nemo_debug && ./run_debug.sh`
+3. Start the debug script: `cd /NeMo/nemo_debug && ./run_debug.sh`
 
 
