@@ -49,12 +49,12 @@ COPY scripts/installers /tmp/torchaudio_build/scripts/installers/
 RUN /bin/bash /tmp/torchaudio_build/scripts/installers/install_torchaudio_latest.sh
 
 #install TRT tools: PT quantization support and ONNX graph optimizer
-WORKDIR /tmp/trt_build
-RUN git clone https://github.com/NVIDIA/TensorRT.git && \
-    cd TensorRT/tools/onnx-graphsurgeon && python setup.py install && \
-    cd ../pytorch-quantization && \
-    python setup.py install && \
-    rm -fr  /tmp/trt_build
+# WORKDIR /tmp/trt_build
+# RUN git clone https://github.com/NVIDIA/TensorRT.git && \
+#     cd TensorRT/tools/onnx-graphsurgeon && python setup.py install && \
+#     cd ../pytorch-quantization && \
+#     python setup.py install && \
+#     rm -fr  /tmp/trt_build
 
 # install nemo dependencies
 WORKDIR /tmp/nemo
@@ -92,7 +92,7 @@ RUN --mount=from=nemo-src,target=/tmp/nemo cd /tmp/nemo && pip install ".[all]" 
 
 # TODO: Update to newer numba 0.56.0RC1 for 22.03 container if possible
 # install pinned numba version
-# RUN conda install -c conda-forge numba==0.54.1
+RUN pip install numba==0.53.1
 
 # copy scripts/examples/tests into container for end user
 WORKDIR /workspace/nemo

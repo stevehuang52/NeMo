@@ -52,7 +52,13 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
 
     def _setup_metrics(self):
         self._accuracy = TopKClassificationAccuracy(dist_sync_on_step=True)
-        self._macro_accuracy = Accuracy(num_classes=self.num_classes, average='macro')
+        # import torchmetrics as tm
+        # if tm.__version__ < "0.9.3":
+        #     self._macro_accuracy = Accuracy(num_classes=self.num_classes, average='macro')
+        #     self._macro_accuracy_final_state_fn = self._macro_accuracy._get_final_stats
+        # else:
+        #     self._macro_accuracy = Accuracy(task="multiclass",num_classes=self.num_classes, average='macro')
+        #     self._macro_accuracy_final_state_fn = self._macro_accuracy._final_state
 
     def _setup_loss(self):
         if "loss" in self.cfg:
@@ -141,15 +147,15 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         acc = self._accuracy(logits=metric_logits, labels=metric_labels)
         correct_counts, total_counts = self._accuracy.correct_counts_k, self._accuracy.total_counts_k
 
-        self._macro_accuracy.update(preds=metric_logits, target=metric_labels)
-        stats = self._macro_accuracy._get_final_stats()
+        # self._macro_accuracy.update(preds=metric_logits, target=metric_labels)
+        # stats = self._macro_accuracy_final_state_fn()
 
         return {
             f'{tag}_loss': loss_value,
             f'{tag}_correct_counts': correct_counts,
             f'{tag}_total_counts': total_counts,
             f'{tag}_acc_micro': acc,
-            f'{tag}_acc_stats': stats,
+            # f'{tag}_acc_stats': stats,
         }
 
     def multi_validation_epoch_end(self, outputs, dataloader_idx: int = 0, tag: str = 'val'):
@@ -161,18 +167,18 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         self._accuracy.total_counts_k = total_counts
         topk_scores = self._accuracy.compute()
 
-        self._macro_accuracy.tp = torch.stack([x[f'{tag}_acc_stats'][0] for x in outputs]).sum(axis=0)
-        self._macro_accuracy.fp = torch.stack([x[f'{tag}_acc_stats'][1] for x in outputs]).sum(axis=0)
-        self._macro_accuracy.tn = torch.stack([x[f'{tag}_acc_stats'][2] for x in outputs]).sum(axis=0)
-        self._macro_accuracy.fn = torch.stack([x[f'{tag}_acc_stats'][3] for x in outputs]).sum(axis=0)
-        macro_accuracy_score = self._macro_accuracy.compute()
+        # self._macro_accuracy.tp = torch.stack([x[f'{tag}_acc_stats'][0] for x in outputs]).sum(axis=0)
+        # self._macro_accuracy.fp = torch.stack([x[f'{tag}_acc_stats'][1] for x in outputs]).sum(axis=0)
+        # self._macro_accuracy.tn = torch.stack([x[f'{tag}_acc_stats'][2] for x in outputs]).sum(axis=0)
+        # self._macro_accuracy.fn = torch.stack([x[f'{tag}_acc_stats'][3] for x in outputs]).sum(axis=0)
+        # macro_accuracy_score = self._macro_accuracy.compute()
 
         self._accuracy.reset()
-        self._macro_accuracy.reset()
+        # self._macro_accuracy.reset()
 
         tensorboard_log = {
             f'{tag}_loss': val_loss_mean,
-            f'{tag}_acc_macro': macro_accuracy_score,
+            # f'{tag}_acc_macro': macro_accuracy_score,
         }
 
         for top_k, score in zip(self._accuracy.top_k, topk_scores):

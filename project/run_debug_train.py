@@ -1,33 +1,30 @@
-import enum
+import torch.multiprocessing as mp
+
+mp.set_start_method("fork", force=True)
+
 from pathlib import Path
 from tqdm import tqdm
-import os
 
 import pytorch_lightning as pl
 
 pl.seed_everything(0)
 
-import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 
-import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
-import torchvision.datasets as datasets
 
 from omegaconf import OmegaConf
 from src.generate_data import generate_dataset
 from src.multi_classification_models import EncDecMultiClassificationModel
-from src.audio_to_multi_label import get_audio_multi_label_dataset
 
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
 from nemo.utils.exp_manager import exp_manager
 from nemo.core import typecheck
-from nemo.core.optim.lr_scheduler import prepare_lr_scheduler
 
 
 @hydra_runner(config_path="./configs", config_name="debug")
@@ -93,7 +90,7 @@ def main(cfg):
         for i in range(max_epochs):
             logging.info(f"Training epoch {i+1}/{max_epochs}...")
             model.train()
-            for batch in tqdm(train_dl, ncols=70, total=len(train_dl), leave=True):
+            for batch in tqdm(train_dl, ncols=70, total=len(train_dl), leave=False):
                 audio_signal, audio_signal_len, labels, labels_len = batch
 
                 audio_signal = audio_signal.to("cuda")
@@ -114,7 +111,7 @@ def main(cfg):
 
             logging.info(f"Evaluating epoch {i+1}/{max_epochs}...")
             model.eval()
-            for batch in tqdm(val_dl, ncols=70, total=len(train_dl), leave=True):
+            for batch in tqdm(val_dl, ncols=70, total=len(train_dl), leave=False):
                 audio_signal, audio_signal_len, labels, labels_len = batch
 
                 audio_signal = audio_signal.to("cuda")
