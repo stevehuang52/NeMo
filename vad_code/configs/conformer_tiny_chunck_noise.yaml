@@ -83,7 +83,7 @@ model:
     _target_: nemo.collections.asr.modules.ConformerEncoder
     feat_in: ${model.preprocessor.features}
     feat_out: -1 # you may set it if you need different output size other than the default d_model
-    n_layers: 8
+    n_layers: 4
     d_model: 176
 
     # Sub-sampling params
@@ -98,13 +98,17 @@ model:
     self_attention_model: rel_pos # rel_pos or abs_pos
     n_heads: 4 # may need to be lower for smaller d_models
     # [left, right] specifies the number of steps to be seen from left and right of each step in self-attention
-    att_context_size: [-1, -1] # -1 means unlimited context
+    # for att_context_style=regular, the right context is recommended to be a small number around 0 to 3 as multiple-layers may increase the effective right context too large
+    # for att_context_style=chunked_limited, the left context need to be dividable by the right context plus one
+    att_context_size: [31, 30] # -1 means unlimited context, right=30 for 0.6s context
+    att_context_style: chunked_limited # regular or chunked_limited
+
     xscaling: true # scales up the input embeddings by sqrt(d_model)
     untie_biases: true # unties the biases of the TransformerXL layers
     pos_emb_max_len: 5000
 
     # Convolution module's params
-    conv_kernel_size: 31
+    conv_kernel_size: 9
     conv_norm_type: 'batch_norm' # batch_norm or layer_norm
 
     ### regularization
@@ -122,7 +126,7 @@ model:
 
   optim:
     name: adamw
-    lr: 5.0
+    lr: 3.0
     # optimizer arguments
     betas: [0.9, 0.98]
     weight_decay: 1e-3
