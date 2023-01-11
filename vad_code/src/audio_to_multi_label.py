@@ -14,6 +14,7 @@
 
 import io
 import os
+from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -83,6 +84,11 @@ class AudioToMultiLabelDataset(Dataset):
             self.labels = []
             self.num_classes = 1
 
+        self.labels_probs = self._get_label_prob()
+        self.labels_weights = [1 / x for x in self.labels_probs]
+        logging.info(f"calculated label probs: {self.labels_probs}")
+        logging.info(f"calculated label weights: {self.labels_weights}")
+
     def _get_label_set(self):
         labels = []
         for sample in self.collection:
@@ -91,6 +97,22 @@ class AudioToMultiLabelDataset(Dataset):
                 label_str_list = label_str.split(self.delimiter) if self.delimiter else label_str.split()
                 labels.extend(label_str_list)
         return sorted(set(labels))
+
+    def _get_label_prob(self):
+        freq = defaultdict(int)
+        total = 0
+        for sample in self.collection:
+            label_str = sample.label
+            if label_str:
+                label_str_list = label_str.split(self.delimiter) if self.delimiter else label_str.split()
+                for l in label_str_list:
+                    if l in self.labels:
+                        freq[l] += 1
+                        total += 1
+
+        for k in freq:
+            freq[k] /= total
+        return [freq[x] for x in self.labels]
 
     def _label_str_to_tensor(self, label_str: str):
         labels = label_str.split(self.delimiter) if self.delimiter else label_str.split()
