@@ -215,7 +215,7 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         correct_counts, total_counts = self._accuracy.correct_counts_k, self._accuracy.total_counts_k
 
         self._macro_accuracy.update(preds=metric_logits, target=metric_labels)
-        stats = self._macro_accuracy._get_final_stats()
+        stats = self._macro_accuracy._final_state()
 
         return {
             f'{tag}_loss': loss_value,
