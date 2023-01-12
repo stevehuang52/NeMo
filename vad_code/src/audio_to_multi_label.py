@@ -85,7 +85,7 @@ class AudioToMultiLabelDataset(Dataset):
             self.num_classes = 1
 
         self.labels_probs = self._get_label_prob()
-        self.labels_weights = [1 / x for x in self.labels_probs]
+        self.labels_weights = [1 / x if x > 0 else 1 for x in self.labels_probs]
         logging.info(f"calculated label probs: {self.labels_probs}")
         logging.info(f"calculated label weights: {self.labels_weights}")
 
