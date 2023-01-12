@@ -101,7 +101,7 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
 
     def _setup_metrics(self):
         self._accuracy = TopKClassificationAccuracy(dist_sync_on_step=True)
-        self._macro_accuracy = Accuracy(num_classes=self.num_classes, average='macro')
+        self._macro_accuracy = Accuracy(num_classes=self.num_classes, average='macro', task="multiclass")
 
     def _setup_loss(self):
         if "loss" in self.cfg:
