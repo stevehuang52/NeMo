@@ -38,6 +38,7 @@
 - ch120_moved: dev 1.78
 - total: train 4561hr -> 2993hr, dev ~79hr  
 
+
 - freesound_train 46.53
 - musan_train: 8.11
 
@@ -47,14 +48,9 @@
   - ch109
 
 ## Data Processing
-1. Generate manifest with: audio_filepath, duration, offset
-2. For each manifest item, load RTTM and obtain frame-level labels
+1. Generate new manifest for freesound, excluding laughter
+   1. Split freesound manifest
 
-
-- Noise aug fail with worker > 0, same error message as before
-  - "Terminating: fork() called from a process already using GNU OpenMP, this is unsafe."
-- No noise aug works fine with workers = 1, but fail after 3 epochs with worker=4,
-  - "zipfile.BadZipFile: Bad magic number for file header" ---- happened in AudioSegment.from_file()->librosa.core.resample()
 
 
 

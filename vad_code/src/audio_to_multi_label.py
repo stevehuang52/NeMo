@@ -14,7 +14,7 @@
 
 import io
 import os
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -64,7 +64,10 @@ class AudioToMultiLabelDataset(Dataset):
             is_regression_task=is_regression_task,
         )
 
-        self.collection = self.filter_audio_files(self.collection)
+        self.labels = labels
+        self.labels_probs = []
+        self.labels_weights = []
+        self.collection = self.process_collection(self.collection)
 
         self.featurizer = WaveformFeaturizer(sample_rate=sample_rate, int_values=int_values, augmentor=augmentor)
         self.trim = trim_silence
@@ -72,7 +75,6 @@ class AudioToMultiLabelDataset(Dataset):
         self.delimiter = delimiter
 
         if not is_regression_task:
-            self.labels = labels if labels else self._get_label_set()
             self.num_classes = len(self.labels) if self.labels is not None else 1
             self.label2id, self.id2label = {}, {}
             for label_id, label in enumerate(self.labels):
@@ -84,11 +86,6 @@ class AudioToMultiLabelDataset(Dataset):
             self.labels = []
             self.num_classes = 1
 
-        self.labels_probs = self._get_label_prob()
-        self.labels_weights = [1 / x if x > 0 else 1 for x in self.labels_probs]
-        logging.info(f"calculated label probs: {self.labels_probs}")
-        logging.info(f"calculated label weights: {self.labels_weights}")
-
     def _get_label_set(self):
         labels = []
         for sample in self.collection:
@@ -97,22 +94,6 @@ class AudioToMultiLabelDataset(Dataset):
                 label_str_list = label_str.split(self.delimiter) if self.delimiter else label_str.split()
                 labels.extend(label_str_list)
         return sorted(set(labels))
-
-    def _get_label_prob(self):
-        freq = defaultdict(int)
-        total = 0
-        for sample in self.collection:
-            label_str = sample.label
-            if label_str:
-                label_str_list = label_str.split(self.delimiter) if self.delimiter else label_str.split()
-                for l in label_str_list:
-                    if l in self.labels:
-                        freq[l] += 1
-                        total += 1
-
-        for k in freq:
-            freq[k] /= total
-        return [freq[x] for x in self.labels]
 
     def _label_str_to_tensor(self, label_str: str):
         labels = label_str.split(self.delimiter) if self.delimiter else label_str.split()
@@ -125,21 +106,38 @@ class AudioToMultiLabelDataset(Dataset):
             labels = torch.tensor(labels).long()
         return labels
 
-    def filter_audio_files(self, data_list):
+    def process_collection(self, data_list):
         results = []
         cnt = 0
         duration = 0.0
         discarded = []
+        all_labels = []
         for sample in data_list:
             if Path(sample.audio_file).is_file():
                 results.append(sample)
                 duration += sample.duration
+                label_str = sample.label
+                if label_str:
+                    all_labels += label_str.split(self.delimiter) if self.delimiter else label_str.split()
             else:
                 cnt += 1
                 discarded.append(sample.audio_file)
+
         logging.info(f"{cnt} audio files were discarded since not found.")
         logging.info(discarded[:5])
         logging.info(f"Total duration after filtering: {duration / 3600: .2f} hours.")
+        logging.info("--------------------------------")
+
+        if self.labels is None:
+            self.labels = sorted(list(set(all_labels)))
+            logging.info(f"No predefined labels, using all presented labels: {self.labels}")
+
+        counter = Counter(all_labels)
+        freq = [counter[l] for l in self.labels]
+        self.labels_probs = [x / sum(freq) for x in freq]
+        self.labels_weights = [1 / x if x > 0 else 1 for x in self.labels_probs]
+        logging.info(f"Calculated label probs: {self.labels_probs}")
+        logging.info(f"Calculated label weights: {self.labels_weights}")
         logging.info("--------------------------------")
         return results
 
