@@ -57,6 +57,8 @@ class AudioToMultiLabelDataset(Dataset):
         if isinstance(manifest_filepath, str):
             manifest_filepath = manifest_filepath.split(',')
 
+        self.delimiter = delimiter
+
         self.collection = collections.ASRSpeechLabel(
             manifests_files=manifest_filepath,
             min_duration=min_duration,
@@ -72,7 +74,6 @@ class AudioToMultiLabelDataset(Dataset):
         self.featurizer = WaveformFeaturizer(sample_rate=sample_rate, int_values=int_values, augmentor=augmentor)
         self.trim = trim_silence
         self.is_regression_task = is_regression_task
-        self.delimiter = delimiter
 
         if not is_regression_task:
             self.num_classes = len(self.labels) if self.labels is not None else 1
