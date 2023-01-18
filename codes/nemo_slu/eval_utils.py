@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Union
 
 import pytorch_lightning as pl
 import torch
-from omegaconf import MISSING, OmegaConf
+from omegaconf import MISSING, DictConfig, OmegaConf
 from slurp_eval_tools.metrics import ErrorMetric
 from tqdm.auto import tqdm
 
@@ -190,6 +190,28 @@ def slurp_inference(asr_model, path2manifest: str, batch_size: int = 4, num_work
     return hypotheses
 
 
+def slurp_rnnt_inference(asr_model, path2manifest: str, batch_size: int = 4, num_workers: int = 0,) -> List[str]:
+
+    if num_workers is None:
+        num_workers = min(batch_size, os.cpu_count() - 1)
+
+    audio_files = []
+    with open(path2manifest, "r") as fin:
+        for line in fin.readlines():
+            line = line.strip()
+            if not line:
+                continue
+            item = json.loads(line)
+            filepath = Path(item["audio_filepath"])
+            if not filepath.is_file():
+                filepath = Path(path2manifest).parent / filepath
+            audio_files.append(str(filepath.absolute()))
+
+    hypotheses, _ = asr_model.transcribe(audio_files, batch_size, num_workers=num_workers)
+
+    return hypotheses
+
+
 @hydra_runner(config_name="InferenceConfig", schema=InferenceConfig)
 def main(cfg: InferenceConfig) -> InferenceConfig:
     logging.info(f'Hydra config: {OmegaConf.to_yaml(cfg)}')
@@ -239,8 +261,14 @@ def main(cfg: InferenceConfig) -> InferenceConfig:
     asr_model = asr_model.eval()
 
     # Setup decoding strategy
-    if hasattr(asr_model, 'set_decoding_strategy'):
+    if hasattr(asr_model, 'set_decoding_strategy') and "searcher" in cfg:
         asr_model.set_decoding_strategy(cfg.searcher)
+    else:
+        decoding = OmegaConf.to_container(asr_model.cfg.decoding)
+        decoding["strategy"] = cfg.searcher.type
+        decoding["beam"]["beam_size"] = cfg.searcher.beam_size
+        decoding = OmegaConf.create(decoding)
+        asr_model.change_decoding_strategy(decoding)
 
     # get audio filenames
     if cfg.audio_dir is not None:
@@ -298,12 +326,20 @@ def main(cfg: InferenceConfig) -> InferenceConfig:
     # transcribe audio
     with autocast():
         with torch.no_grad():
-            predictions = slurp_inference(
-                asr_model=asr_model,
-                path2manifest=cfg.dataset_manifest,
-                batch_size=cfg.batch_size,
-                num_workers=cfg.num_workers,
-            )
+            if hasattr(asr_model, "joint"):
+                predictions = slurp_rnnt_inference(
+                    asr_model=asr_model,
+                    path2manifest=cfg.dataset_manifest,
+                    batch_size=cfg.batch_size,
+                    num_workers=cfg.num_workers,
+                )
+            else:
+                predictions = slurp_inference(
+                    asr_model=asr_model,
+                    path2manifest=cfg.dataset_manifest,
+                    batch_size=cfg.batch_size,
+                    num_workers=cfg.num_workers,
+                )
 
     logging.info(f"Finished transcribing {len(filepaths)} files !")
 

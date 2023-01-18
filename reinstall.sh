@@ -28,7 +28,8 @@ else
   then
     NUMBA_VERSION=0.55
     echo 'Installing numba=='${NUMBA_VERSION}
-    conda install -y -c conda-forge numba==${NUMBA_VERSION}
+    pip install numba==0.55
+    # conda install -y -c conda-forge numba==${NUMBA_VERSION}
   fi
 fi
 
