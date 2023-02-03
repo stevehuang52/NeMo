@@ -10,10 +10,12 @@ proj_name="Frame_VAD"
 # exp_dir="drc_Multilang_sgdlr1e-3_wd1e-4_augx_b512_gacc1_ep100_ns_w8_sfish"
 # exp_dir="drc_conformer_small_Multilang_adamwlr5.0_wd1e-3_aug5x0.05_b32_gacc1_ep50_ns_wce"
 # exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b512_gacc1_ep100_sf_ns_wce_n4"
-# exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-3_wd1e-3_aug10x0.05_b512_gacc1_ep50_sf_ns_wce_n8_ep50"
+# exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-3_wd1e-3_aug10x0.05_b512_gacc1_ep50_sf_ns_wce_n8_ep50"  # best
 # exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b512_gacc1_ep50_sf_ns_wce_n8_fnorm_ep50"
 # exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b512_gacc1_ep50_sf_trns_wce_n8"
-exp_dir="drc_conformer_small_Multilang_adamwlr5.0_wd1e-3_aug5x0.05_b32_gacc1_ep50_trns_wce_fnorm"
+# exp_dir="drc_conformer_small_Multilang_adamwlr5.0_wd1e-3_aug5x0.05_b32_gacc1_ep50_trns_wce_fnorm"
+# exp_dir="drc_conformer_tiny_chunck_Multilang_l3_adamwlr3.0_wd1e-3_aug5x0.05_b64_gacc1_ep50_ns_wce_fnorm_n8"
+exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b512_gacc1_ep50_sf_ns2_wce_n8_ep50"
 
 
 # ckpt_dir="./nemo_experiments/${exp_dir}/checkpoints"
@@ -22,7 +24,7 @@ ckpt_dir="./nemo_experiments/${proj_name}/${exp_dir}"
 model_path="${ckpt_dir}/${exp_dir}-averaged.nemo"
 data_dir=./manifests_test
 
-python infer_vad_multi.py \
+CUDA_VISIBLE_DEVICES=1 python infer_vad_multi.py \
     --config-path="./configs" --config-name="vad_inference" \
     vad.model_path=$model_path \
     frame_out_dir="${ckpt_dir}/frame_vad_multi_output" \
