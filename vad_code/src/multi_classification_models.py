@@ -112,10 +112,12 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
                 return SigmoidFocalLoss(alpha, gamma)
 
             weight = self.cfg.loss.get("weight", None)
-            if weight is None or weight == "None":
+            if (weight is None or weight == "None") and self._train_dl is not None:
                 train_ds = self._train_dl.dataset if hasattr(self._train_dl, "dataset") else self._train_dl[0].dataset
                 if hasattr(train_ds, "labels_weights"):
                     weight = train_ds.labels_weights
+            else:
+                weight = [1.0] * self.num_classes
             logging.info(f"Using cross-entropy with weights: {weight}")
             return CrossEntropyLoss(logits_ndim=3, weight=weight)
         else:
