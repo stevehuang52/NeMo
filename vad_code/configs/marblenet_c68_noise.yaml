@@ -141,8 +141,8 @@ model:
 
       - filters: &enc_filters 128
         repeat: 1
-        kernel: [1]
-        stride: [1]
+        kernel: [2]
+        stride: [2]
         dilation: [1]
         dropout: ${model.dropout}
         residual: false
