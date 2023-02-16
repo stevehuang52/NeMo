@@ -43,7 +43,9 @@ CUDA_VISIBLE_DEVICES=1 python infer_vad_multi.py \
     --config-path="./configs" --config-name="vad_inference" \
     vad.model_path=$model_path \
     frame_out_dir="${ckpt_dir}/frame_vad_multi_output" \
-    dataset="[${data_dir}/vox1_dur180_spk3_ovl0.15_sln0.3_seed9_snr0_test_100h.json,${data_dir}/vox1_dur180_spk3_ovl0.15_sln0.7_seed6_snr0_test_100h.json,${data_dir}/ls960_dur180_spk3_ovl0.15_sln0.7_seed42_test-clean_noisy_snr0_100h.json]"
+    dataset="[${data_dir}/ls960_spk2_ovl0.1_sln0.4_seed2_test-clean_noisy_snr0_50h.json,${data_dir}/vox1_dur60_spk2_ovl0.15_sln0.5_seed777_test_snr0_100h.json]"
+    
+    # dataset="[${data_dir}/vox1_dur180_spk3_ovl0.15_sln0.3_seed9_snr0_test_100h.json,${data_dir}/vox1_dur180_spk3_ovl0.15_sln0.7_seed6_snr0_test_100h.json,${data_dir}/ls960_dur180_spk3_ovl0.15_sln0.7_seed42_test-clean_noisy_snr0_100h.json]"
 
     # dataset="[${data_dir}/ls960_spk2_ovl0.1_sln0.4_seed2_test-clean_noisy_snr0_50h.json]"
 
