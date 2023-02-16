@@ -7,9 +7,12 @@ out_dir=/media/data/projects/NeMo-fvad/vad_code/nemo_experiments
 CUDA_VISIBLE_DEVICES=1 python infer_seg_vad.py \
     --config-path="./configs" --config-name="vad_seg_inference" \
     frame_out_dir="${out_dir}/segment_vad_multi_output" \
-    dataset="[${data_dir}/vox1_dur60_spk2_ovl0.15_sln0.5_seed777_test_snr0_100h.json]"
+    dataset="[${data_dir}/vox1_dur180_spk3_ovl0.15_sln0.3_seed9_snr0_test_100h.json,${data_dir}/vox1_dur180_spk3_ovl0.15_sln0.7_seed6_snr0_test_100h.json,${data_dir}/ls960_dur180_spk3_ovl0.15_sln0.7_seed42_test-clean_noisy_snr0_100h.json]"
 
     # dataset="[${data_dir}/french_test_20ms.json,${data_dir}/german_test_20ms.json,${data_dir}/mandarin_test_20ms.json,${data_dir}/russian_test_20ms.json,${data_dir}/spanish_test_20ms.json]"
+
+
+
 
 
 #     dataset="[${data_dir}/vox1_dur60_spk2_ovl0.15_sln0.5_seed777_test_snr0_100h.json]"

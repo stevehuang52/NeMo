@@ -21,7 +21,9 @@ proj_name="Frame_VAD"
 
 # exp_dir="drc_marblenet_c68_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_ns_wce_synth_s2_n4"
 # exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth_wce_ep50_s2_n4"
-exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1500only_wce_ep50_n4"
+# exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1500only_wce_ep50_n4"
+# exp_dir="drc_marblenet_c68_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1500only_s2_wce_ep50_n4"
+exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1500only_s2_wce_ep50_n4"
 
 proj_dir=/gpfs/fs1/projects/ent_aiapps/users/heh/results/${proj_name}
 source_dir=${proj_dir}/${exp_dir}/${exp_dir}/checkpoints/
