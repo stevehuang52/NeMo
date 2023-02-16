@@ -134,12 +134,17 @@ class AudioToMultiLabelDataset(Dataset):
             logging.info(f"No predefined labels, using all presented labels: {self.labels}")
 
         counter = Counter(all_labels)
+        logging.info(f"Label counts: {counter}")
         freq = [counter[l] for l in self.labels]
-        self.labels_probs = [x / sum(freq) for x in freq]
-        self.labels_weights = [1 / x if x > 0 else 1 for x in self.labels_probs]
-        logging.info(f"Calculated label probs: {self.labels_probs}")
-        logging.info(f"Calculated label weights: {self.labels_weights}")
-        logging.info("--------------------------------")
+        if sum(freq) == 0:
+            self.labels_probs = [0 for x in freq]
+            self.labels_weights = None
+        else:
+            self.labels_probs = [x / sum(freq) for x in freq]
+            self.labels_weights = [1 / x if x > 0 else 1 for x in self.labels_probs]
+            logging.info(f"Calculated label probs: {self.labels_probs}")
+            logging.info(f"Calculated label weights: {self.labels_weights}")
+            logging.info("--------------------------------")
         return results
 
     def __len__(self):

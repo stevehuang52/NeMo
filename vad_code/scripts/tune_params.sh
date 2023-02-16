@@ -14,8 +14,11 @@ exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b51
 
 ckpt_dir="./nemo_experiments/${proj_name}/${exp_dir}"
 
-split="ami_dev_10ms"
+# "/media/data2/simulated_data/ls960_dur20_spks2_sln0.4_ovl0.1_seed42_noisy_100h.json"
+# split="ami_dev_10ms"
 # split="ch120_moved_10ms"
+
+split="ls960_dur20_spks2_sln0.4_ovl0.1_seed42_noisy_100h"
 
 output_dir="${ckpt_dir}/frame_vad_dev_output/vad_output_${split}"
 pred_dir="${output_dir}/frames_predictions"

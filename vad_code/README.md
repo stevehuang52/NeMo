@@ -1,5 +1,15 @@
 
 
+## To Do
+- [ ] Generate more training data from LS960 and Fisher
+- [ ] Generate more testing data from LS960, Fisher and Voxceleb, 3mins session, 0.5-0.8silence, 0.1 overlap
+- [ ] Train Marblenet with smaller context
+- [ ] Train Marblenet with 2x input sub-sampling and pure simulated data 
+  - [ ] 1k LS960
+  - [ ] 2k LS960
+  - [ ] 1K LS960 + 1K Fisher
+- [ ] Add code to Chime7 gitlab repo
+
 
 ## Changed Files
 - nemo.collections.asr.data.audio_to_label

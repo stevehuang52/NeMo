@@ -99,7 +99,7 @@ model:
         separable: true
         kernel_size_factor: ${model.kernel_size_factor}
 
-      - filters: 64
+      - filters: 128
         repeat: ${model.repeat}
         kernel: [13]
         stride: [1]
@@ -131,9 +131,9 @@ model:
 
       - filters: 128
         repeat: 1
-        kernel: [29]
+        kernel: [11]
         stride: [1]
-        dilation: [2]
+        dilation: [1]
         dropout: ${model.dropout}
         residual: false
         separable: true

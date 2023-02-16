@@ -21,6 +21,6 @@ python infer_vad_multi.py \
     --config-path="./configs" --config-name="vad_inference" \
     vad.model_path=$model_path \
     frame_out_dir="${ckpt_dir}/frame_vad_dev_output" \
-    dataset="[/media/data2/simulated_data/ls960_dur20_spks2_sln0.4_ovl0.1_seed42_noisy_100h.json]"
+    dataset="[${data_dir}/ch120_moved_10ms.json,${data_dir}/ami_dev_10ms.json]"
 
     # dataset="[${data_dir}/french_test_20ms.json,${data_dir}/german_test_20ms.json,${data_dir}/mandarin_test_20ms.json,${data_dir}/russian_test_20ms.json,${data_dir}/spanish_test_20ms.json]"

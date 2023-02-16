@@ -59,13 +59,20 @@ def align_labels_to_frames(probs, labels):
     frames_len = len(probs)
     labels_len = len(labels)
     probs = torch.tensor(probs).float()
-    labels = torch.tensor(labels).float()
+    labels = torch.tensor(labels).long()
     if frames_len < labels_len:
-        ratio = labels_len // frames_len
+        ratio = labels_len / frames_len
         res = labels_len % frames_len
+        if ceil(ratio) - ratio < 0.2:
+            labels = labels.tolist()
+            if len(labels) % ceil(ratio) != 0:
+                labels += [0] * (ceil(ratio) - len(labels) % ceil(ratio))
+            labels = torch.tensor(labels).long()
+            labels = labels.view(-1, ceil(ratio)).amax(1)
+            return align_labels_to_frames(probs.tolist(), labels.long().tolist())
         if res > 0:
             labels = labels[:-res]
-        labels = labels.view(-1, ratio).amax(1)
+        labels = labels.view(-1, floor(ratio)).amax(1)
         return labels.long().tolist()
     elif frames_len > labels_len:
         ratio = frames_len / labels_len

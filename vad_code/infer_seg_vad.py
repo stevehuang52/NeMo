@@ -41,7 +41,7 @@ import torch
 from pyannote.core import Annotation, Segment
 from pyannote.metrics import detection
 from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
-from src.multi_classification_models import EncDecMultiClassificationModel
+from src.multi_classification_models import EncDecClassificationModel
 from src.vad_utils import align_labels_to_frames, generate_vad_frame_pred, generate_vad_segment_table, prepare_manifest
 
 from nemo.collections.asr.parts.utils.speaker_utils import write_rttm2manifest
@@ -68,7 +68,7 @@ def main(cfg):
 
     # init and load model
     torch.set_grad_enabled(False)
-    vad_model = EncDecMultiClassificationModel.restore_from(restore_path=cfg.vad.model_path)
+    vad_model = EncDecClassificationModel.from_pretrained("vad_multilingual_marblenet")
 
     manifest_list = cfg.dataset
     if isinstance(manifest_list, str):
@@ -187,12 +187,17 @@ def evaluate_single_manifest(manifest_filepath, cfg, vad_model, out_dir):
     # setup_test_data
     vad_model.setup_test_data(
         test_data_config={
+            'vad_stream': True,
             'batch_size': 1,
             'sample_rate': 16000,
             'manifest_filepath': manifest_vad_input,
             'labels': ['infer'],
             'num_workers': cfg.num_workers,
             'shuffle': False,
+            'window_length_in_sec': cfg.vad.parameters.window_length_in_sec,
+            'shift_length_in_sec': cfg.vad.parameters.shift_length_in_sec,
+            'trim_silence': False,
+            'normalize_audio': cfg.vad.parameters.normalize_audio,
         }
     )
 
