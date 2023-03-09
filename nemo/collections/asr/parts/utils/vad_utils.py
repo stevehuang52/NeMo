@@ -640,12 +640,14 @@ def prepare_gen_segment_table(sequence: torch.Tensor, per_args: dict) -> Tuple[s
 
 
 @torch.jit.script
-def generate_vad_segment_table_per_tensor(sequence: torch.Tensor, per_args: Dict[str, float]) -> torch.Tensor:
+def generate_vad_segment_table_per_tensor(
+    sequence: torch.Tensor, per_args: Dict[str, float], unit_frame_len=0.01
+) -> torch.Tensor:
     """
     See description in generate_overlap_vad_seq.
     Use this for single instance pipeline. 
     """
-    UNIT_FRAME_LEN = 0.01
+    UNIT_FRAME_LEN = unit_frame_len
 
     speech_segments = binarization(sequence, per_args)
     speech_segments = filtering(speech_segments, per_args)

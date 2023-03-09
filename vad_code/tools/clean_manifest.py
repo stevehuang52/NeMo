@@ -1,6 +1,7 @@
 import json
+import multiprocessing as mp
 from argparse import ArgumentParser
-from multiprocessing import Pool
+from itertools import repeat
 from pathlib import Path
 from typing import Dict, List
 
@@ -36,28 +37,37 @@ def save_manifest(data: List[Dict], out_file: str):
             fout.write(f"{json.dumps(item)}\n")
 
 
+def process(x):
+    item, args = x
+    audio_path = item["audio_filepath"]
+    if Path(audio_path).is_file():
+        try:
+            _ = librosa.load(audio_path, sr=16000)
+            return item
+        except:
+            return None
+    elif args.remote_dir != "" and args.local_dir != "":
+        if audio_path.startswith(args.remote_dir):
+            audio_path_local = args.local_dir + audio_path[len(args.remote_dir) :]
+            if Path(audio_path_local).is_file():
+                try:
+                    _ = librosa.load(audio_path_local, sr=16000)
+                    return item
+                except:
+                    return None
+
+
 def check_data_sanity(data: List[Dict]):
-    results = []
     durations = 0.0
-    for item in tqdm(data):
-        audio_path = item["audio_filepath"]
-        if Path(audio_path).is_file():
-            try:
-                # _ = librosa.load(audio_path, sr=16000)
-                results.append(item)
-                durations += item["duration"]
-            except:
-                continue
-        elif args.remote_dir != "" and args.local_dir != "":
-            if audio_path.startswith(args.remote_dir):
-                audio_path_local = args.local_dir + audio_path[len(args.remote_dir) :]
-                if Path(audio_path_local).is_file():
-                    try:
-                        # _ = librosa.load(audio_path_local, sr=16000)
-                        results.append(item)
-                        durations += item["duration"]
-                    except:
-                        continue
+
+    inputs = list(zip(data, repeat(args)))
+    with mp.Pool(mp.cpu_count()) as p:
+        results = list(tqdm(p.imap(process, inputs), total=len(data)))
+
+    results = [x for x in results if x is not None]
+    for item in results:
+        durations += item["duration"]
+
     return results, durations
 
 

@@ -5,13 +5,38 @@ import librosa
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import torch
 
 from nemo.collections.asr.parts.utils.vad_utils import (
+    binarization,
+    filtering,
     gen_pred_from_speech_segments,
-    generate_vad_segment_table_per_tensor,
     load_tensor_from_file,
     prepare_gen_segment_table,
 )
+
+
+def generate_vad_segment_table_per_tensor(
+    sequence: torch.Tensor, per_args: Dict[str, float], unit_frame_len=0.01
+) -> torch.Tensor:
+    """
+    See description in generate_overlap_vad_seq.
+    Use this for single instance pipeline. 
+    """
+    UNIT_FRAME_LEN = unit_frame_len
+
+    speech_segments = binarization(sequence, per_args)
+    speech_segments = filtering(speech_segments, per_args)
+
+    if speech_segments.shape == torch.Size([0]):
+        return speech_segments
+
+    speech_segments, _ = torch.sort(speech_segments, 0)
+
+    dur = speech_segments[:, 1:2] - speech_segments[:, 0:1] + UNIT_FRAME_LEN
+    speech_segments = torch.column_stack((speech_segments, dur))
+
+    return speech_segments
 
 
 def extract_labels(path2ground_truth_label: str, time: list) -> list:
@@ -46,6 +71,8 @@ def plot_sample(
     threshold: float = None,
     per_args: dict = None,
     save_path: str = '',
+    label_repeat: int = 1,
+    unit_frame_len: float = 0.01,
 ) -> ipd.Audio:
     """
     Plot VAD outputs for demonstration in tutorial
@@ -57,7 +84,7 @@ def plot_sample(
         per_args(dict): a dict that stores the thresholds for postprocessing.
     """
     plt.figure(figsize=[20, 2])
-    UNIT_FRAME_LEN = 0.01
+    UNIT_FRAME_LEN = unit_frame_len
 
     audio, sample_rate = librosa.load(path=path2audio_file, sr=16000, mono=True, offset=offset, duration=duration)
     dur = librosa.get_duration(y=audio, sr=sample_rate)
@@ -88,13 +115,16 @@ def plot_sample(
         _, per_args_float = prepare_gen_segment_table(
             frame, per_args
         )  # take whole frame here for calculating onset and offset
-        speech_segments = generate_vad_segment_table_per_tensor(frame, per_args_float)
-        pred = gen_pred_from_speech_segments(speech_segments, frame)
+        speech_segments = generate_vad_segment_table_per_tensor(frame, per_args_float, UNIT_FRAME_LEN)
+        pred = gen_pred_from_speech_segments(speech_segments, frame, UNIT_FRAME_LEN)
         pred_snippet = pred[int(offset / UNIT_FRAME_LEN) : int((offset + dur) / UNIT_FRAME_LEN)]
 
     if path2ground_truth_label:
         # label = extract_labels(path2ground_truth_label, time)
         label, _ = load_tensor_from_file(path2ground_truth_label)
+        if label_repeat > 1:
+            label = np.repeat(label.numpy(), label_repeat)
+
         label = label[:len_pred]
         ax2.plot(np.arange(len_pred) * UNIT_FRAME_LEN, label, 'r', label='label')
 
@@ -104,6 +134,7 @@ def plot_sample(
     ax2.legend(loc='lower right', shadow=True)
     ax2.set_ylabel('Preds and Probas')
     ax2.set_ylim([-0.1, 1.1])
+    ax2.set_xticks(np.arange(0, int(dur) + 1, 1))
     plt.show()
     if save_path != "":
         plt.savefig(save_path)

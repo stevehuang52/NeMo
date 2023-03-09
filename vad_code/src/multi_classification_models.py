@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import Counter
 from math import ceil, floor
-from multiprocessing.sharedctypes import Value
 from typing import Dict, List, Optional
 
 import torch
@@ -26,9 +26,9 @@ from torchmetrics import Accuracy
 from nemo.collections.asr.models.classification_models import EncDecClassificationModel
 from nemo.collections.common.losses import CrossEntropyLoss
 from nemo.collections.common.metrics import TopKClassificationAccuracy
-from nemo.core.classes.common import PretrainedModelInfo, typecheck
+from nemo.core.classes.common import PretrainedModelInfo
 from nemo.core.neural_types import *
-from nemo.utils import logging, model_utils
+from nemo.utils import logging
 
 
 class SigmoidFocalLoss(torch.nn.Module):
@@ -112,16 +112,20 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
                 return SigmoidFocalLoss(alpha, gamma)
 
             weight = self.cfg.loss.get("weight", None)
-            if (weight is None or weight == "None") and self._train_dl is not None:
-                train_ds = self._train_dl.dataset if hasattr(self._train_dl, "dataset") else self._train_dl[0].dataset
-                if hasattr(train_ds, "labels_weights"):
-                    weight = train_ds.labels_weights
-            else:
-                weight = [1.0] * self.num_classes
+            if weight in ["auto", "None", None]:
+                weight = self._get_class_weights()
             logging.info(f"Using cross-entropy with weights: {weight}")
             return CrossEntropyLoss(logits_ndim=3, weight=weight)
         else:
             return CrossEntropyLoss(logits_ndim=3)
+
+    def _get_class_weights(self):
+        labels_weights = [1.0] * self.num_classes
+        if self._train_dl is not None:
+            train_ds = self._train_dl.dataset if hasattr(self._train_dl, "dataset") else self._train_dl[0].dataset
+            if train_ds.labels_weights:
+                labels_weights = train_ds.labels_weights
+        return labels_weights
 
     def _setup_dataloader_from_config(self, config: DictConfig):
         OmegaConf.set_struct(config, False)

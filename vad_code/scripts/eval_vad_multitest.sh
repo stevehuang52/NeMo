@@ -21,8 +21,11 @@ proj_name="Frame_VAD"
 # exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth_wce_ep50_n8_r2"
 # exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-3minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth_wce_ep50_n4"
 
-exp_dir="drc_marblenet_c68_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_ns_wce_synth_s2_n4"
+# exp_dir="drc_marblenet_c68_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_ns_wce_synth_s2_n4"
 # exp_dir="drc_marblenet_3x2x64_Multilang_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth_wce_ep50_s2_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_wce_ep50_n4"
+# exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1500only_s2_wce_ep50_n4"
+exp_dir="drc_marblenet_3x2x64_SynthMulti_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_multisynth_s2_wce_ep50_n4"
 
 
 # ckpt_dir="./nemo_experiments/${exp_dir}/checkpoints"
@@ -31,7 +34,7 @@ ckpt_dir="./nemo_experiments/${proj_name}/${exp_dir}"
 model_path="${ckpt_dir}/${exp_dir}-averaged.nemo"
 data_dir=./manifests_test
 
-CUDA_VISIBLE_DEVICES=1 python infer_vad_multi.py \
+CUDA_VISIBLE_DEVICES=0 python infer_vad_multi.py \
     --config-path="./configs" --config-name="vad_inference" \
     vad.model_path=$model_path \
     frame_out_dir="${ckpt_dir}/frame_vad_multi_output" \

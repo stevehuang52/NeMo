@@ -12,24 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-During inference, we perform frame-level prediction by two approaches:
-    1) shift the window of length window_length_in_sec (e.g. 0.63s) by shift_length_in_sec (e.g. 10ms) to generate the frame and use the prediction of the window to represent the label for the frame;
-       [this script demonstrate how to do this approach]
-    2) generate predictions with overlapping input segments. Then a smoothing filter is applied to decide the label for a frame spanned by multiple segments.
-       [get frame level prediction by this script and use vad_overlap_posterior.py in NeMo/scripts/voice_activity_detection
-       One can also find posterior about converting frame level prediction
-       to speech/no-speech segment in start and end times format in that script.]
 
-       Image https://raw.githubusercontent.com/NVIDIA/NeMo/main/tutorials/asr/images/vad_post_overlap_diagram.png
-       will help you understand this method.
-
-This script will also help you perform postprocessing and generate speech segments if needed
-
-Usage:
-python vad_infer.py --config-path="../conf/vad" --config-name="vad_inference_postprocessing.yaml" dataset=<Path of json file of evaluation data. Audio files should have unique names>
-
-"""
 import json
 import os
 import shutil
@@ -58,13 +41,6 @@ def main(cfg):
 
     if not os.path.exists(cfg.frame_out_dir):
         os.mkdir(cfg.frame_out_dir)
-    else:
-        logging.info(f"Found existing dir: {cfg.frame_out_dir}, remove and create new one...")
-        os.system(f"rm -rf {cfg.frame_out_dir}")
-        os.mkdir(cfg.frame_out_dir)
-        # logging.warning(
-        #     "Note frame_out_dir exists. If new file has same name as file inside existing folder, it will append result to existing file and might cause mistakes for next steps."
-        # )
 
     # init and load model
     torch.set_grad_enabled(False)
@@ -82,6 +58,8 @@ def main(cfg):
     for manifest_file in manifest_list:
         filename = Path(manifest_file).stem
         out_dir = str(Path(cfg.frame_out_dir) / Path(f"vad_output_{filename}"))
+        if os.path.exists(out_dir):
+            shutil.rmtree(out_dir)
         logging.info("====================================================")
         logging.info(f"Start evaluating manifest: {manifest_file}")
         probs, labels, report, pred_segment_dir, gt_segment_dir = evaluate_single_manifest(

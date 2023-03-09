@@ -27,7 +27,7 @@ model:
     bucketing_weights: null
     augmentor:
       white_noise:
-        prob: 0.5
+        prob: 0.9
         min_level: -90
         max_level: -46
       gain:
@@ -35,7 +35,7 @@ model:
         min_gain_dbfs: -10.0
         max_gain_dbfs: 10.0
       noise:
-        prob: 0.8
+        prob: 0.6
         manifest_path: /manifests/vad_noise/freesound_nonspeech_train_FL200.json
         min_snr_db: 0
         max_snr_db: 20

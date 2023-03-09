@@ -157,6 +157,11 @@ def main():
     energy_vad_folder = f"/data/russian/{subset}_energy_vad"
    
     """
+    subset = "train"
+    output_path = f"/data/russian/{subset}_energy.json"
+    asr_manifest = f"/data/russian/mcv_ruls_{subset}.json"
+    energy_vad_folder = f"/data/russian/{subset}_energy_vad"
+
     data = []
     for line in open(asr_manifest, 'r'):
         data.append(json.loads(line))
@@ -167,9 +172,6 @@ def main():
         org_duration += duration
 
     print(f"{org_duration / 3600} hours")
-
-    #     sample_data = data[:100]
-    #     data = sample_data
 
     number_of_processes = 15
     to_speech_manifest = False
@@ -183,8 +185,6 @@ def main():
 
     inputs = zip(data, repeat(args_func))
 
-    #     for result in tqdm.tqdm(p.imap_unordered(process_one_file, data), total=len(data)):
-    #         results.append(result)
     results = list(tqdm(p.imap(process_one_file_star, inputs), total=len(data)))
     p.close()
 
