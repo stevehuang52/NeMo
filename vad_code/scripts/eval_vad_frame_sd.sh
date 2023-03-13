@@ -34,9 +34,9 @@ proj_name="Frame_VAD"
 # exp_dir="drc_marblenet_c68_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1500only_s2_wce_ep50_n4_r2"
 # exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_wce_ep50_n4"
 
-# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_wce_ep50_n4"
+exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_wce_ep50_n4"
 # exp_dir="drc_marblenet_3x2x64_SynthMulti_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_multisynth_s2_wce_ep50_n4"
-exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_ga_wce_ep50_n4"
+# exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_ga_wce_ep50_n4"
 
 
 # "/media/data2/simulated_data/ls960_dur20_spks2_sln0.4_ovl0.1_seed42_noisy_100h.json"
@@ -52,7 +52,7 @@ CUDA_VISIBLE_DEVICES=0 python infer_vad_multi.py \
     vad.model_path=$model_path \
     vad.parameters.shift_length_in_sec=0.02 \
     frame_out_dir="${ckpt_dir}/frame_vad_multi_output_sd_dev" \
-    dataset="[${data_dir}/voxconv_test_full_manifest.json]"
+    dataset="[${data_dir}/dh3_dev_all_excts.json]"
     # dataset="[${data_dir}/dh3_dev_audiobooks_manifest.json,${data_dir}/dh3_dev_broadcast_interview_manifest.json,${data_dir}/dh3_dev_clinical_manifest.json,${data_dir}/dh3_dev_court_manifest.json,${data_dir}/dh3_dev_cts_manifest.json,${data_dir}/dh3_dev_maptask_manifest.json,${data_dir}/dh3_dev_meeting_manifest.json,${data_dir}/dh3_dev_restaurant_manifest.json,${data_dir}/dh3_dev_socio_field_manifest.json,${data_dir}/dh3_dev_socio_lab_manifest.json,${data_dir}/dh3_dev_webvideo_manifest.json]"
 
     # dataset="[${data_dir}/voxconv_test_full_manifest.json]"

@@ -641,7 +641,7 @@ def prepare_gen_segment_table(sequence: torch.Tensor, per_args: dict) -> Tuple[s
 
 @torch.jit.script
 def generate_vad_segment_table_per_tensor(
-    sequence: torch.Tensor, per_args: Dict[str, float], unit_frame_len=0.01
+    sequence: torch.Tensor, per_args: Dict[str, float], unit_frame_len: float = 0.01
 ) -> torch.Tensor:
     """
     See description in generate_overlap_vad_seq.
