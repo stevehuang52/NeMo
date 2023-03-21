@@ -14,9 +14,12 @@
 
 from multiprocessing import set_start_method
 
-from nemo.collections.asr.data.data_simulation import MultiSpeakerSimulator, RIRMultiSpeakerSimulator
+from nemo.collections.asr.data.data_simulation import (
+    MultiSpeakerSimulator,
+    RIRMultiSpeakerSimulator,
+    TSMultiSpeakerSimulator,
+)
 from nemo.core.config import hydra_runner
-
 
 """
 This script creates a synthetic diarization session using the provided audio dataset with ctm files.
@@ -42,6 +45,8 @@ Check out parameters in ./conf/data_simulator.yaml.
 def main(cfg):
     if cfg.data_simulator.rir_generation.use_rir:
         simulator = RIRMultiSpeakerSimulator(cfg=cfg)
+    elif cfg.data_simulator.target_speaker.use_ts:
+        simulator = TSMultiSpeakerSimulator(cfg=cfg)
     else:
         simulator = MultiSpeakerSimulator(cfg=cfg)
 

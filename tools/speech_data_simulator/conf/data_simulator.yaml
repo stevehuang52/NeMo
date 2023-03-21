@@ -86,6 +86,11 @@ data_simulator:
     step_count: 50 # Number of the unit segments you want to create per utterance
     deci: 3 # Rounding decimals for segment manifest file
 
+  target_speaker:
+    use_ts: False
+    session_length: 5
+    silence_mean: 0.05
+
   rir_generation: # Using synthetic RIR augmentation
     use_rir: false # Whether to generate synthetic RIR
     toolkit: 'pyroomacoustics' # Which toolkit to use ("pyroomacoustics", "gpuRIR")

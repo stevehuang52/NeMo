@@ -761,6 +761,7 @@ class MultiSpeakerSimulator(object):
         speaker_ids: List[str],
         speaker_wav_align_map: Dict[str, list],
         max_samples_in_sentence: int,
+        max_word_count_in_sentence: Optional[int] = None,
     ):
         """
         Build a new sentence by attaching utterance samples together until the sentence has reached a desired length. 
@@ -768,18 +769,21 @@ class MultiSpeakerSimulator(object):
 
         Args:
             speaker_turn (int): Current speaker turn.
-            speaker_ids (list): LibriSpeech speaker IDs for each speaker in the current session.
+            speaker_ids (list): Speaker IDs for each speaker in the current session.
             speaker_wav_align_map (dict): Dictionary containing speaker IDs and their corresponding wav filepath and alignments.
             max_samples_in_sentence (int): Maximum length for sentence in terms of samples
         """
         # select speaker length
-        sl = (
-            np.random.negative_binomial(
-                self._params.data_simulator.session_params.sentence_length_params[0],
-                self._params.data_simulator.session_params.sentence_length_params[1],
+        if max_word_count_in_sentence is not None:
+            sl = max_word_count_in_sentence
+        else:
+            sl = (
+                np.random.negative_binomial(
+                    self._params.data_simulator.session_params.sentence_length_params[0],
+                    self._params.data_simulator.session_params.sentence_length_params[1],
+                )
+                + 1
             )
-            + 1
-        )
 
         # initialize sentence, text, words, alignments
         self._sentence = torch.zeros(0, dtype=torch.float64, device=self._device)
@@ -1259,6 +1263,167 @@ class MultiSpeakerSimulator(object):
         tp.shutdown()
         self.annotator.close_files()
         logging.info(f"Data simulation has been completed, results saved at: {basepath}")
+
+
+class TSMultiSpeakerSimulator(MultiSpeakerSimulator):
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        self._ts_session_len = cfg.data_simulator.target_speaker.session_length
+        self._ts_silence = cfg.data_simulator.target_speaker.silence_mean
+
+    def _generate_session(
+        self,
+        idx: int,
+        basepath: str,
+        filename: str,
+        speaker_ids: List[str],
+        speaker_wav_align_map: Dict[str, list],
+        noise_samples: list,
+        device: torch.device,
+        enforce_counter: int = 2,
+    ):
+        super()._generate_session(
+            idx, basepath, filename, speaker_ids, speaker_wav_align_map, noise_samples, device, enforce_counter
+        )
+        random_seed = self._params.data_simulator.random_seed + idx * 2
+        self._set_speaker_volume()
+
+        self.sess_silence_mean = self._ts_silence
+        self.sess_overlap_mean = 0.0
+
+        for speaker_turn in range(len(speaker_ids)):
+            running_len_samples, prev_len_samples = 0, 0
+            prev_speaker = None
+            rttm_list, json_list, ctm_list = [], [], []
+            self._noise_samples = noise_samples
+            self._furthest_sample = [0 for n in range(self._params.data_simulator.session_config.num_speakers)]
+            self._missing_silence = 0
+
+            session_len_samples = int(
+                (self._params.data_simulator.session_config.session_length * self._params.data_simulator.sr)
+            )
+            array = torch.zeros(session_len_samples).to(self._device)
+            is_speech = torch.zeros(session_len_samples).to(self._device)
+
+            while running_len_samples < session_len_samples:
+
+                # build sentence (only add if remaining length >  specific time)
+                max_samples_in_sentence = session_len_samples - running_len_samples
+                if (
+                    max_samples_in_sentence
+                    < self._params.data_simulator.session_params.end_buffer * self._params.data_simulator.sr
+                ):
+                    break
+
+                # Step 2: Generate a sentence
+                self._build_sentence(speaker_turn, speaker_ids, speaker_wav_align_map, max_samples_in_sentence)
+                length = len(self._sentence)
+
+                # Step 3: Generate a timestamp for either silence or overlap
+                start = self._add_silence_or_overlap(
+                    speaker_turn=speaker_turn,
+                    prev_speaker=prev_speaker,
+                    start=running_len_samples,
+                    length=length,
+                    session_len_samples=session_len_samples,
+                    prev_len_samples=prev_len_samples,
+                    enforce=False,
+                )
+
+                # Step 4: Add sentence to array
+                array, is_speech, end = self._add_sentence_to_array(
+                    start=start, length=length, array=array, is_speech=is_speech,
+                )
+
+                # Step 5: Build entries for output files
+                new_rttm_entries = self.annotator.create_new_rttm_entry(
+                    words=self._words,
+                    alignments=self._alignments,
+                    start=start / self._params.data_simulator.sr,
+                    end=end / self._params.data_simulator.sr,
+                    speaker_id=speaker_ids[speaker_turn],
+                )
+
+                for entry in new_rttm_entries:
+                    rttm_list.append(entry)
+
+                new_json_entry = self.annotator.create_new_json_entry(
+                    text=self._text,
+                    wav_filename=os.path.join(basepath, filename + '.wav'),
+                    start=start / self._params.data_simulator.sr,
+                    length=length / self._params.data_simulator.sr,
+                    speaker_id=speaker_ids[speaker_turn],
+                    rttm_filepath=os.path.join(basepath, filename + '.rttm'),
+                    ctm_filepath=os.path.join(basepath, filename + '.ctm'),
+                )
+                json_list.append(new_json_entry)
+
+                new_ctm_entries = self.annotator.create_new_ctm_entry(
+                    words=self._words,
+                    alignments=self._alignments,
+                    session_name=filename,
+                    speaker_id=speaker_ids[speaker_turn],
+                    start=int(start / self._params.data_simulator.sr),
+                )
+                for entry in new_ctm_entries:
+                    ctm_list.append(entry)
+
+                running_len_samples = np.maximum(running_len_samples, end)
+                (
+                    self.sampler.running_speech_len_samples,
+                    self.sampler.running_silence_len_samples,
+                ) = self._get_session_silence_from_rttm(rttm_list, running_len_samples)
+
+                self._furthest_sample[speaker_turn] = running_len_samples
+                prev_speaker = speaker_turn
+                prev_len_samples = length
+
+            # Step 6: Background noise augmentation
+            if self._params.data_simulator.background_noise.add_bg:
+                if len(self._noise_samples) > 0:
+                    avg_power_array = torch.mean(array[is_speech == 1] ** 2)
+                    bg, snr = get_background_noise(
+                        len_array=len(array),
+                        power_array=avg_power_array,
+                        noise_samples=self._noise_samples,
+                        audio_read_buffer_dict=self._audio_read_buffer_dict,
+                        snr_min=self._params.data_simulator.background_noise.snr_min,
+                        snr_max=self._params.data_simulator.background_noise.snr_max,
+                        background_noise_snr=self._params.data_simulator.background_noise.snr,
+                        seed=(random_seed + idx),
+                        device=self._device,
+                    )
+                    array += bg
+                else:
+                    raise ValueError('No background noise samples found in self._noise_samples.')
+            else:
+                snr = "N/A"
+
+            # Add optional perturbations to the whole session, such as white noise, reverb, etc.
+            array = perturb_audio(array, self._params.data_simulator.sr, self.session_augmentor, device=self._device)
+
+            # Step 7: Normalize and write to disk
+            array = normalize_audio(array)
+
+            tag = f"_ts_{speaker_ids[speaker_turn]}"
+            if torch.is_tensor(array):
+                array = array.cpu().numpy()
+            sf.write(os.path.join(basepath, filename + f'{tag}.wav'), array, self._params.data_simulator.sr)
+
+            self.annotator.write_annotation_files(
+                basepath=basepath,
+                filename=filename + tag,
+                meta_data=self._get_session_meta_data(array=array, snr=snr),
+                rttm_list=rttm_list,
+                json_list=json_list,
+                ctm_list=ctm_list,
+            )
+
+            # Step 8: Clean up memory
+            del array
+            self.clean_up()
+
+        return basepath, filename
 
 
 class RIRMultiSpeakerSimulator(MultiSpeakerSimulator):
