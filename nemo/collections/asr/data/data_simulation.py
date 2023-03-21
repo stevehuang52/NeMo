@@ -1290,6 +1290,7 @@ class TSMultiSpeakerSimulator(MultiSpeakerSimulator):
 
         self.sess_silence_mean = self._ts_silence
         self.sess_overlap_mean = 0.0
+        session_len_samples = int(self._ts_session_len * self._params.data_simulator.sr)
 
         for speaker_turn in range(len(speaker_ids)):
             running_len_samples, prev_len_samples = 0, 0
@@ -1299,9 +1300,6 @@ class TSMultiSpeakerSimulator(MultiSpeakerSimulator):
             self._furthest_sample = [0 for n in range(self._params.data_simulator.session_config.num_speakers)]
             self._missing_silence = 0
 
-            session_len_samples = int(
-                (self._params.data_simulator.session_config.session_length * self._params.data_simulator.sr)
-            )
             array = torch.zeros(session_len_samples).to(self._device)
             is_speech = torch.zeros(session_len_samples).to(self._device)
 
