@@ -1007,6 +1007,7 @@ class SpeechSampler(object):
             silence_mean = beta(a, b).rvs()
         else:
             silence_mean = mean
+        self.sess_silence_mean = silence_mean
         return silence_mean
 
     def get_session_overlap_mean(self):
@@ -1035,6 +1036,7 @@ class SpeechSampler(object):
             overlap_mean = beta(a, b).rvs()
         else:
             overlap_mean = mean
+        self.sess_overlap_mean = overlap_mean
         return overlap_mean
 
     def sample_from_silence_model(self, running_len_samples: int, session_len_samples: int) -> int:
@@ -1077,7 +1079,6 @@ class SpeechSampler(object):
             silence_amount = max(self.per_silence_min_len, min(silence_amount, self.per_silence_max_len))
         else:
             silence_amount = 0
-
         return silence_amount
 
     def sample_from_overlap_model(self, non_silence_len_samples: int):

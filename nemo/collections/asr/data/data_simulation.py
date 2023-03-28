@@ -195,6 +195,7 @@ class MultiSpeakerSimulator(object):
         # internal params
         self._manifest = read_manifest(self._params.data_simulator.manifest_filepath)
         self._speaker_samples = build_speaker_samples_map(self._manifest)
+        self._speaker_ids = None
         self._noise_samples = []
         self._sentence = None
         self._text = ""
@@ -931,6 +932,8 @@ class MultiSpeakerSimulator(object):
             "session_silence_mean": self.sess_silence_mean,
             "session_overlap_mean": self.sess_overlap_mean,
             "session_snr": snr,
+            "speaker_ids": self._speaker_ids,
+            "speaker_volumes": list(self._volume),
         }
         return meta_data
 
@@ -1015,6 +1018,7 @@ class MultiSpeakerSimulator(object):
         np.random.seed(random_seed + idx)
 
         self._device = device
+        self._speaker_ids = speaker_ids
         speaker_dominance = self._get_speaker_dominance()  # randomly determine speaker dominance
         base_speaker_dominance = np.copy(speaker_dominance)
         self._set_speaker_volume()
@@ -1189,7 +1193,13 @@ class MultiSpeakerSimulator(object):
         )
         OmegaConf.save(self._params, os.path.join(output_dir, "params.yaml"))
 
-        self.annotator.open_files(basepath=basepath)
+        wavlist = open(os.path.join(basepath, "synthetic_wav.list"), "w")
+        rttmlist = open(os.path.join(basepath, "synthetic_rttm.list"), "w")
+        jsonlist = open(os.path.join(basepath, "synthetic_json.list"), "w")
+        ctmlist = open(os.path.join(basepath, "synthetic_ctm.list"), "w")
+        textlist = open(os.path.join(basepath, "synthetic_txt.list"), "w")
+        metalist = open(os.path.join(basepath, "synthetic_meta.list"), "w")
+        # self.annotator.open_files(basepath=basepath)
 
         tp = concurrent.futures.ProcessPoolExecutor(max_workers=self.num_workers)
         futures = []
@@ -1255,13 +1265,26 @@ class MultiSpeakerSimulator(object):
                     self._noise_samples = self.sampler.sample_noise_manifest(noise_manifest=source_noise_manifest,)
                     basepath, filename = self._generate_session(*future)
 
-                self.annotator.write_files(basepath=basepath, filename=filename)
+                # self.annotator.write_files(basepath=basepath, filename=filename)
+                wavlist.write(os.path.join(basepath, filename + '.wav\n'))
+                rttmlist.write(os.path.join(basepath, filename + '.rttm\n'))
+                jsonlist.write(os.path.join(basepath, filename + '.json\n'))
+                ctmlist.write(os.path.join(basepath, filename + '.ctm\n'))
+                textlist.write(os.path.join(basepath, filename + '.txt\n'))
+                metalist.write(os.path.join(basepath, filename + '.meta\n'))
 
                 # throw warning if number of speakers is less than requested
                 self._check_missing_speakers()
 
         tp.shutdown()
-        self.annotator.close_files()
+        # self.annotator.close_files()
+        wavlist.close()
+        rttmlist.close()
+        jsonlist.close()
+        ctmlist.close()
+        textlist.close()
+        metalist.close()
+
         logging.info(f"Data simulation has been completed, results saved at: {basepath}")
 
 
