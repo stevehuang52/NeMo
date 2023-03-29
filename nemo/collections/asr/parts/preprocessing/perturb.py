@@ -658,9 +658,10 @@ class RirAndNoisePerturbation(Perturbation):
             shuffle_n=rir_shuffle_n,
             shift_impulse=True,
         )
-        self._fg_noise_perturbers = {}
-        self._bg_noise_perturbers = {}
+        self._fg_noise_perturbers = None
+        self._bg_noise_perturbers = None
         if noise_manifest_paths:
+            self._fg_noise_perturbers = {}
             for i in range(len(noise_manifest_paths)):
                 if orig_sample_rate is None:
                     orig_sr = 16000
@@ -676,6 +677,7 @@ class RirAndNoisePerturbation(Perturbation):
         self._max_additions = max_additions
         self._max_duration = max_duration
         if bg_noise_manifest_paths:
+            self._bg_noise_perturbers = {}
             for i in range(len(bg_noise_manifest_paths)):
                 if bg_orig_sample_rate is None:
                     orig_sr = 16000
@@ -697,25 +699,28 @@ class RirAndNoisePerturbation(Perturbation):
         if prob < self._rir_prob:
             self._rir_perturber.perturb(data)
 
-        orig_sr = data.orig_sr
-        if orig_sr not in self._fg_noise_perturbers:
-            orig_sr = max(self._fg_noise_perturbers.keys())
-        fg_perturber = self._fg_noise_perturbers[orig_sr]
-
-        orig_sr = data.orig_sr
-        if orig_sr not in self._bg_noise_perturbers:
-            orig_sr = max(self._bg_noise_perturbers.keys())
-        bg_perturber = self._bg_noise_perturbers[orig_sr]
-
         data_rms = data.rms_db
-        noise = fg_perturber.get_one_noise_sample(data.sample_rate)
-        if self._apply_noise_rir:
-            self._rir_perturber.perturb(noise)
-        fg_perturber.perturb_with_foreground_noise(
-            data, noise, data_rms=data_rms, max_noise_dur=self._max_duration, max_additions=self._max_additions
-        )
-        noise = bg_perturber.get_one_noise_sample(data.sample_rate)
-        bg_perturber.perturb_with_input_noise(data, noise, data_rms=data_rms)
+
+        if self._fg_noise_perturbers:
+            orig_sr = data.orig_sr
+            if orig_sr not in self._fg_noise_perturbers:
+                orig_sr = max(self._fg_noise_perturbers.keys())
+            fg_perturber = self._fg_noise_perturbers[orig_sr]
+            noise = fg_perturber.get_one_noise_sample(data.sample_rate)
+            if self._apply_noise_rir:
+                self._rir_perturber.perturb(noise)
+            fg_perturber.perturb_with_foreground_noise(
+                data, noise, data_rms=data_rms, max_noise_dur=self._max_duration, max_additions=self._max_additions
+            )
+
+        if self._bg_noise_perturbers:
+            orig_sr = data.orig_sr
+            if orig_sr not in self._bg_noise_perturbers:
+                orig_sr = max(self._bg_noise_perturbers.keys())
+            bg_perturber = self._bg_noise_perturbers[orig_sr]
+
+            noise = bg_perturber.get_one_noise_sample(data.sample_rate)
+            bg_perturber.perturb_with_input_noise(data, noise, data_rms=data_rms)
 
 
 class TranscodePerturbation(Perturbation):

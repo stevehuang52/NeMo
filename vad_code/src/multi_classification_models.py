@@ -274,6 +274,13 @@ class EncDecMultiClassificationModel(EncDecClassificationModel):
         if logits_max_len < labels_max_len:
             ratio = labels_max_len // logits_max_len
             res = labels_max_len % logits_max_len
+            if ceil(ratio) - ratio < 0.1:
+                labels = labels.cpu().tolist()
+                if len(labels) % ceil(ratio) != 0:
+                    labels += [0] * (ceil(ratio) - len(labels) % ceil(ratio))
+                labels = torch.tensor(labels).long().to(logits.device)
+                labels = labels.view(-1, ceil(ratio)).amax(1)
+                return self.reshape_labels(logits, labels)
             if res > 0:
                 labels = labels[:, :-res]
                 mask = labels_len > (labels_max_len - res)

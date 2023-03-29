@@ -21,7 +21,7 @@ from collections import defaultdict
 from itertools import repeat
 from math import ceil, floor
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import IPython.display as ipd
 import librosa
@@ -1102,7 +1102,7 @@ def generate_vad_frame_pred(
 
     all_probs = defaultdict(list)
     status = get_vad_stream_status(data)
-    for i, test_batch in enumerate(vad_model.test_dataloader()):
+    for i, test_batch in tqdm(enumerate(vad_model.test_dataloader()), total=len(vad_model.test_dataloader())):
         test_batch = [x.to(vad_model.device) for x in test_batch]
         with autocast():
             log_probs = vad_model(input_signal=test_batch[0], input_signal_length=test_batch[1])
@@ -1328,3 +1328,131 @@ def vad_frame_construct_pyannote_object_per_file(
     for index, row in pred.iterrows():
         hypothesis[Segment(float(row[0]), float(row[0]) + float(row[1]))] = 'Speech'
     return reference, hypothesis
+
+
+def load_rttm_file(filepath: str) -> pd.DataFrame:
+    """
+    Load rttm file and extract speech segments
+    """
+    if not Path(filepath).exists():
+        raise ValueError(f"File not found: {filepath}")
+    data = pd.read_csv(filepath, sep="\s+", delimiter=None, header=None)
+    data = data.rename(columns={3: "start", 4: "dur", 7: "speaker"})
+
+    data['start'] = data['start'].astype(float)
+    data['dur'] = data['dur'].astype(float)
+    data['end'] = data['start'] + data['dur']
+
+    data = data.sort_values(by=['start'])
+    data['segment'] = list(zip(data['start'], data['end']))
+
+    return data
+
+
+def merge_intervals(intervals: List[List[float]]) -> List[List[float]]:
+    """
+    Merge speech segments into non-overlapping segments
+    """
+    intervals.sort(key=lambda x: x[0])
+    merged = []
+    for interval in intervals:
+        # if the list of merged intervals is empty or if the current
+        # interval does not overlap with the previous, simply append it.
+        if not merged or merged[-1][1] < interval[0]:
+            merged.append(interval)
+        else:
+            # otherwise, there is overlap, so we merge the current and previous
+            # intervals.
+            merged[-1][1] = max(merged[-1][1], interval[1])
+    return merged
+
+
+def load_speech_segments_from_rttm(rttm_file: str) -> List[List[float]]:
+    """
+    load speech segments from rttm file, where each segment is represented
+    as [start, end] interval
+    """
+    speech_segments = list(load_rttm_file(rttm_file)['segment'])
+    speech_segments = [list(x) for x in speech_segments]
+    speech_segments = merge_intervals(speech_segments)
+    return speech_segments
+
+
+def load_speech_overlap_segments_from_rttm(rttm_file: str) -> Tuple[List[List[float]], List[List[float]]]:
+    """
+    Load speech segments from RTTM file, merge and extract possible overlaps
+
+    Args:
+        rttm_file (str): Path to RTTM file
+
+    Returns:
+        merged (List[List[float]]): merged speech intervals without overlaps
+        overlaps (List[List[float]]): intervals without overlap speech
+    """
+    speech_segments = list(load_rttm_file(rttm_file)['segment'])
+    speech_segments = [list(x) for x in speech_segments]
+    speech_segments.sort(key=lambda x: x[0])  # sort by start time
+    merged = []
+    overlaps = []
+    for interval in speech_segments:
+        # if the list of merged intervals is empty or if the current
+        # interval does not overlap with the previous, simply append it.
+        if not merged or merged[-1][1] < interval[0]:
+            merged.append(interval)
+        else:
+            # otherwise, there is overlap, so we merge the current and previous
+            # intervals.
+            overlaps.append([interval[0], min(merged[-1][1], interval[1])])
+            merged[-1][1] = max(merged[-1][1], interval[1])
+    return merged, overlaps
+
+
+def get_nonspeech_segments(
+    speech_segments: List[List[float]], max_duration: Optional[float] = None
+) -> List[List[float]]:
+    """
+    Get non-speech segments from given speech segments and maximum duration
+
+    Args:
+        speech_segments (List[List[float]]): speech segment intervals loaded by load_speech_segments()
+        max_duration (Optional[float]): maximum duration of the audio, used to calculate the last silence segment
+    
+    Returns:
+        nonspeech_segments (List[List[float]]): intervals of non-speech segments
+    """
+    nonspeech_segments = []
+    start = 0.0
+    for sp_seg in speech_segments:
+        end = sp_seg[0]
+        nonspeech_segments.append([start, end])
+        start = sp_seg[1]
+
+    if max_duration is not None and start < max_duration:
+        nonspeech_segments.append([start, max_duration])
+
+    return nonspeech_segments
+
+
+def get_frame_labels(segments: List[List[float]], frame_length: float, offset: float, duration: float) -> str:
+    """
+    Generate frame-level binary labels for audio, '0' for non-speech and '1' for speech
+
+    Args:
+        segments (List[List[float]]): speech segments loaded by load_speech_segments_from_rttm
+        frame_length (float): frame length in seconds, e.g. 0.01 for 10ms frames
+        offset (float): Offset of the audio clip
+        duration (float): duration of the audio clip
+    """
+    labels = []
+    n_frames = int(np.ceil(duration / frame_length))
+
+    sid = 0
+    for i in range(n_frames):
+        t = offset + i * frame_length
+        while sid < len(segments) - 1 and segments[sid][1] < t:
+            sid += 1
+        if segments[sid][0] <= t <= segments[sid][1]:
+            labels.append('1')
+        else:
+            labels.append('0')
+    return ' '.join(labels)

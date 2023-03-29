@@ -42,7 +42,14 @@ from pyannote.core import Annotation, Segment
 from pyannote.metrics import detection
 from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
 from src.multi_classification_models import EncDecClassificationModel
-from src.vad_utils import align_labels_to_frames, generate_vad_frame_pred, generate_vad_segment_table, prepare_manifest
+from src.vad_utils import (
+    align_labels_to_frames,
+    generate_vad_frame_pred,
+    generate_vad_segment_table,
+    get_frame_labels,
+    load_speech_segments_from_rttm,
+    prepare_manifest,
+)
 
 from nemo.collections.asr.parts.utils.speaker_utils import write_rttm2manifest
 from nemo.core.config import hydra_runner
@@ -159,8 +166,20 @@ def evaluate_single_manifest(manifest_filepath, cfg, vad_model, out_dir):
             uniq_audio_name = audio_filepath.split('/')[-1].rsplit('.', 1)[0]
             if uniq_audio_name in key_meta_map:
                 raise ValueError("Please make sure each line is with different audio name! ")
-            key_meta_map[uniq_audio_name] = {'audio_filepath': audio_filepath, 'label': data["label"]}
-            all_labels_map[uniq_audio_name] = [int(x) for x in data["label"].split()]
+            key_meta_map[uniq_audio_name] = {'audio_filepath': audio_filepath}
+
+            if "label" not in data:
+                rttm_key = "rttm_filepath" if "rttm_filepath" in data else "rttm_file"
+                segments = load_speech_segments_from_rttm(data[rttm_key])
+                label_str = get_frame_labels(
+                    segments=segments,
+                    frame_length=cfg.vad.parameters.shift_length_in_sec,
+                    duration=data['duration'],
+                    offset=data['offset'],
+                )
+                all_labels_map[uniq_audio_name] = [int(x) for x in label_str.split()]
+            else:
+                all_labels_map[uniq_audio_name] = [int(x) for x in data["label"].split()]
 
     # Prepare manifest for streaming VAD
     manifest_vad_input = manifest_filepath

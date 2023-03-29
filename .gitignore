@@ -17,6 +17,7 @@ fastspeech_output
 manifests*
 results/
 draco*
+*.wav
 
 synth_audio*
 

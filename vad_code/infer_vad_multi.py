@@ -25,7 +25,14 @@ from pyannote.core import Annotation, Segment
 from pyannote.metrics import detection
 from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
 from src.multi_classification_models import EncDecMultiClassificationModel
-from src.vad_utils import align_labels_to_frames, generate_vad_frame_pred, generate_vad_segment_table, prepare_manifest
+from src.vad_utils import (
+    align_labels_to_frames,
+    generate_vad_frame_pred,
+    generate_vad_segment_table,
+    get_frame_labels,
+    load_speech_segments_from_rttm,
+    prepare_manifest,
+)
 
 from nemo.collections.asr.parts.utils.speaker_utils import write_rttm2manifest
 from nemo.core.config import hydra_runner
@@ -55,6 +62,7 @@ def main(cfg):
     reports_dict = {}
     pred_seg_dir_dict = {}
     gt_seg_dir_dict = {}
+    out_dir_dict = {}
     for manifest_file in manifest_list:
         filename = Path(manifest_file).stem
         out_dir = str(Path(cfg.frame_out_dir) / Path(f"vad_output_{filename}"))
@@ -65,6 +73,7 @@ def main(cfg):
         probs, labels, report, pred_segment_dir, gt_segment_dir = evaluate_single_manifest(
             manifest_file, cfg, vad_model, out_dir
         )
+        out_dir_dict[filename] = out_dir
         probs_dict[filename] = probs
         labels_dict[filename] = labels
         reports_dict[filename] = report
@@ -101,6 +110,7 @@ def main(cfg):
         FA = der_report.iloc[[-1]][('false alarm', '%')].item()
         MISS = der_report.iloc[[-1]][('miss', '%')].item()
         logging.info(f"Detection Error Rate: DetER={DetER:0.4f}, False Alarm={FA:0.4f}, Miss={MISS:0.4f}")
+        logging.info(f"Results saved to {out_dir_dict[key]}")
         logging.info("==========================================\n\n")
 
     logging.info("================== Aggregrated Results ===================")
@@ -137,8 +147,20 @@ def evaluate_single_manifest(manifest_filepath, cfg, vad_model, out_dir):
             uniq_audio_name = audio_filepath.split('/')[-1].rsplit('.', 1)[0]
             if uniq_audio_name in key_meta_map:
                 raise ValueError("Please make sure each line is with different audio name! ")
-            key_meta_map[uniq_audio_name] = {'audio_filepath': audio_filepath, 'label': data["label"]}
-            all_labels_map[uniq_audio_name] = [int(x) for x in data["label"].split()]
+            if "label" not in data:
+                rttm_key = "rttm_filepath" if "rttm_filepath" in data else "rttm_file"
+                segments = load_speech_segments_from_rttm(data[rttm_key])
+                label_str = get_frame_labels(
+                    segments=segments,
+                    frame_length=cfg.vad.parameters.shift_length_in_sec,
+                    duration=data['duration'],
+                    offset=data['offset'],
+                )
+                all_labels_map[uniq_audio_name] = [int(x) for x in label_str.split()]
+            else:
+                all_labels_map[uniq_audio_name] = [int(x) for x in data["label"].split()]
+
+            key_meta_map[uniq_audio_name] = {'audio_filepath': audio_filepath}
 
     # Prepare manifest for streaming VAD
     manifest_vad_input = manifest_filepath
@@ -171,6 +193,8 @@ def evaluate_single_manifest(manifest_filepath, cfg, vad_model, out_dir):
             'labels': ['infer'],
             'num_workers': cfg.num_workers,
             'shuffle': False,
+            'normalize_audio': cfg.vad.parameters.normalize_audio,
+            'normalize_audio_target': cfg.vad.parameters.normalize_audio_target,
         }
     )
 

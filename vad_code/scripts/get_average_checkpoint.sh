@@ -31,7 +31,12 @@ proj_name="Frame_VAD"
 # exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_wce_ep50_n4"
 # exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_wce_ep50_n4"
 # exp_dir="drc_marblenet_3x2x64_SynthMulti_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_multisynth_s2_wce_ep50_n4"
-exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_ga_wce_ep50_n4"
+# exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_ga_wce_ep50_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_nonoise_n4"
+# exp_dir="drc_marblenet_3x2x64_SynthEn_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth3k_s2_ga_wce_ep50_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_fnorm_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_gain20_n4"
+exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_fnorm_gain-m25p5_n4"
 
 proj_dir=/gpfs/fs1/projects/ent_aiapps/users/heh/results/${proj_name}
 source_dir=${proj_dir}/${exp_dir}/${exp_dir}/checkpoints/
