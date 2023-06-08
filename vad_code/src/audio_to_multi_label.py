@@ -120,7 +120,9 @@ class AudioToMultiLabelDataset(Dataset):
         discarded = []
         all_labels = []
         for sample in data_list:
-            if Path(sample.audio_file).is_file():
+            if isinstance(sample.audio_file, list) or (
+                isinstance(sample.audio_file, str) and Path(sample.audio_file).is_file()
+            ):
                 results.append(sample)
                 duration += sample.duration
                 label_str = sample.label
