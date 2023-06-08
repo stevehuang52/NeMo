@@ -75,9 +75,7 @@ class AudioToMultiLabelDataset(Dataset):
         self.labels_weights = []
         self.collection = self.process_collection(self.collection)
 
-        self.featurizer = WaveformFeaturizer(
-            sample_rate=sample_rate, int_values=int_values, augmentor=augmentor, channel_selector="average"
-        )
+        self.featurizer = WaveformFeaturizer(sample_rate=sample_rate, int_values=int_values, augmentor=augmentor)
         self.trim = trim_silence
         self.is_regression_task = is_regression_task
 
@@ -173,6 +171,7 @@ class AudioToMultiLabelDataset(Dataset):
             trim=self.trim,
             normalize=self.normalize_audio,
             normalize_target=self.normalize_audio_target,
+            channel_selector="average",
         )
         f, fl = features, torch.tensor(features.size(0)).long()
 
