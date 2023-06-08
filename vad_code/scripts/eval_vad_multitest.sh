@@ -27,7 +27,14 @@ proj_name="Frame_VAD"
 # exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1500only_s2_wce_ep50_n4"
 # exp_dir="drc_marblenet_3x2x64_SynthMulti_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_multisynth_s2_wce_ep50_n4"
 # exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_fnorm_n4"
-exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_gain20_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_gain20_n4"
+# exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_wce_0.5sln_ep50_n4"
+
+
+# exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_wce_ep50_n4"
+# exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_wce_0.5sln_ep50_n4"
+# exp_dir="drc_marblenet_3x2x64_Synth_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth1k_s2_ga_wce_ep50_n4"
+exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_gain20_wns_n4"
 
 
 # ckpt_dir="./nemo_experiments/${exp_dir}/checkpoints"
@@ -40,6 +47,9 @@ CUDA_VISIBLE_DEVICES=0 python infer_vad_multi.py \
     --config-path="./configs" --config-name="vad_inference" \
     vad.model_path=$model_path \
     frame_out_dir="${ckpt_dir}/frame_vad_multi_output" \
-    dataset="[${data_dir}/ava_eval_10ms.json,${data_dir}/ami_eval_10ms.json,${data_dir}/ch120_CH109_10ms.json]"
+    dataset="[${data_dir}/ami_eval_10ms.json,${data_dir}/ch120_CH109_10ms.json]"
+    # dataset="[${data_dir}/ami_dev_40ms_merged.json]"
+
+    # dataset="[${data_dir}/ava_eval_10ms.json,${data_dir}/ami_eval_10ms.json,${data_dir}/ch120_CH109_10ms.json]"
 
     # dataset="[${data_dir}/french_test_20ms.json,${data_dir}/german_test_20ms.json,${data_dir}/mandarin_test_20ms.json,${data_dir}/russian_test_20ms.json,${data_dir}/spanish_test_20ms.json]"

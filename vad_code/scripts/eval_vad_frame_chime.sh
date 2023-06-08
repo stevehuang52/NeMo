@@ -42,7 +42,13 @@ proj_name="Frame_VAD"
 # exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_nonoise_n4"
 # exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_fnorm_n4"
 # exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_gain20_n4"
-exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_fnorm_gain-m25p5_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_fnorm_gain-m25p5_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth2k_s2_wce_wnsonly_gain20_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth2k_s2_wce_wnsonly_gain20_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth2k_s2_wce_wns_gain20_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_gain20_wns_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_fnorm_gain-m25p5_n4"
+exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_fnorm_gain-pr0.8xm20p10-wns_n4_r2"
 
 
 # "/media/data2/simulated_data/ls960_dur20_spks2_sln0.4_ovl0.1_seed42_noisy_100h.json"
@@ -58,7 +64,7 @@ CUDA_VISIBLE_DEVICES=0 python infer_vad_multi.py \
     vad.model_path=$model_path \
     vad.parameters.shift_length_in_sec=0.02 \
     vad.parameters.normalize_audio=True \
-    vad.parameters.normalize_audio_target=-20 \
+    vad.parameters.normalize_audio_target=-30 \
     prepare_manifest.split_duration=400 \
     frame_out_dir="${ckpt_dir}/frame_vad_multi_output_chime_debug_lnorm" \
     dataset="[/media/data2/chime7-challenge/datasets/manifests_task1/mixer6/mulspk_asr_manifest/mixer6-dev.mc_split.json]"    

@@ -770,8 +770,8 @@ def vad_construct_pyannote_object_per_file(
         hypothesis(pyannote.Annotation): prediction
     """
 
-    pred = pd.read_csv(vad_table_filepath, sep=" ", header=None)
-    label = pd.read_csv(groundtruth_RTTM_file, sep=" ", delimiter=None, header=None)
+    pred = pd.read_csv(vad_table_filepath, sep="\s+", header=None)
+    label = pd.read_csv(groundtruth_RTTM_file, sep="\s+", delimiter=None, header=None)
     label = label.rename(columns={3: "start", 4: "dur", 7: "speaker"})
 
     # construct reference
@@ -1043,7 +1043,7 @@ def extract_labels(path2ground_truth_label: str, time: list) -> list:
     time (list) : a list of array representing time period.
     """
 
-    data = pd.read_csv(path2ground_truth_label, sep=" ", delimiter=None, header=None)
+    data = pd.read_csv(path2ground_truth_label, sep="\s+", delimiter=None, header=None)
     data = data.rename(columns={3: "start", 4: "dur", 7: "speaker"})
     labels = []
     for pos in time:
@@ -1267,7 +1267,7 @@ def load_rttm_file(filepath: str) -> pd.DataFrame:
     """
     if not Path(filepath).exists():
         raise ValueError(f"File not found: {filepath}")
-    data = pd.read_csv(filepath, sep=" ", delimiter=None, header=None)
+    data = pd.read_csv(filepath, sep="\s+", delimiter=None, header=None)
     data = data.rename(columns={3: "start", 4: "dur", 7: "speaker"})
 
     data['start'] = data['start'].astype(float)

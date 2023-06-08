@@ -75,7 +75,9 @@ class AudioToMultiLabelDataset(Dataset):
         self.labels_weights = []
         self.collection = self.process_collection(self.collection)
 
-        self.featurizer = WaveformFeaturizer(sample_rate=sample_rate, int_values=int_values, augmentor=augmentor)
+        self.featurizer = WaveformFeaturizer(
+            sample_rate=sample_rate, int_values=int_values, augmentor=augmentor, channel_selector="average"
+        )
         self.trim = trim_silence
         self.is_regression_task = is_regression_task
 

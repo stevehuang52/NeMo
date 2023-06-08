@@ -356,7 +356,7 @@ class ASRSpeechLabel(SpeechLabel):
             raise ValueError(
                 f"Manifest file has invalid json line " f"structure: {line} without proper audio file key."
             )
-        item['audio_file'] = os.path.expanduser(item['audio_file'])
+        item['audio_file'] = manifest.get_full_path(item['audio_file'])
 
         # Duration.
         if 'duration' not in item:

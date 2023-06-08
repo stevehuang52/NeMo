@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List
 
 import librosa
+import soundfile as sf
 from tqdm import tqdm
 
 parser = ArgumentParser()
@@ -51,7 +52,7 @@ def process(x):
             audio_path_local = args.local_dir + audio_path[len(args.remote_dir) :]
             if Path(audio_path_local).is_file():
                 try:
-                    _ = librosa.load(audio_path_local, sr=16000)
+                    sf.read(audio_path_local, samplerate=16000)
                     return item
                 except:
                     return None
@@ -76,7 +77,7 @@ def main():
     if Path(args.manifest).is_dir():
         manifests_list = [str(x) for x in Path(args.manifest).glob("*.json")]
     else:
-        manifests_list = [args.manifest]
+        manifests_list = args.manifest.split(",")
     print(f"Found {len(manifests_list)} manifests to be processed.")
     for manifest in manifests_list:
         print(f"Processing manifest: {manifest}")

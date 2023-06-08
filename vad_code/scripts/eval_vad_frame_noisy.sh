@@ -35,7 +35,10 @@ proj_name="Frame_VAD"
 # exp_dir="drc_marblenet_3x2x64_SynthEn_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_gacc1_ep50_synth3k_s2_ga_wce_ep50_n4"
 # exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_nonoise_n4"
 # exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_fnorm_n4"
-exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_gain20_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_gain20_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth2k_s2_wce_wnsonly_gain20_n4"
+# exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth2k_s2_wce_wns_gain20_n4"
+exp_dir="drc_marblenet_3x2x64_Mixed_sgdlr1e-2minlr1e-4_wd1e-3_aug10x0.05_b64_ep50_synth1k_s2_wce_gain20_wns_n4"
 
 
 # "/media/data2/simulated_data/ls960_dur20_spks2_sln0.4_ovl0.1_seed42_noisy_100h.json"
@@ -52,6 +55,8 @@ CUDA_VISIBLE_DEVICES=1 python infer_vad_multi.py \
     vad.model_path=$model_path \
     frame_out_dir="${ckpt_dir}/frame_vad_multi_output_noisy" \
     dataset="[${data_dir}/vox1_dur180_spk3_ovl0.15_sln0.3_seed9_snr0_test_100h.json,${data_dir}/vox1_dur180_spk3_ovl0.15_sln0.7_seed6_snr0_test_100h.json,${data_dir}/ls960_dur180_spk3_ovl0.15_sln0.7_seed42_test-clean_noisy_snr0_100h.json,${data_dir}/vox1_dur180_spks3_turnP0.85_ovl0.15x0.01_sln0.3x0.01_seed9_test_snr5_gap0.5m25m15_100h.json]"
+
+    # dataset="[/media/data2/simulated_data/manifests/voxcel1_dur180_spks6_turnP0.85_ovl0.05x0.005_sln0.3x0.005_seed111_snr0_sv1.0x0.2x2.0_dev_wn_50hr.json]"
 
     # dataset="[${data_dir}/vox1_dur180_spks3_turnP0.85_ovl0.15x0.01_sln0.3x0.01_seed9_test_snr5_gap0.5m25m15_100h.json]"
     # dataset="[${data_dir}/ls960_spk2_ovl0.1_sln0.4_seed2_test-clean_noisy_snr0_50h.json,${data_dir}/vox1_dur60_spk2_ovl0.15_sln0.5_seed777_test_snr0_100h.json]"

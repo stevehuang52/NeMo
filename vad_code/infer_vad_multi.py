@@ -379,8 +379,8 @@ def vad_frame_construct_pyannote_object_per_file(
         hypothesis(pyannote.Annotation): prediction
     """
 
-    pred = pd.read_csv(pred_table_path, sep=" ", header=None)
-    label = pd.read_csv(gt_table_path, sep=" ", header=None)
+    pred = pd.read_csv(pred_table_path, sep="\s+", header=None)
+    label = pd.read_csv(gt_table_path, sep="\s+", header=None)
 
     # construct reference
     reference = Annotation()
