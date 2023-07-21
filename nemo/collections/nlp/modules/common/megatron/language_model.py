@@ -52,7 +52,7 @@ except (ImportError, ModuleNotFoundError):
 
 try:
     from megatron.core import parallel_state, tensor_parallel
-    from megatron.core.model_parallel_config import ModelParallelConfig
+
     HAVE_MEGATRON_CORE = True
 
 except (ImportError, ModuleNotFoundError):
@@ -281,15 +281,13 @@ class Embedding(MegatronModule):
         self.position_embedding_type = position_embedding_type
         self.transpose_batch_sequence = transpose_batch_sequence
 
-        config = ModelParallelConfig()
-        config.use_cpu_initialization = use_cpu_initialization
-        config.params_dtype = dtype
         # Word embeddings (parallel).
         self.word_embeddings = tensor_parallel.VocabParallelEmbedding(
             vocab_size,
             self.hidden_size,
             init_method=self.init_method,
-            config=config,
+            use_cpu_initialization=use_cpu_initialization,
+            params_dtype=dtype,
         )
         self._word_embeddings_key = 'word_embeddings'
 
@@ -708,13 +706,11 @@ class TransformerLanguageModel(MegatronModule, adapter_mixins.AdapterModuleMixin
                 self._pooler_key = 'pooler'
 
             if not self.share_embeddings_and_output_weights:
-                config = ModelParallelConfig()
-                config.use_cpu_initialization = use_cpu_initialization
-                config.params_dtype = self.dtype
                 self.output_layer = tensor_parallel.ColumnParallelLinear(
                     self.hidden_size,
                     self.vocab_size,
-                    config=config,
+                    use_cpu_initialization=use_cpu_initialization,
+                    params_dtype=self.dtype,
                     bias=False,  # Setting bias to False always to keep it consistent with embedding tying that also does not have a bias.
                     init_method=self.init_method,
                 )

@@ -46,7 +46,6 @@ except (ImportError, ModuleNotFoundError):
 try:
     from megatron.core import parallel_state, tensor_parallel
     from megatron.core.parallel_state import get_tensor_model_parallel_world_size
-    from megatron.core.model_parallel_config import ModelParallelConfig
 
     HAVE_MEGATRON_CORE = True
 
@@ -116,12 +115,6 @@ class ParallelMLP(MegatronModule, adapter_mixins.AdapterModuleMixin):
         async_tensor_model_parallel_allreduce = (
             parallel_state.get_tensor_model_parallel_world_size() > 1 and not sequence_parallel
         )
-        config = ModelParallelConfig()
-        config.use_cpu_initialization = use_cpu_initialization
-        config.params_dtype = self.dtype
-        config.sequence_parallel = sequence_parallel
-        config.async_tensor_model_parallel_allreduce = async_tensor_model_parallel_allreduce
-        config.gradient_accumulation_fusion = gradient_accumulation_fusion
         # Project to 4h.
         self.dense_h_to_4h = tensor_parallel.ColumnParallelLinear(
             hidden_size,
@@ -131,8 +124,12 @@ class ParallelMLP(MegatronModule, adapter_mixins.AdapterModuleMixin):
             gather_output=False,
             init_method=init_method,
             skip_bias_add=True,
-            config=config,
+            use_cpu_initialization=use_cpu_initialization,
+            params_dtype=dtype,
             bias=bias,
+            sequence_parallel_enabled=sequence_parallel,
+            async_tensor_model_parallel_allreduce=async_tensor_model_parallel_allreduce,
+            gradient_accumulation_fusion=gradient_accumulation_fusion,
         )
 
         if activation in ['geglu', 'reglu', 'swiglu']:
@@ -144,8 +141,12 @@ class ParallelMLP(MegatronModule, adapter_mixins.AdapterModuleMixin):
                 gather_output=False,
                 init_method=init_method,
                 skip_bias_add=True,
-                config=config,
+                use_cpu_initialization=use_cpu_initialization,
+                params_dtype=dtype,
                 bias=bias,
+                sequence_parallel_enabled=sequence_parallel,
+                async_tensor_model_parallel_allreduce=async_tensor_model_parallel_allreduce,
+                gradient_accumulation_fusion=gradient_accumulation_fusion,
             )
 
         self.glu_activation_family = activation in [
@@ -190,11 +191,6 @@ class ParallelMLP(MegatronModule, adapter_mixins.AdapterModuleMixin):
         elif activation == 'squared-relu':
             self.activation_func = squared_relu
 
-        config = ModelParallelConfig()
-        config.use_cpu_initialization = use_cpu_initialization
-        config.params_dtype = self.dtype
-        config.sequence_parallel = sequence_parallel
-        config.gradient_accumulation_fusion = gradient_accumulation_fusion
         # Project back to h.
         self.dense_4h_to_h = tensor_parallel.RowParallelLinear(
             ffn_hidden_size,
@@ -202,8 +198,11 @@ class ParallelMLP(MegatronModule, adapter_mixins.AdapterModuleMixin):
             input_is_parallel=True,
             init_method=output_layer_init_method,
             skip_bias_add=True,
-            config=config,
+            use_cpu_initialization=use_cpu_initialization,
+            params_dtype=dtype,
             bias=bias,
+            sequence_parallel_enabled=sequence_parallel,
+            gradient_accumulation_fusion=gradient_accumulation_fusion,
         )
 
         # Normformer normalization
@@ -304,19 +303,17 @@ class SwitchMLP(MegatronModule):
 
         self.num_experts = num_experts
         self.route_algo = SwitchMLP.sinkhorn
-        config = ModelParallelConfig()
-        config.use_cpu_initialization = use_cpu_initialization
-        config.params_dtype = self.dtype
-        config.sequence_parallel = sequence_parallel
-        config.gradient_accumulation_fusion = gradient_accumulation_fusion
         self.router = tensor_parallel.RowParallelLinear(
             hidden_size,
             num_experts,
             input_is_parallel=False,
             init_method=init_method,
             skip_bias_add=False,
-            config=config,
+            use_cpu_initialization=use_cpu_initialization,
+            params_dtype=dtype,
             bias=bias,
+            sequence_parallel_enabled=sequence_parallel,
+            gradient_accumulation_fusion=gradient_accumulation_fusion,
         )
 
         mlp_args = {
