@@ -1,8 +1,4 @@
-
-
-
-
-# Copyright (c) 2020, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) 2023, NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,8 +25,12 @@ import webdataset as wd
 from torch.utils.data import ChainDataset
 from tqdm import tqdm
 
-from nemo.collections.alm.parts.utils.data_utils import maybe_cast_to_list, ceil_to_nearest
-from nemo.collections.asr.data.audio_to_text import expand_sharded_filepaths, shard_manifests_if_needed, cache_datastore_manifests
+from nemo.collections.alm.parts.utils.data_utils import ceil_to_nearest, maybe_cast_to_list
+from nemo.collections.asr.data.audio_to_text import (
+    cache_datastore_manifests,
+    expand_sharded_filepaths,
+    shard_manifests_if_needed,
+)
 from nemo.collections.asr.parts.preprocessing.features import WaveformFeaturizer
 from nemo.collections.asr.parts.utils.audio_utils import ChannelSelectorType
 from nemo.collections.common import tokenizers
@@ -48,12 +48,11 @@ from nemo.utils.data_utils import (
 )
 from nemo.utils.get_rank import is_global_rank_zero
 
-
-
 __all__ = [
     'AudioQuestionAnswerDataset',
     'TarredAudioQuestionAnswerDataset',
 ]
+
 
 def _speech_collate_fn(audio_signals, audio_lengths):
     """collate batch of audio sig, audio len, tokens, tokens len
@@ -61,7 +60,7 @@ def _speech_collate_fn(audio_signals, audio_lengths):
         audio_signals: List[Tensor]
         audio_lengths: List[Tensor]
     """
-    
+
     max_audio_len = 0
     has_audio = audio_lengths[0] is not None
     if has_audio:
@@ -81,7 +80,7 @@ def _speech_collate_fn(audio_signals, audio_lengths):
         audio_lengths = torch.stack(audio_lengths)
     else:
         audio_signals_padded, audio_lengths = None, None
-    
+
     return audio_signals_padded, audio_lengths
 
 
@@ -263,7 +262,7 @@ class AudioQuestionAnswerDataset(Dataset):
         output["audio_length"] = fl
 
         text_data = self._process_example(context=sample.question, output=sample.answer)
-        
+
         output.update(text_data)
 
         return output
@@ -390,7 +389,7 @@ class AudioQuestionAnswerDataset(Dataset):
         audio_signal = [x["audio_signal"] for x in batch]
         audio_lengths = [x["audio_length"] for x in batch]
         audio_signal, audio_lengths = _speech_collate_fn(audio_signal, audio_lengths)
-        
+
         input_ids = [item['input_ids'][:-1] for item in batch]
         labels = [item['input_ids'][1:] for item in batch]
         contexts = [item['context_ids'] for item in batch]
@@ -782,7 +781,6 @@ class _TarredAudioToTextDataset(IterableDataset):
         return self.len
 
 
-
 class TarredAudioToBPEDataset(_TarredAudioToTextDataset):
     """
     A similar Dataset to the AudioToBPEDataset, but which loads tarred audio files.
@@ -1003,14 +1001,3 @@ class RandomizedChainDataset(ChainDataset):
                 # so that the other datasets get a chance to yield too
                 if idx >= len(d) - 1:
                     break
-
-
-
-
-
-
-
-
-
-
-
