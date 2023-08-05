@@ -401,7 +401,7 @@ class ALMAudioQA(AudioQuestAns):
         elif 'normalized_text' in item:
             item['question'] = item['normalized_text']
         else:
-            item['question'] = "Audio input is: "
+            item['question'] = "what does this audio mean"
 
         # Answer.
         if 'answer' in item:
