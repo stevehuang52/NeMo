@@ -234,12 +234,12 @@ class ASRAudioText(AudioText):
             ids, audio_files, durations, texts, offsets, speakers, orig_srs, token_labels, langs, *args, **kwargs
         )
 
+
 class AudioQuestAns(_Collection):
     """List of audio-transcript text correspondence with preprocessing."""
 
     OUTPUT_TYPE = collections.namedtuple(
-        typename='AudioQAEntity',
-        field_names='id audio_file duration question answer offset speaker orig_sr lang',
+        typename='AudioQAEntity', field_names='id audio_file duration question answer offset speaker orig_sr lang',
     )
 
     def __init__(
@@ -348,7 +348,11 @@ class ALMAudioQA(AudioQuestAns):
             [],
             [],
         )
-        speakers, orig_srs, langs = [], [], [],
+        speakers, orig_srs, langs = (
+            [],
+            [],
+            [],
+        )
         for item in manifest.item_iter(manifests_files, parse_func=self.__parse_item):
             ids.append(item['id'])
             audio_files.append(item['audio_file'])
@@ -391,7 +395,7 @@ class ALMAudioQA(AudioQuestAns):
         # Question.
         if 'question' in item:
             pass
-        elif 'text_filepath' in item:
+        elif 'question_filepath' in item:
             with open(item.pop('text_filepath'), 'r') as f:
                 item['question'] = f.read().replace('\n', '')
         elif 'normalized_text' in item:
@@ -423,8 +427,6 @@ class ALMAudioQA(AudioQuestAns):
             lang=item.get('lang', None),
         )
         return item
-
-
 
 
 class SpeechLabel(_Collection):
