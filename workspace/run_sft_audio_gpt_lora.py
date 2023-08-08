@@ -16,12 +16,10 @@
 import os
 import tempfile
 
-import torch.multiprocessing as mp
 from omegaconf.omegaconf import OmegaConf, open_dict
 from pytorch_lightning import Trainer
 from pytorch_lightning.plugins.environments import TorchElasticEnvironment
 from pytorch_lightning.trainer.connectors.checkpoint_connector import CheckpointConnector
-from torch.utils.data import DataLoader, Dataset
 
 from nemo.collections.alm.models.audio_lm_model import AudioGPTLoRAModel
 from nemo.collections.asr.models import ASRModel
@@ -33,7 +31,6 @@ from nemo.collections.nlp.models.language_modeling.megatron_gpt_peft_models impo
     MegatronGPTPTuningModel,
 )
 from nemo.collections.nlp.models.language_modeling.megatron_gpt_sft_model import MegatronGPTModel
-from nemo.collections.nlp.modules.common.megatron.megatron_init import fake_initialize_model_parallel
 from nemo.collections.nlp.parts.nlp_overrides import (
     GradScaler,
     MegatronHalfPrecisionPlugin,
@@ -43,11 +40,9 @@ from nemo.collections.nlp.parts.nlp_overrides import (
     PipelineMixedPrecisionPlugin,
 )
 from nemo.core.config import hydra_runner
-from nemo.utils import AppState, logging
+from nemo.utils import logging
 from nemo.utils.exp_manager import exp_manager
-from nemo.utils.model_utils import inject_model_parallel_rank
 
-mp.set_start_method("spawn", force=True)
 
 """
 This is the script to train an Adapter infused GPT Model for audio question answering.
@@ -117,46 +112,6 @@ def _modify_config(gpt_cfg, cfg, audio_cfg, add_cfg_to_tree=False):
     return gpt_cfg
 
 
-def load_from_checkpoint_dir(cls, cfg, trainer, modify_confg_fn):
-    app_state = AppState()
-    if cfg.model.tensor_model_parallel_size > 1 or cfg.model.pipeline_model_parallel_size > 1:
-        app_state.model_parallel_size = cfg.model.tensor_model_parallel_size * cfg.model.pipeline_model_parallel_size
-        app_state.tensor_model_parallel_size = cfg.model.tensor_model_parallel_size
-        app_state.pipeline_model_parallel_size = cfg.model.pipeline_model_parallel_size
-        (
-            app_state.tensor_model_parallel_rank,
-            app_state.pipeline_model_parallel_rank,
-            app_state.model_parallel_size,
-            app_state.data_parallel_size,
-            app_state.pipeline_model_parallel_split_rank,
-            app_state.virtual_pipeline_model_parallel_rank,
-        ) = fake_initialize_model_parallel(
-            world_size=app_state.model_parallel_size,
-            rank=trainer.global_rank,
-            tensor_model_parallel_size_=cfg.model.tensor_model_parallel_size,
-            pipeline_model_parallel_size_=cfg.model.pipeline_model_parallel_size,
-            pipeline_model_parallel_split_rank_=cfg.model.pipeline_model_parallel_split_rank,
-        )
-    checkpoint_path = inject_model_parallel_rank(
-        os.path.join(cfg.model.pretrained_checkpoint.checkpoint_dir, cfg.model.pretrained_checkpoint.checkpoint_name)
-    )
-    hparams_file = OmegaConf.load(cfg.model.pretrained_checkpoint.hparams_file)
-    gpt_cfg = modify_confg_fn(hparams_file.cfg, cfg, add_cfg_to_tree=True)
-    with tempfile.NamedTemporaryFile(suffix='.yaml') as f:
-        OmegaConf.save(config=gpt_cfg, f=f.name)
-        model = cls.load_from_checkpoint(checkpoint_path=checkpoint_path, trainer=trainer, hparams_file=f.name,)
-        return model
-
-
-def validate_checkpoint_loading_args(cfg):
-    if cfg.checkpoint_dir is None or not os.path.isdir(cfg.checkpoint_dir):
-        raise ValueError(f'Checkpoint directory {cfg.checkpoint_dir} does not exist or is not a directory.')
-    if cfg.checkpoint_name is None:
-        raise ValueError(f'Checkpoint name {cfg.checkpoint_name} is not valid.')
-    if cfg.hparams_file is None or not os.path.isfile(cfg.hparams_file):
-        raise ValueError(f'Hparams file {cfg.hparams_file} does not exist or is not a file.')
-
-
 @hydra_runner(config_path="conf", config_name="megatron_gpt_peft_tuning_config")
 def main(cfg) -> None:
     logging.info("\n\n************** Experiment configuration ***********")
@@ -214,12 +169,14 @@ def main(cfg) -> None:
     base_model_save_restore_connector = NLPSaveRestoreConnector()
     if os.path.isdir(cfg.model.restore_from_path):
         base_model_save_restore_connector.model_extracted_dir = cfg.model.restore_from_path
+
     base_model_cfg = MegatronGPTModel.restore_from(
         restore_path=cfg.model.restore_from_path,
         trainer=trainer,
         return_config=True,
         save_restore_connector=base_model_save_restore_connector,
     )
+
     pretrained_audio_model = cfg.model.pretrained_audio_model
     if pretrained_audio_model.endswith('.nemo'):
         logging.info(f'Loading pretrained audio model from local file: {pretrained_audio_model}')

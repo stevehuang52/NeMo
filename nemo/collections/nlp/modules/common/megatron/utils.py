@@ -342,9 +342,6 @@ def get_params_for_weight_decay_optimization(
     Layernorms and biases will have no weight decay but the rest will.
     """
     modules = listify_model(model)
-    import ipdb
-
-    ipdb.set_trace()
     weight_decay_params = {'params': []}
     no_weight_decay_params = {'params': [], 'weight_decay': 0.0}
     for module in modules:

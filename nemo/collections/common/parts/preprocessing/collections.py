@@ -18,6 +18,7 @@ import os
 from itertools import combinations
 from typing import Any, Dict, Iterable, List, Optional, Union
 
+import numpy as np
 import pandas as pd
 
 from nemo.collections.common.parts.preprocessing import manifest, parsers
@@ -258,6 +259,7 @@ class AudioQuestAns(_Collection):
         max_number: Optional[int] = None,
         do_sort_by_duration: bool = False,
         index_by_file_id: bool = False,
+        max_num_samples: Optional[int] = None,
     ):
         """Instantiates audio-question-answer manifest with filters and preprocessing.
 
@@ -281,7 +283,7 @@ class AudioQuestAns(_Collection):
         output_type = self.OUTPUT_TYPE
         data, duration_filtered, num_filtered, total_duration = [], 0.0, 0, 0.0
         if index_by_file_id:
-            self.mapping = {}
+            self.mapping = collections.defaultdict(list)
 
         for id_, audio_file, duration, offset, question, answer, speaker, orig_sr, lang in zip(
             ids, audio_files, durations, offsets, questions, answers, speakers, orig_sampling_rates, langs
@@ -307,13 +309,24 @@ class AudioQuestAns(_Collection):
             data.append(output_type(id_, audio_file, duration, question, answer, offset, speaker, orig_sr, lang))
             if index_by_file_id:
                 file_id, _ = os.path.splitext(os.path.basename(audio_file))
-                if file_id not in self.mapping:
-                    self.mapping[file_id] = []
                 self.mapping[file_id].append(len(data) - 1)
 
             # Max number of entities filter.
             if len(data) == max_number:
                 break
+
+        if max_num_samples is not None and not index_by_file_id:
+            if max_num_samples <= len(data):
+                logging.info(f"Subsampling dataset from {len(data)} to {max_num_samples} samples")
+                data = data[:max_num_samples]
+            else:
+                logging.info(f"Oversampling dataset from {len(data)} to {max_num_samples} samples")
+                data = data * (max_num_samples // len(data))
+                res_num = max_num_samples % len(data)
+                res_data = np.random.choice(data, res_num, replace=False)
+                data.extend(res_data)
+        elif max_num_samples is not None and index_by_file_id:
+            logging.warning("Tried to subsample dataset by max_num_samples, but cannot since index_by_file_id is set.")
 
         if do_sort_by_duration:
             if index_by_file_id:

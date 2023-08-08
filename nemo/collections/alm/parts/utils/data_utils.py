@@ -37,3 +37,17 @@ def create_attention_mask(max_length):
     attention_mask = torch.tril(torch.ones((max_length, max_length))).unsqueeze(0)
     attention_mask = attention_mask < 0.5
     return attention_mask
+
+
+def get_num_samples_from_files(file_list):
+    if isinstance(file_list, str):
+        file_list = file_list.split(',')
+    num_samples = []
+    for file in file_list:
+        with open(file, 'r') as f:
+            lines = list(f.readlines())
+            num = len(lines)
+            if lines[-1] == '\n':
+                num -= 1
+            num_samples.append(num)
+    return num_samples

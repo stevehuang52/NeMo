@@ -15,26 +15,27 @@
 import itertools
 
 import torch
-from omegaconf import DictConfig, ListConfig, open_dict
+from omegaconf import DictConfig, open_dict
 from omegaconf.dictconfig import DictConfig
 from pytorch_lightning.trainer.trainer import Trainer
 
-from nemo.collections.alm.data.audio_text_qa_dataset import AudioQuestionAnswerDataset
-from nemo.collections.alm.parts.utils.data_utils import create_attention_mask
+from nemo.collections.alm.data.audio_text_qa_dataset import (
+    AudioQuestionAnswerDataset,
+    get_tarred_aqa_dataset_from_config,
+)
+from nemo.collections.alm.parts.utils.data_utils import create_attention_mask, get_num_samples_from_files
 from nemo.collections.asr.models import ASRModel
 from nemo.collections.asr.parts.preprocessing.perturb import process_augmentations
 from nemo.collections.nlp.data.language_modeling.megatron.base_dataset_utils import (
     get_datasets_weights_and_num_samples,
 )
 from nemo.collections.nlp.data.language_modeling.megatron.blendable_dataset import BlendableDataset
-from nemo.collections.nlp.data.language_modeling.megatron.gpt_dataset import build_train_valid_test_datasets
+from nemo.collections.nlp.data.language_modeling.megatron.megatron_batch_samplers import (
+    MegatronPretrainingBatchSampler,
+)
 from nemo.collections.nlp.models.language_modeling.llama.llama_model import LLAMAModel
-from nemo.collections.nlp.models.language_modeling.megatron.gpt_model import GPTModel
-from nemo.collections.nlp.models.language_modeling.megatron_base_model import MegatronBaseModel
 from nemo.collections.nlp.models.language_modeling.megatron_gpt_peft_models import MegatronGPTLoRAModel
 from nemo.collections.nlp.models.language_modeling.megatron_llama_model import MegatronLLAMAModel
-from nemo.collections.nlp.modules.common.megatron.build_model import build_model
-from nemo.collections.nlp.modules.common.megatron.module import Float16Module
 from nemo.collections.nlp.modules.common.megatron.utils import average_losses_across_data_parallel_group
 from nemo.core.classes.mixins import adapter_mixins
 from nemo.core.neural_types import ChannelType, NeuralType
@@ -75,17 +76,18 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
 
     def parameters(self):
         # override the same method in MegatronGPT model to include parameters ouside of LM
-        all_names = []
+        all_names = set()
         all_params = []
         for name, param in self.named_parameters(recurse=True):
-            all_names.append(name)
+            all_names.add(name)
             all_params.append(param)
 
-        if isinstance(self.model, list):
+        if isinstance(self.model, list):  # for T5 models that have multiple LMs
             for module in self.model:
                 for name, param in module.named_parameters(recurse=True):
-                    all_names.append(name)
-                    all_params.append(param)
+                    if name not in all_names:
+                        all_names.add(name)
+                        all_params.append(param)
 
         return itertools.chain(all_params)
 
@@ -350,49 +352,48 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
         return fwd_output_and_loss_func
 
     def _build_dataset(self, data_cfg, is_train=True):
-        datasets = []
-
-        if isinstance(data_cfg.file_names, str):
-            file_names = data_cfg.file_names.split(',')
-        else:
-            file_names = data_cfg.file_names
-
-        if is_train and not data_cfg.get('is_tarred', False):
-            # Construct the data prefix list for `get_datasets_weights_and_num_samples()`
-            # that is of the format [weight1,file_name1,weight2,file_name2,...]
-            concat_sampling_probabilities = data_cfg.get('concat_sampling_probabilities', None)
-            if concat_sampling_probabilities is None:
-                concat_sampling_probabilities = [1.0 / len(file_names)] * len(file_names)
-            elif len(data_cfg.get('concat_sampling_probabilities', None)) != len(file_names):
-                raise ValueError(
-                    (
-                        f"concat_sampling_probabilities must be of the same size as file_names.",
-                        f"Provided size {len(data_cfg.concat_sampling_probabilities)}, number of datasets {len(file_names)}",
-                    )
-                )
-
-            data_prefix = []
-            for weight, prefix in zip(concat_sampling_probabilities, file_names):
-                data_prefix.append(weight)
-                data_prefix.append(prefix)
-
-            if self.trainer.max_steps is None or self.trainer.max_steps <= 0:
-                raise ValueError(
-                    f'Trainer max_steps must be set to a positive integer. Found {self.trainer.max_steps}'
-                )
-            num_train_samples = [self.trainer.max_steps * data_cfg.global_batch_size]
-            _, _, num_train_samples_per_dataset = get_datasets_weights_and_num_samples(data_prefix, num_train_samples)
-            num_train_samples_after_blend = sum([x[0] for x in num_train_samples_per_dataset])
-        else:
-            num_train_samples_per_dataset = [[None]] * len(data_cfg.file_names)
-
         if 'augmentor' in data_cfg:
             augmentor = process_augmentations(
                 data_cfg['augmentor'], global_rank=self.global_rank, world_size=self.world_size
             )
         else:
             augmentor = None
-        for file_path, num_samples in zip(file_names, num_train_samples_per_dataset):
+
+        if data_cfg.get('is_tarred', False):
+            return self._build_tarred_dataset(data_cfg, augmentor=augmentor)
+
+        datasets = []
+        if isinstance(data_cfg.manifest_filepath, str):
+            manifest_filepath = data_cfg.manifest_filepath.split(',')
+        else:
+            manifest_filepath = data_cfg.manifest_filepath
+
+        if is_train:
+            # Construct the data prefix list for `get_datasets_weights_and_num_samples()`
+            # that is of the format [weight1,file_name1,weight2,file_name2,...]
+            concat_sampling_probabilities = data_cfg.get('concat_sampling_probabilities', None)
+            if concat_sampling_probabilities is None:
+                concat_sampling_probabilities = [1.0 / len(manifest_filepath)] * len(manifest_filepath)
+            elif len(data_cfg.get('concat_sampling_probabilities', None)) != len(manifest_filepath):
+                raise ValueError(
+                    (
+                        f"concat_sampling_probabilities must be of the same size as manifest_filepath.",
+                        f"Provided size {len(data_cfg.concat_sampling_probabilities)}, number of datasets {len(manifest_filepath)}",
+                    )
+                )
+            data_prefix = []
+            for weight, prefix in zip(concat_sampling_probabilities, manifest_filepath):
+                data_prefix.append(weight)
+                data_prefix.append(prefix)
+
+            num_samples_per_dataset = get_num_samples_from_files(manifest_filepath)
+            num_train_samples = [len(manifest_filepath) * max(num_samples_per_dataset)]
+            _, _, num_train_samples_per_dataset = get_datasets_weights_and_num_samples(data_prefix, num_train_samples)
+            num_train_samples_after_blend = sum([x[0] for x in num_train_samples_per_dataset])
+        else:
+            num_train_samples_per_dataset = [[None]] * len(data_cfg.manifest_filepath)
+
+        for file_path, num_samples in zip(manifest_filepath, num_train_samples_per_dataset):
             dataset = AudioQuestionAnswerDataset(
                 manifest_filepath=file_path,
                 tokenizer=self.tokenizer,
@@ -418,7 +419,6 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
                 answer_only_loss=self.cfg.get('answer_only_loss', True),
                 truncation_field=data_cfg.get('truncation_field', 'context'),
                 pad_to_max_length=False,
-                index_mapping_dir=data_cfg.get('index_mapping_dir', None),
                 prompt_template=data_cfg.get('prompt_template', None),
                 virtual_tokens=self.virtual_tokens,
                 tokens_to_generate=data_cfg.get(
@@ -427,10 +427,70 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             )
             datasets.append(dataset)
 
-        if is_train and not data_cfg.get('is_tarred', False):
+        if is_train:
             dataset = BlendableDataset(
                 datasets=datasets, weights=concat_sampling_probabilities, size=num_train_samples_after_blend
             )
             return dataset
         else:
             return datasets
+
+    def _build_tarred_dataset(self, data_cfg, augmentor):
+        return get_tarred_aqa_dataset_from_config(
+            config=data_cfg,
+            tokenizer=self.tokenizer,
+            augmentor=augmentor,
+            sep_id=self.sep_id,
+            answer_only_loss=self.cfg.get('answer_only_loss', True),
+            virtual_tokens=self.virtual_tokens,
+            global_rank=parallel_state.get_data_parallel_rank(),
+            world_size=parallel_state.get_data_parallel_world_size(),
+        )
+
+    def build_data_loader(self, dataset, data_cfg, consumed_samples=0):
+        """Buld dataloader given an input dataset."""
+
+        logging.info(f'Building dataloader with consumed samples: {consumed_samples}')
+        if isinstance(dataset, BlendableDataset):
+            collate_fn = dataset.datasets[0].collate_fn
+        elif hasattr(dataset, 'collate_fn'):
+            collate_fn = dataset.collate_fn
+        elif hasattr(dataset.datasets[0], 'collate_fn'):
+            # support datasets that are lists of entries
+            collate_fn = dataset.datasets[0].collate_fn
+        else:
+            # support datasets that are lists of lists
+            collate_fn = dataset.datasets[0].datasets[0].collate_fn
+
+        if isinstance(dataset, torch.utils.data.IterableDataset):
+            data_parallel_size = parallel_state.get_data_parallel_world_size()
+            num_micro_batches = data_cfg.global_batch_size // (data_cfg.micro_batch_size * data_parallel_size)
+            global_batch_size_on_this_data_parallel_rank = num_micro_batches * data_cfg.micro_batch_size
+            return torch.utils.data.DataLoader(
+                dataset,
+                collate_fn=collate_fn,
+                shuffle=False,
+                batch_size=global_batch_size_on_this_data_parallel_rank,
+                drop_last=True,
+                num_workers=data_cfg.num_workers,
+                pin_memory=data_cfg.pin_memory,
+            )
+
+        batch_sampler = MegatronPretrainingBatchSampler(
+            total_samples=len(dataset),
+            consumed_samples=consumed_samples,
+            micro_batch_size=data_cfg.micro_batch_size,
+            global_batch_size=data_cfg.global_batch_size,
+            data_parallel_rank=parallel_state.get_data_parallel_rank(),
+            data_parallel_size=parallel_state.get_data_parallel_world_size(),
+            drop_last=True,
+            pad_samples_to_global_batch_size=False,
+        )
+
+        return torch.utils.data.DataLoader(
+            dataset,
+            batch_sampler=batch_sampler,
+            collate_fn=collate_fn,
+            num_workers=data_cfg.num_workers,
+            pin_memory=data_cfg.pin_memory,
+        )
