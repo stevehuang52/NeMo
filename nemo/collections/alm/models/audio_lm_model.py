@@ -66,13 +66,11 @@ except (ImportError, ModuleNotFoundError):
 
 class AudioGPTLoRAModel(MegatronGPTLoRAModel):
     def __init__(self, cfg: DictConfig, trainer: Trainer):
-
         super().__init__(cfg, trainer)
         self._setup_audio_encoder(cfg.audio_encoder)
-        self.connector = self._setup_connector(cfg.connector)
+        self._setup_connector(cfg.connector)
         self.setup_optimizer_param_groups()
         self.configure_optimizers()
-        self.summarize()
 
     def parameters(self):
         # override the same method in MegatronGPT model to include parameters ouside of LM
@@ -151,18 +149,23 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
         logging.info(f"Optimizer groups set:\n{self.summarize()}")
 
     def _setup_audio_encoder(self, cfg: DictConfig):
-        self.audio_preprocessor = ASRModel.from_config_dict(cfg.preprocessor)
+        if hasattr(cfg, 'preprocessor') and cfg.preprocessor is not None:
+            self.audio_preprocessor = ASRModel.from_config_dict(cfg.preprocessor)
+        else:
+            self.audio_preprocessor = None
+
         if hasattr(cfg, 'spec_augment') and cfg.spec_augment is not None:
             self.audio_spec_augmentation = ASRModel.from_config_dict(cfg.spec_augment)
         else:
             self.audio_spec_augmentation = None
+
         self.audio_encoder = ASRModel.from_config_dict(cfg.encoder)
 
     def _setup_connector(self, cfg: DictConfig):
-        if 'output_dim' not in cfg:
+        if 'output_dim' not in cfg or cfg.output_dim is None or cfg.output_dim <= 0:
             with open_dict(cfg):
                 cfg.output_dim = self.model.language_model.embedding.word_embeddings.weight.shape[1]
-        return ASRModel.from_config_dict(cfg)
+        self.connector = ASRModel.from_config_dict(cfg)
 
     def forward_audio_encoder(
         self, input_signal=None, input_signal_length=None, processed_signal=None, processed_signal_length=None
@@ -193,6 +196,8 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             )
 
         if not has_processed_signal:
+            if self.audio_preprocessor is None:
+                raise ValueError(f"preprocessor cannot be None when has_processed_signal is False")
             processed_signal, processed_signal_length = self.audio_preprocessor(
                 input_signal=input_signal, length=input_signal_length,
             )
@@ -208,6 +213,7 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
         audio_feat, audio_feat_len = self.connector(encoded, encoded_len)
         return audio_feat, audio_feat_len
 
+    @torch.no_grad()
     def _get_loss_mask(self, batch, audio_feats, audio_feat_lens=None):
         return torch.cat(
             [
@@ -219,6 +225,7 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             dim=1,
         )
 
+    @torch.no_grad()
     def _get_padded_labels(self, batch, audio_feats, audio_feat_lens=None):
         return torch.cat(
             [
@@ -230,6 +237,7 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             dim=1,
         )
 
+    @torch.no_grad()
     def _get_attention_mask(self, batch, audio_feats, audio_feat_lens=None):
         """
         Args:
@@ -239,8 +247,16 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
         Returns:
             mask: (batch_size, 1, total_seq_len, total_seq_len)
         """
-        mask = create_attention_mask(audio_feats.size(1) + batch['tokens'].size(1)).to(audio_feats.device)
-        return mask.repeat(audio_feats.size(0), 1, 1, 1)
+        bs = audio_feats.size(0)
+        max_audio_len = audio_feats.size(1)
+        mask = create_attention_mask(max_audio_len + batch['tokens'].size(1)).to(audio_feats.device)
+        mask = mask.repeat(bs, 1, 1, 1)  # (batch_size, 1, total_seq_len, total_seq_len)
+        audio_mask = (
+            torch.arange(max_audio_len)[None, :].to(audio_feats.device) < audio_feat_lens[:, None]
+        )  # (batch_size, time)
+        audio_mask = audio_mask.unsqueeze(1).unsqueeze(-1)  # (batch_size, 1, time, 1)
+        mask[:, :, :max_audio_len, :] &= audio_mask
+        return mask
 
     def _get_input_embeddings(self, audio_feats, tokens, tokens_position_ids):
         # Get the input embeddings to the LM

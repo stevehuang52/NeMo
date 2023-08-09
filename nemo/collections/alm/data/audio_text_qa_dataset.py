@@ -158,7 +158,7 @@ def _audio_text_collate_fn(
 
 class TextProcessing:
     """
-    Code adapted from nemo/collections/nlp/data/language_modelling/megatron/gpt_sft_dataset.py
+    Text processing pipeline for AudioQuestionAnswerDataset and TarredAudioQuestionAnswerDataset.
     """
 
     def __init__(
@@ -388,6 +388,7 @@ class AudioQuestionAnswerDataset(TextProcessing, Dataset):
         index_by_file_id: bool = False,
         input_key: str = 'input',
         output_key: str = 'output',
+        question_file: Optional[Union[str, List[str]]] = None,
     ):
         super().__init__(
             tokenizer=tokenizer,
@@ -609,7 +610,6 @@ class TarredAudioQuestionAnswerDataset(TextProcessing, IterableDataset):
         add_sep (bool): Whether to add a separation token to each data example (goes between prompt and answer)
         tokens_to_generate (int): (inference only) Number of tokens to generate during inference
         seed: Random seed for data shuffling.
-        max_num_samples: Maximum number of samples to load. This can be > dataset length if you want to oversample data. If None, all samples will be loaded.
         seed: int = 1234,
         input_key: Key to use for the context in your JSONL file
         output_key: Key to use for the label in your JSONL file
@@ -642,7 +642,6 @@ class TarredAudioQuestionAnswerDataset(TextProcessing, IterableDataset):
         add_eos: bool = True,
         add_sep: bool = False,
         sep_id: int = None,
-        max_num_samples: int = None,
         seed: int = 1234,
         separate_prompt_and_response_with_newline: bool = False,
         answer_only_loss: bool = True,
@@ -662,7 +661,6 @@ class TarredAudioQuestionAnswerDataset(TextProcessing, IterableDataset):
             add_eos=add_eos,
             add_sep=add_sep,
             sep_id=sep_id,
-            max_num_samples=max_num_samples,
             seed=seed,
             separate_prompt_and_response_with_newline=separate_prompt_and_response_with_newline,
             answer_only_loss=answer_only_loss,
