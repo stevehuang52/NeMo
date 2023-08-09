@@ -15,8 +15,7 @@
 import itertools
 
 import torch
-from omegaconf import DictConfig, open_dict
-from omegaconf.dictconfig import DictConfig
+from omegaconf import DictConfig, ListConfig, open_dict
 from pytorch_lightning.trainer.trainer import Trainer
 
 from nemo.collections.alm.data.audio_text_qa_dataset import (
@@ -26,6 +25,7 @@ from nemo.collections.alm.data.audio_text_qa_dataset import (
 from nemo.collections.alm.parts.utils.data_utils import create_attention_mask, get_num_samples_from_files
 from nemo.collections.asr.models import ASRModel
 from nemo.collections.asr.parts.preprocessing.perturb import process_augmentations
+from nemo.collections.common.metrics import MetricStringToTorchMetric
 from nemo.collections.nlp.data.language_modeling.megatron.base_dataset_utils import (
     get_datasets_weights_and_num_samples,
 )
@@ -37,6 +37,13 @@ from nemo.collections.nlp.models.language_modeling.llama.llama_model import LLAM
 from nemo.collections.nlp.models.language_modeling.megatron_gpt_peft_models import MegatronGPTLoRAModel
 from nemo.collections.nlp.models.language_modeling.megatron_llama_model import MegatronLLAMAModel
 from nemo.collections.nlp.modules.common.megatron.utils import average_losses_across_data_parallel_group
+from nemo.collections.nlp.modules.common.text_generation_utils import (
+    LengthParam,
+    SamplingParam,
+    generate,
+    get_computeprob_response,
+    megatron_gpt_generate,
+)
 from nemo.core.classes.mixins import adapter_mixins
 from nemo.core.neural_types import ChannelType, NeuralType
 from nemo.utils import logging
@@ -510,3 +517,129 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             num_workers=data_cfg.num_workers,
             pin_memory=data_cfg.pin_memory,
         )
+
+    def setup_metric(self, data_cfg):
+        metric_name = "exact_string_match"
+        if not hasattr(data_cfg, "metric"):
+            metric = MetricStringToTorchMetric["exact_string_match"]
+        else:
+            if not hasattr(data_cfg.metric, "name"):
+                raise ValueError("Metric name is not provided in the metric config.")
+            if data_cfg.metric.name == "loss":
+                return None, "loss"
+            if data_cfg.metric.name not in MetricStringToTorchMetric:
+                raise KeyError(
+                    f"{data_cfg.metric.name} is not supported. List of supported metrics: {MetricStringToTorchMetric.keys()}"
+                )
+            if data_cfg.metric.name in self._metrics_require_string2category_map:
+                if data_cfg.metric.average is None:
+                    raise ValueError(
+                        f"{data_cfg.metric.name} requires specifying whether you want to compute a micro or macro average. Found None."
+                    )
+            if (
+                data_cfg.metric.get('labels_are_strings', False)
+                and data_cfg.metric.name in self._metrics_require_string2category_map
+            ):
+                if data_cfg.metric.num_classes is None:
+                    raise ValueError(
+                        "Number of classes is not provided in the metric section within the data config. "
+                        f"Please provide the number of classes in the data config to use the {data_cfg.metric.name} metric."
+                    )
+                if data_cfg.metric.get('class_labels', None) is None or not isinstance(
+                    data_cfg.metric.get('class_labels', None), ListConfig
+                ):
+                    raise ValueError(
+                        "Class labels are not provided properly in the metric section witnin the data config. "
+                        f"Please provide the class labels as a list of strings in the data config to use the {data_cfg.metric.name} metric."
+                    )
+                if len(data_cfg.metric.get('class_labels', None)) != data_cfg.metric.num_classes:
+                    raise ValueError(
+                        f"Number of class labels {len(data_cfg.metric.get('class_labels', None))} does not match `num_classes` : {data_cfg.metric.num_classes}"
+                    )
+
+            metric_name = data_cfg.metric.name
+            metric = MetricStringToTorchMetric[metric_name]
+
+            if isinstance(data_cfg.manifest_filepath, ListConfig):
+                if 'rouge' not in data_cfg.metric.name:
+                    metric = [
+                        metric(average=data_cfg.metric.average, num_classes=data_cfg.metric.num_classes)
+                        for _ in range(len(data_cfg.manifest_filepath))
+                    ]
+                else:
+                    metric = [metric() for _ in range(len(data_cfg.manifest_filepath))]
+            else:
+                if 'rouge' not in data_cfg.metric.name:
+                    metric = [metric(average=data_cfg.metric.average, num_classes=data_cfg.metric.num_classes)]
+                else:
+                    metric = [metric()]
+
+        return metric, metric_name
+
+    # def inference_step(self, dataloader_iter, batch_idx, mode, dataloader_idx=0):
+    #     # Call parent validation step to get the loss.
+    #     loss = super().validation_step(dataloader_iter, batch_idx)
+
+    #     batch = next(dataloader_iter)
+
+    #     length_params: LengthParam = {
+    #         "min_length": 0,
+    #         "max_length": batch['tokens'].size(1) - batch['context_lengths'].max(),
+    #     }
+    #     sampling_params: SamplingParam = {
+    #         "use_greedy": True,
+    #         "temperature": 1.0,
+    #         "top_k": 1,
+    #         "top_p": 0.94,
+    #         "repetition_penalty": 1.2,
+    #         "add_BOS": False,
+    #         "all_probs": False,
+    #         "compute_logprob": False,
+    #         "end_strings": ["<|endoftext|>"],
+    #     }
+    #     result = megatron_gpt_generate(
+    #         model=self,
+    #         inputs=(
+    #             batch['tokens'].cuda(),
+    #             (batch['context_lengths'] - 1).cuda(),
+    #         ),  # NOTE: We do -1 here to remove the space between context and response.
+    #         tokenizer=self.tokenizer,
+    #         sampling_params=sampling_params,
+    #         length_params=length_params,
+    #         check_sequence_parallel_and_checkpointing=False,  # We need to skip these checks since we'll manually enbale and disable checkpointing between training and validation.
+    #     )
+
+    #     preds_text = []
+    #     labels_text = []
+    #     input_text = []
+    #     for idx, item in enumerate(result['token_ids']):
+    #         pred = self.tokenizer.ids_to_text(item[batch['context_lengths'][idx] - 1 :])
+    #         input = self.tokenizer.ids_to_text(item[: batch['context_lengths'][idx] - 1])
+    #         label = self.tokenizer.ids_to_text(batch['tokens'][idx][batch['context_lengths'][idx] :].tolist())
+    #         preds_text.append(pred.strip())
+    #         labels_text.append(label.strip())
+    #         input_text.append(input.strip())
+
+    #     metric = self.val_metric[dataloader_idx] if mode == 'validation' else self.test_metric[dataloader_idx]
+    #     assert len(preds_text) == len(labels_text) == len(input_text)
+    #     for _, (pred, label) in enumerate(zip(preds_text, labels_text)):
+    #         # To compute metrics like pearson or spearman correlation, we need to cast the predicted string and labels to floats.
+    #         pred, label = self.cast_for_metric(
+    #             pred=pred.strip(),
+    #             label=label.strip(),
+    #             metric_name=self.val_metric_name if mode == 'validation' else self.test_metric_name,
+    #             class_labels=self.cfg.data.validation_ds.metric.get('class_labels', None)
+    #             if mode == 'validation'
+    #             else self.cfg.data.test_ds.metric.get('class_labels', None),
+    #             labels_are_strings=self.cfg.data.validation_ds.metric.get('labels_are_strings', False)
+    #             if mode == 'validation'
+    #             else self.cfg.data.test_ds.metric.get('labels_are_strings', False),
+    #         )
+    #         _ = metric(pred, label)
+
+    #     return {
+    #         'loss': loss,
+    #         'preds': preds_text,
+    #         'labels': labels_text,
+    #         'inputs': input_text,
+    #     }

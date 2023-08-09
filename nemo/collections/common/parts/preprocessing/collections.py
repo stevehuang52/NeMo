@@ -323,7 +323,7 @@ class AudioQuestAns(_Collection):
                 logging.info(f"Oversampling dataset from {len(data)} to {max_num_samples} samples")
                 data = data * (max_num_samples // len(data))
                 res_num = max_num_samples % len(data)
-                res_data = np.random.choice(data, res_num, replace=False)
+                res_data = [data[idx] for idx in np.random.choice(len(data), res_num, replace=False)]
                 data.extend(res_data)
         elif max_num_samples is not None and index_by_file_id:
             logging.warning("Tried to subsample dataset by max_num_samples, but cannot since index_by_file_id is set.")
