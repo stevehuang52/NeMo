@@ -377,26 +377,14 @@ class MegatronGPTSFTModel(MegatronGPTModel):
     def inference_step(self, dataloader_iter, batch_idx, mode, dataloader_idx=0):
         # Call parent validation step to get the loss.
         loss = super().validation_step(dataloader_iter, batch_idx)
-        if loss is not None:  # Ensure its not None
-            outputs = {
-                'loss': loss,
-                'preds': None,
-                'labels': None,
-                'inputs': None,
-            }
-            if mode == 'validation':
-                if type(self.trainer.val_dataloaders) == list and len(self.trainer.val_dataloaders) > 1:
-                    # super().validation_step appends just loss to self.validation_step_outputs, replace the last appended loss with the outputs dict
-                    self.validation_step_outputs[dataloader_idx][-1] = outputs
-                else:
-                    # super().validation_step appends just loss to self.validation_step_outputs, replace the last appended loss with the outputs dict
-                    self.validation_step_outputs[-1] = outputs
-            else:
-                if type(self.trainer.test_dataloaders) == list and len(self.trainer.test_dataloaders) > 1:
-                    self.test_step_outputs[dataloader_idx].append(outputs)
-                else:
-                    self.test_step_outputs.append(outputs)
-            return outputs
+        loss = torch.tensor(0) if loss is None else loss
+        outputs = {
+            'loss': loss,
+            'preds': None,
+            'labels': None,
+            'inputs': None,
+        }
+        return outputs
 
         # # TODO (sandeepsub): Figure out the subsequent decode bits.
         # length_params: LengthParam = {
