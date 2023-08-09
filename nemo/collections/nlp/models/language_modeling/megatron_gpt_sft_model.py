@@ -177,7 +177,7 @@ class MegatronGPTSFTModel(MegatronGPTModel):
             self.setup_training_dataloader()
         if hasattr(self, '_validation_ds'):
             self._validation_dl = self.setup_eval_dataloader(self._validation_ds, self.cfg.data.validation_ds)
-        if hasattr(self.cfg.data, 'test_ds'):
+        if hasattr(self, '_test_ds'):
             self._test_dl = self.setup_eval_dataloader(self._test_ds, self.cfg.data.test_ds)
 
         # when using pipeline model parallel the final stage need to initialize word embeddings
@@ -450,9 +450,6 @@ class MegatronGPTSFTModel(MegatronGPTModel):
         # }
 
     def inference_epoch_end(self, outputs, mode, data_cfg):
-        import ipdb
-
-        ipdb.set_trace()
         # Parent class will handle logging of the loss.
         if not outputs:
             return
@@ -670,7 +667,7 @@ class MegatronGPTSFTModel(MegatronGPTModel):
             logging.info(f'Length of val dataset: {len(self._validation_ds[0])}')
 
         if stage != 'validate':
-            if hasattr(self.cfg.data, 'test_ds'):
+            if hasattr(self.cfg.data, 'test_ds') and self.cfg.data.test_ds.get("manifest_filepath", None) is not None:
                 logging.info('Building GPT SFT test datasets.')
                 # Wrap this in a list since the general finetuning parent class supports multi-validation.
                 self._test_ds = self._build_dataset(self.cfg.data.test_ds, is_train=False)
@@ -678,7 +675,7 @@ class MegatronGPTSFTModel(MegatronGPTModel):
 
         if stage == 'validate' or stage == 'test':
             return
-        logging.info('Building GPT SFT traing datasets.')
+        logging.info('Building GPT SFT trainig datasets.')
         self._train_ds = self._build_dataset(self.cfg.data.train_ds)
         logging.info(f'Length of train dataset: {len(self._train_ds)}')
 
@@ -721,6 +718,7 @@ class MegatronGPTSFTModel(MegatronGPTModel):
         for dataset in datasets:
             eval_dl = self.build_data_loader(dataset=dataset, data_cfg=data_cfg, consumed_samples=0,)
             dataloaders.append(eval_dl)
+
         return dataloaders
 
     def _reset_activation_checkpointing_args(self):

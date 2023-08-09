@@ -6,7 +6,7 @@ ASR_MODEL="stt_en_fastconformer_transducer_large"
 
 NUM_WORKERS=0
 TRAIN_MANIFESTS=/media/data/datasets/LibriSpeech/train_clean_100_cleaned.json
-VAL_MANIFESTS=/media/data/datasets/LibriSpeech/dev_clean.json
+VAL_MANIFESTS="[/media/data/datasets/LibriSpeech/dev_clean.json,/media/data/datasets/LibriSpeech/dev_clean.json]"
 
 python run_sft_audio_gpt_lora.py --config-path="./configs" --config-name "megatron_audio_gpt_lora_sft" \
     model.pretrained_audio_model=$ASR_MODEL \

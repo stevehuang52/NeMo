@@ -236,12 +236,25 @@ class ASRAudioText(AudioText):
         )
 
 
-class AudioQuestAns(_Collection):
+class AudioTextEntity:
+    def __init__(self, id, audio_file, duration, question, answer, offset, speaker, orig_sr, lang) -> None:
+        self.id = id
+        self.audio_file = audio_file
+        self.duration = duration
+        self.question = question
+        self.answer = answer
+        self.offset = offset
+        self.speaker = speaker
+        self.orig_sr = orig_sr
+        self.lang = lang
+
+
+class AudioQuestAns(collections.UserList):
     """List of audio-transcript text correspondence with preprocessing."""
 
-    OUTPUT_TYPE = collections.namedtuple(
-        typename='AudioQAEntity', field_names='id audio_file duration question answer offset speaker orig_sr lang',
-    )
+    # OUTPUT_TYPE = collections.namedtuple(
+    #     typename='AudioQAEntity', field_names='id audio_file duration question answer offset speaker orig_sr lang',
+    # )
 
     def __init__(
         self,
@@ -280,7 +293,7 @@ class AudioQuestAns(_Collection):
             index_by_file_id: If True, saves a mapping from filename base (ID) to index in data.
         """
 
-        output_type = self.OUTPUT_TYPE
+        # output_type = self.OUTPUT_TYPE
         data, duration_filtered, num_filtered, total_duration = [], 0.0, 0, 0.0
         if index_by_file_id:
             self.mapping = collections.defaultdict(list)
@@ -306,7 +319,7 @@ class AudioQuestAns(_Collection):
 
             total_duration += duration
 
-            data.append(output_type(id_, audio_file, duration, question, answer, offset, speaker, orig_sr, lang))
+            data.append(AudioTextEntity(id_, audio_file, duration, question, answer, offset, speaker, orig_sr, lang))
             if index_by_file_id:
                 file_id, _ = os.path.splitext(os.path.basename(audio_file))
                 self.mapping[file_id].append(len(data) - 1)

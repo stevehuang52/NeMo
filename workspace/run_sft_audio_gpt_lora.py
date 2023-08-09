@@ -15,6 +15,7 @@
 
 import os
 import tempfile
+import torch.multiprocessing as mp
 
 from omegaconf.omegaconf import OmegaConf, open_dict
 from pytorch_lightning import Trainer
@@ -43,6 +44,7 @@ from nemo.core.config import hydra_runner
 from nemo.utils import logging
 from nemo.utils.exp_manager import exp_manager
 
+mp.set_start_method('spawn', force=True)
 
 """
 This is the script to train an Adapter infused GPT Model for audio question answering.

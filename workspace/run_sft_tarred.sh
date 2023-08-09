@@ -4,15 +4,15 @@ export PYTHONPATH=$NEMO_DIR:$PYTHONPATH
 MEGATRON_CKPT=/media/data3/pretrained_models/megatron_gpt/gpt_pretrain_220m_len_4096_pos_alibi_step_595508_gbs256.nemo
 ASR_MODEL="stt_en_fastconformer_transducer_large"
 
-EXP_NAME=AudioGPT-tarred-LS-debug
+EXP_NAME=AudioGPT-tarred-LS-debug2
 
 GLOBAL_BATCH=256
 MICRO_BATCH=64
 
-NUM_WORKERS=8
+NUM_WORKERS=2
 TRAIN_MANIFESTS="/media/data3/librispeech_tarred/tarred_audio_manifest.json"
 TRAIN_FILEPATHS="/media/data3/librispeech_tarred/audio__OP_0..511_CL_.tar"
-VAL_MANIFESTS=/media/data/datasets/LibriSpeech/dev_clean.json
+VAL_MANIFESTS="[/media/data/datasets/LibriSpeech/dev_clean.json,/media/data/datasets/LibriSpeech/dev_clean.json]"
 
 python run_sft_audio_gpt_lora.py --config-path="./configs" --config-name "megatron_audio_gpt_lora_sft" \
     name=$EXP_NAME \
