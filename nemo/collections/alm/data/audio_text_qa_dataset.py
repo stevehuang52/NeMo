@@ -123,6 +123,8 @@ def _audio_text_collate_fn(
     labels = [item['input_ids'][1:] for item in batch]
     contexts = [item['context_ids'] for item in batch]
     context_lengths = torch.LongTensor([item['context_length'] for item in batch])
+    answers = [item['answer_ids'] for item in batch]
+
     loss_mask = [_build_loss_mask(item)[1:] for item in batch]
 
     max_length = max([len(x) for x in input_ids]) + tokens_to_generate
@@ -139,6 +141,7 @@ def _audio_text_collate_fn(
     labels = torch.LongTensor(_collate_item(labels, max_length=max_length, pad_id=text_pad_id))
     loss_mask = torch.LongTensor(_collate_item(loss_mask, max_length=max_length, pad_id=0))
     contexts = torch.LongTensor(_collate_item(contexts, max_length=max_length, pad_id=text_pad_id))
+    answers = torch.LongTensor(_collate_item(answers, max_length=max_length, pad_id=text_pad_id))
 
     batch = {
         'sample_ids': sample_ids,
@@ -150,6 +153,7 @@ def _audio_text_collate_fn(
         'position_ids': position_ids,
         'contexts': contexts,
         'context_lengths': context_lengths,
+        'answers': answers,
         'max_length': torch.LongTensor(max_length),
     }
 
@@ -254,9 +258,9 @@ class TextProcessing:
                 f'{{{self.output_key}}}', output
             )
 
-        if self.separate_prompt_and_response_with_newline and self.prompt_template is None:
+        elif self.separate_prompt_and_response_with_newline:
             text = context + '\n' + output
-        elif not self.separate_prompt_and_response_with_newline and self.prompt_template is None:
+        else:
             text = context + ' ' + output
 
         if self.virtual_tokens:
@@ -275,7 +279,8 @@ class TextProcessing:
             total_ids += 1
         if self.add_sep:
             total_ids += 1
-        if self.add_eos:
+        # Only training need to consider eos token
+        if self.add_eos and self.tokens_to_generate == 0:
             total_ids += 1
 
         # If the total number of token is greater than the max, we will try to truncate the answer
@@ -286,27 +291,29 @@ class TextProcessing:
             elif self.truncation_field == "context":
                 context_ids = context_ids[: -min(truncation_length, len(context_ids))]
 
-        if len(context_ids) > self.max_seq_length:
-            context_ids = context_ids[: self.max_seq_length]
-
-        assert len(context_ids) <= self.max_seq_length
         input_ids = context_ids
-
         answer_start_idx = len(input_ids)
+
+        # Adds bos token in the start
+        if self.add_bos:
+            context_ids = [self.tokenizer.bos_id] + context_ids
+            input_ids = [self.tokenizer.bos_id] + input_ids
+            answer_start_idx += 1
+
         # Adds sep token between text/prompt and answer
         if self.add_sep:
+            context_ids = context_ids + [self.sep_id]
             input_ids = input_ids + [self.sep_id]
             answer_start_idx += 1
 
         input_ids = input_ids + answer_ids
 
-        if self.add_bos:
-            input_ids = [self.tokenizer.bos_id] + input_ids
-            answer_start_idx += 1
-        if self.add_eos:
+        # Only training need to consider eos token
+        if self.add_eos and self.tokens_to_generate == 0:
             input_ids = input_ids + [self.tokenizer.eos_id]
 
-        if len(input_ids) < self.min_seq_length or len(input_ids) > self.max_seq_length:
+        if len(input_ids) > self.max_seq_length:
+            logging.warning(f'Input ids length {len(input_ids)} exceed max sequence length {self.max_seq_length}')
             input_ids = input_ids[: self.max_seq_length]
 
         processed_example = {
@@ -314,6 +321,7 @@ class TextProcessing:
             'answer_start_idx': answer_start_idx,
             'context_ids': context_ids,
             'context_length': len(context_ids),
+            'answer_ids': answer_ids,
         }
 
         return processed_example
