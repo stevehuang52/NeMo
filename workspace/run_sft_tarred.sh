@@ -5,10 +5,10 @@ MEGATRON_CKPT=/media/data3/pretrained_models/megatron_gpt/gpt_pretrain_220m_len_
 ASR_MODEL="stt_en_fastconformer_transducer_large"
 
 PROJECT_NAME=audio-text-llm-debug
-EXP_NAME=AudioGPT-tarred-LS-debug3
+EXP_NAME=AudioGPT-tarred-LS-debug4
 
-GLOBAL_BATCH=256
-MICRO_BATCH=64
+GLOBAL_BATCH=64
+MICRO_BATCH=16
 
 NUM_WORKERS=0
 TRAIN_MANIFESTS="/media/data3/librispeech_tarred/tarred_audio_manifest.json"
