@@ -586,8 +586,7 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
                     )
 
             metric_name = data_cfg.metric.name
-            metric = [MetricStringToTorchMetric[metric_name]]
-
+            metric_cls = MetricStringToTorchMetric[metric_name]
             # if isinstance(data_cfg.manifest_filepath, ListConfig):
             #     if 'rouge' not in data_cfg.metric.name:
             #         metric = [
@@ -601,5 +600,8 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             #         metric = [metric(average=data_cfg.metric.average, num_classes=data_cfg.metric.num_classes)]
             #     else:
             #         metric = [metric()]
-
+            if 'rouge' not in data_cfg.metric.name and 'wer' not in data_cfg.metric.name:
+                metric = [metric_cls(average=data_cfg.metric.average, num_classes=data_cfg.metric.num_classes)]
+            else:
+                metric = [metric_cls()]
         return metric, metric_name
