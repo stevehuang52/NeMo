@@ -137,8 +137,9 @@ model:
     input_dim: -1
     output_dim: -1
     hidden_dim: 512
-    pooling: 'cat'
-    pooling_factor: 2
+    num_layers: 1
+    pooling: 'mean'
+    pooling_factor: 1
 
   data:
     train_ds:
