@@ -45,11 +45,11 @@ exp_manager:
     save_top_k: 1
     mode: min
     save_nemo_on_train_end: True
-    filename: '${name}--{${exp_manager.checkpoint_callback_params.monitor}:.3f}-{step}-{consumed_samples}'
+    filename: '${name}--{${exp_manager.checkpoint_callback_params.monitor}:.3f}-{step}'
     model_parallel_size: ${model.tensor_model_parallel_size}
     always_save_nemo: False
     save_best_model: True
-  create_early_stopping_callback: True
+  create_early_stopping_callback: False
   early_stopping_callback_params:
     monitor: "val_loss"
     mode: "min"
@@ -211,7 +211,7 @@ model:
       prompt_template: ${model.data.train_ds.prompt_template} # fstring to use for assistant prompt. Example: "Q: {input}\nA: {output}"
       tokens_to_generate: 128
       # ASR configs
-      sample_rate: 16000 #${model.audio_encoder.preprocessor.sample_rate}
+      sample_rate: 16000
 
       log_every_n_steps: 10
       metric:
@@ -258,7 +258,7 @@ model:
     - 0.98
     sched:
       name: CosineAnnealing
-      warmup_steps: 50
+      warmup_steps: 1000
       min_lr: 0.0 # min_lr must be 0.0 for prompt learning when pipeline parallel > 1
       constant_steps: 0 # Constant steps should also be 0 when min_lr=0
       monitor: val_loss

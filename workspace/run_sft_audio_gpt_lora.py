@@ -108,6 +108,12 @@ def _modify_config(gpt_cfg, cfg, audio_cfg, add_cfg_to_tree=False):
         gpt_cfg.connector = cfg.model.connector
         gpt_cfg.connector.input_dim = audio_cfg.encoder.d_model
         gpt_cfg.connector.output_dim = gpt_cfg.hidden_size
+        if cfg.model.data.get('train_ds', None) is not None:
+            gpt_cfg.data.train_ds.sample_rate = audio_cfg.preprocessor.sample_rate
+        if cfg.model.data.get('validation_ds', None) is not None:
+            gpt_cfg.data.validation_ds.sample_rate = audio_cfg.preprocessor.sample_rate
+        if cfg.model.data.get('test_ds', None) is not None:
+            gpt_cfg.data.test_ds.sample_rate = audio_cfg.preprocessor.sample_rate
         # This is needed when modifying a hparam file directly to load `.ckpt` files.
         # This is not needed to modify the cfg in `.nemo` files.
         if add_cfg_to_tree:
