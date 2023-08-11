@@ -481,7 +481,7 @@ class MegatronGPTSFTModel(MegatronGPTModel):
             # we can only log on one rank if it is rank zero so we broadcast from last rank
             torch.distributed.broadcast(loss, get_last_rank())
 
-            self.log('val_loss', loss, prog_bar=True, rank_zero_only=True, batch_size=1)
+            self.log('val_loss', loss, prog_bar=True, rank_zero_only=True, batch_size=1, sync_dist=True)
 
             # Determine the key used to log the loss based on the user provided name of the dataset or the dataloader index.
             loss_log_key = self._determine_log_key(data_cfg, dataloader_idx, "loss", mode)
@@ -584,13 +584,13 @@ class MegatronGPTSFTModel(MegatronGPTModel):
             averaged_metric = 0.0 if monitor_mode == 'max' else 1e5
 
         if mode == 'validation':
-            self.log("validation_loss", averaged_loss, batch_size=1)
+            self.log("validation_loss", averaged_loss, batch_size=1, sync_dist=True)
             if averaged_metric is not None:
-                self.log(f"validation_{self.val_metric_name}", averaged_metric)
+                self.log(f"validation_{self.val_metric_name}", averaged_metric, sync_dist=True)
         elif mode == 'test':
-            self.log("test_loss", averaged_loss, batch_size=1)
+            self.log("test_loss", averaged_loss, batch_size=1, sync_dist=True)
             if averaged_metric is not None:
-                self.log(f"test_{self.test_metric_name}", averaged_metric)
+                self.log(f"test_{self.test_metric_name}", averaged_metric, sync_dist=True)
 
         # Merge the functionality of previous on_inference_epoch_end() within inference_epoch_end() func here
         app_state = AppState()
