@@ -142,7 +142,9 @@ model:
     pooling_factor: 1
 
   data:
+    end_string: '[EOS]'
     train_ds:
+      end_string: ${model.data.end_string}
       # Example of how to specify paths to multiple datasets
       # manifest_filepath:
       #   - /path/to/squad.jsonl
@@ -168,7 +170,7 @@ model:
       concat_sampling_probabilities: null # When providing a list of datasets, this arg defines the sampling probabilities from each dataset when strategy='random'
       context_key: 'input'
       label_key: 'output'
-      add_eos: True
+      add_eos: False
       add_sep: False
       add_bos: False
       separate_prompt_and_response_with_newline: False
@@ -188,6 +190,7 @@ model:
       bucketing_batch_size: null
 
     validation_ds:
+      end_string: ${model.data.end_string}
       manifest_filepath: ??? # Path to a list of JSONL files corresponding to the source data. Data format is identical to train_ds.
       names: null # Names of the corresponding datasets used to log metrics.
       global_batch_size: ${model.global_batch_size}
