@@ -123,7 +123,7 @@ class AudioToTextGenerationStrategy(text_generation_strategy.GPTModelTextGenerat
             set_inference_key_value_memory = False
             tokens2use = tokens[:, context_length - 1].view(micro_batch_size, -1)
             positions2use = self.position_ids[:, context_length - 1].view(micro_batch_size, -1)
-            embeddings2use = self.model._get_text_embeddings(tokens2use, positions2use).transpose(0, 1)
+            embeddings2use = self.model._get_text_embeddings(tokens2use, positions2use)
 
         """Prepare batch for each of the inference steps"""
         setkey_value_array = torch.tensor(

@@ -348,7 +348,7 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
         if hasattr(lm_embedding, 'position_embeddings'):
             position_embeddings = lm_embedding.position_embeddings(position_ids)
             text_embeddings = text_embeddings + position_embeddings
-        return text_embeddings
+        return text_embeddings.transpose(0, 1)  # (seq_len, batch_size, hidden_size)
 
     def get_forward_output_and_loss_func(self, validation_step=False):
         def fwd_output_and_loss_func(dataloader_iter, model, checkpoint_activations_all_layers=None):
