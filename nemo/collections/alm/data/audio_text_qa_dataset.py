@@ -757,7 +757,7 @@ class TarredAudioQuestionAnswerDataset(TextProcessing, IterableDataset):
             tokens_to_generate=self.tokens_to_generate,
             pad_to_max_length=self.pad_to_max_length,
             max_seq_length=self.max_seq_length,
-            text_pad_id=self.eos_id,
+            text_pad_id=self.pad_id,
         )
 
     def _build_sample(self, tup):
