@@ -155,6 +155,7 @@ def _audio_text_collate_fn(
         'context_lengths': context_lengths,
         'answers': answers,
         'max_length': torch.LongTensor(max_length),
+        'metadata': [x['metadata'] for x in batch],
     }
 
     return batch
@@ -468,7 +469,11 @@ class AudioQuestionAnswerDataset(TextProcessing, Dataset):
         text_data = self._process_example(context=sample.question, output=sample.answer)
 
         output.update(text_data)
-
+        output['metadata'] = {
+            'audio_filepath': sample.audio_file,
+            'offset': offset,
+            'duration': sample.duration,
+        }
         return output
 
     def __len__(self):
@@ -798,6 +803,11 @@ class TarredAudioQuestionAnswerDataset(TextProcessing, IterableDataset):
 
         output.update(text_data)
 
+        output['metadata'] = {
+            'audio_filepath': audio_filename,
+            'offset': offset,
+            'duration': manifest_entry.duration,
+        }
         return output
 
     def get_manifest_sample(self, sample_id):

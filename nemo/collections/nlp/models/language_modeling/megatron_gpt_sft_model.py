@@ -184,11 +184,11 @@ class MegatronGPTSFTModel(MegatronGPTModel):
             self._test_dl = self.setup_eval_dataloader(self._test_ds, self.cfg.data.test_ds)
 
         # Raise error if using multiple dataloaders
-        if type(self._validation_dl) == list and len(self._validation_dl) > 1:
-            raise NotImplementedError('Lightning 2.0 does not support multiple dataloaders with dataloader_iter')
+        # if type(self._validation_dl) == list and len(self._validation_dl) > 1:
+        #     raise NotImplementedError('Lightning 2.0 does not support multiple dataloaders with dataloader_iter')
 
-        if type(self._test_dl) == list and len(self._test_dl) > 1:
-            raise NotImplementedError('Lightning 2.0 does not support multiple dataloaders with dataloader_iter')
+        # if type(self._test_dl) == list and len(self._test_dl) > 1:
+        #     raise NotImplementedError('Lightning 2.0 does not support multiple dataloaders with dataloader_iter')
 
         # when using pipeline model parallel the final stage need to initialize word embeddings
         if parallel_state.get_pipeline_model_parallel_world_size() > 1:
@@ -410,18 +410,32 @@ class MegatronGPTSFTModel(MegatronGPTModel):
 
         output = self.predict_step(batch, batch_idx, dataloader_idx)
 
-        inputs_text = [self.tokenizer.ids_to_text(c.tolist()) for c in batch['contexts']]
-        labels_text = [self.tokenizer.ids_to_text(a.tolist()) for a in batch['answers']]
-        preds_text = [
-            self.tokenizer.ids_to_text(t[l.item() :][: data_cfg.get('tokens_to_generate')])
-            for t, l in zip(output['token_ids'], batch['context_lengths'])
-        ]
+        if 'inputs' in output:
+            inputs_text = output['inputs']
+        else:
+            inputs_text = [self.tokenizer.ids_to_text(c.tolist()) for c in batch['contexts']]
+
+        if 'labels' in output:
+            labels_text = output['labels']
+        else:
+            labels_text = [self.tokenizer.ids_to_text(a.tolist()) for a in batch['answers']]
+
+        if 'preds' in output:
+            preds_text = output['preds']
+        else:
+            preds_text = [
+                self.tokenizer.ids_to_text(t[l.item() :][: data_cfg.get('tokens_to_generate')])
+                for t, l in zip(output['token_ids'], batch['context_lengths'])
+            ]
 
         if data_cfg.get("log_every_n_steps", None) is not None:
             if batch_idx % data_cfg.log_every_n_steps == 0:
-                logging.info(f"Input: `{inputs_text[0]}`")
-                logging.info(f"Label: `{labels_text[0]}`")
-                logging.info(f"Pred: `{preds_text[0]}`")
+                logging.info(f"--------------------------------------------------")
+                for i in range(len(inputs_text)):
+                    logging.info(f"Input {i}: `{inputs_text[i]}`")
+                    logging.info(f"Label {i}: `{labels_text[i]}`")
+                    logging.info(f"Pred  {i}: `{preds_text[i]}`")
+                logging.info(f"--------------------------------------------------")
 
         outputs = {
             'loss': loss,
@@ -855,4 +869,8 @@ class MegatronGPTSFTModel(MegatronGPTModel):
 
     def validation_epoch_end(self, outputs):
         averaged_loss, averaged_metric = self.inference_epoch_end(outputs, 'validation', self.cfg.data.validation_ds)
+        return averaged_loss
+
+    def test_epoch_end(self, outputs):
+        averaged_loss, averaged_metric = self.inference_epoch_end(outputs, 'test', self.cfg.data.test_ds)
         return averaged_loss

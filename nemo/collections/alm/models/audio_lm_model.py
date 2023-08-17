@@ -100,6 +100,10 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             state_dict.update(lm_peft)
             state_dict.update(audio_encoder)
             state_dict.update(connector)
+            if self.audio_spec_augmentation is not None:
+                state_dict.update(self.audio_spec_augmentation.state_dict(prefix="audio_spec_augmentation."))
+            if self.audio_preprocessor is not None:
+                state_dict.update(self.audio_preprocessor.state_dict(prefix="audio_preprocessor."))
             return state_dict
         else:
             # we want all the params with the same keys as calling self.state_dict()
@@ -469,12 +473,14 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
         if data_cfg.get('is_tarred', False):
             return self._build_tarred_dataset(data_cfg, augmentor=augmentor)
 
+        merge_manifests = data_cfg.get('merge_manifests', False)
+
         if isinstance(data_cfg.manifest_filepath, str):
             manifest_filepath = data_cfg.manifest_filepath.split(',')
         else:
             manifest_filepath = data_cfg.manifest_filepath
 
-        if not is_train:
+        if not is_train and merge_manifests:
             dataset = get_aqa_dataset_from_config(
                 manifest_filepath=manifest_filepath,
                 config=data_cfg,
@@ -488,27 +494,42 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
 
         else:
             datasets = []
-            # Construct the data prefix list for `get_datasets_weights_and_num_samples()`
-            # that is of the format [weight1,file_name1,weight2,file_name2,...]
-            concat_sampling_probabilities = data_cfg.get('concat_sampling_probabilities', None)
-            if concat_sampling_probabilities is None:
-                concat_sampling_probabilities = [1.0 / len(manifest_filepath)] * len(manifest_filepath)
-            elif len(data_cfg.get('concat_sampling_probabilities', None)) != len(manifest_filepath):
-                raise ValueError(
-                    (
-                        f"concat_sampling_probabilities must be of the same size as manifest_filepath.",
-                        f"Provided size {len(data_cfg.concat_sampling_probabilities)}, number of datasets {len(manifest_filepath)}",
+            if is_train:
+                # Construct the data prefix list for `get_datasets_weights_and_num_samples()`
+                # that is of the format [weight1,file_name1,weight2,file_name2,...]
+                concat_sampling_probabilities = data_cfg.get('concat_sampling_probabilities', None)
+                if concat_sampling_probabilities is None:
+                    concat_sampling_probabilities = [1.0 / len(manifest_filepath)] * len(manifest_filepath)
+                elif len(data_cfg.get('concat_sampling_probabilities', None)) != len(manifest_filepath):
+                    raise ValueError(
+                        (
+                            f"concat_sampling_probabilities must be of the same size as manifest_filepath.",
+                            f"Provided size {len(data_cfg.concat_sampling_probabilities)}, number of datasets {len(manifest_filepath)}",
+                        )
                     )
-                )
-            data_prefix = []
-            for weight, prefix in zip(concat_sampling_probabilities, manifest_filepath):
-                data_prefix.append(weight)
-                data_prefix.append(prefix)
+                data_prefix = []
+                for weight, prefix in zip(concat_sampling_probabilities, manifest_filepath):
+                    data_prefix.append(weight)
+                    data_prefix.append(prefix)
 
-            num_samples_per_dataset = get_num_samples_from_files(manifest_filepath)
-            num_train_samples = [len(manifest_filepath) * max(num_samples_per_dataset)]
-            _, _, num_train_samples_per_dataset = get_datasets_weights_and_num_samples(data_prefix, num_train_samples)
-            num_train_samples_after_blend = sum([x[0] for x in num_train_samples_per_dataset])
+                num_samples_per_dataset = get_num_samples_from_files(manifest_filepath)
+                num_train_samples = [len(manifest_filepath) * max(num_samples_per_dataset)]
+                _, _, num_train_samples_per_dataset = get_datasets_weights_and_num_samples(
+                    data_prefix, num_train_samples
+                )
+                num_train_samples_after_blend = sum([x[0] for x in num_train_samples_per_dataset])
+            else:
+                num_train_samples_per_dataset = [[None]] * len(manifest_filepath)
+
+            # Check dataset max_seq_legnth and max_position_embeddings size
+            if (
+                self.cfg.get('position_embedding_type', None) in [None, 'learned_absolute']
+                and data_cfg.max_seq_length > self.cfg.max_position_embeddings
+            ):
+                logging.warning(
+                    f"Set dataset max_seq_length to max_position_embeddings {self.cfg.max_position_embeddings} if using learned_absolute position embedding"
+                )
+                data_cfg.max_seq_length = self.cfg.max_position_embeddings
 
             for file_path, num_samples in zip(manifest_filepath, num_train_samples_per_dataset):
                 dataset = get_aqa_dataset_from_config(
@@ -523,10 +544,13 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
                 )
                 datasets.append(dataset)
 
-            dataset = BlendableDataset(
-                datasets=datasets, weights=concat_sampling_probabilities, size=num_train_samples_after_blend
-            )
-            return dataset
+            if is_train:
+                dataset = BlendableDataset(
+                    datasets=datasets, weights=concat_sampling_probabilities, size=num_train_samples_after_blend
+                )
+                return dataset
+            else:
+                return datasets
 
     def _build_tarred_dataset(self, data_cfg, augmentor):
         return get_tarred_aqa_dataset_from_config(
@@ -588,9 +612,9 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
         )
 
     def setup_metric(self, data_cfg):
-        metric_name = "exact_string_match"
+
         if not hasattr(data_cfg, "metric"):
-            metric = MetricStringToTorchMetric["exact_string_match"]
+            metric_name = "exact_string_match"
         else:
             if not hasattr(data_cfg.metric, "name"):
                 raise ValueError("Metric name is not provided in the metric config.")
@@ -625,9 +649,19 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
                     raise ValueError(
                         f"Number of class labels {len(data_cfg.metric.get('class_labels', None))} does not match `num_classes` : {data_cfg.metric.num_classes}"
                     )
-
             metric_name = data_cfg.metric.name
-            metric_cls = MetricStringToTorchMetric[metric_name]
+
+        metric_cls = MetricStringToTorchMetric[metric_name]
+
+        if isinstance(data_cfg.manifest_filepath, ListConfig) and not data_cfg.get("merge_manifests", False):
+            if 'rouge' not in data_cfg.metric.name and 'wer' not in data_cfg.metric.name:
+                metric = [
+                    metric_cls(average=data_cfg.metric.average, num_classes=data_cfg.metric.num_classes)
+                    for _ in range(len(data_cfg.manifest_filepath))
+                ]
+            else:
+                metric = [metric_cls() for _ in range(len(data_cfg.manifest_filepath))]
+        else:
             if 'rouge' not in data_cfg.metric.name and 'wer' not in data_cfg.metric.name:
                 metric = [metric_cls(average=data_cfg.metric.average, num_classes=data_cfg.metric.num_classes)]
             else:
@@ -643,6 +677,12 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
 
         global_batch_size_per_gpu = batch['tokens'].size(0)
         num_micro_batches_before_decode = get_num_microbatches()
+        if "tokens_to_generate" not in inference_config and self.cfg.data.get('max_seq_length', 0):
+            inference_config["tokens_to_generate"] = self.cfg.data.get('max_seq_length', 0)
+        elif inference_config["tokens_to_generate"] <= 0:
+            raise ValueError(
+                f"tokens_to_generate must be greater than 0, got {inference_config['tokens_to_generate']}"
+            )
 
         compute_logprob = inference_config.get('compute_logprob', False)
         if compute_logprob:
@@ -678,5 +718,24 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
 
         # add audio offsets to context lengths for properly decoding only the response
         batch['context_lengths'] = batch['context_lengths'] + response['audio_length_to_add']
+
+        inputs_text = [self.tokenizer.ids_to_text(c.tolist()) for c in batch['contexts']]
+        if 'answers' in batch:
+            labels_text = [self.tokenizer.ids_to_text(a.tolist()) for a in batch['answers']]
+        else:
+            labels_text = [""] * len(inputs_text)
+
+        preds_text = [
+            self.tokenizer.ids_to_text(t[l.item() :]) for t, l in zip(response['token_ids'], batch['context_lengths'])
+        ]
+
+        response['inputs'] = inputs_text
+        response['labels'] = labels_text
+        response['preds'] = preds_text
+
+        if 'metadata' in batch:
+            response['metadata'] = batch['metadata']
+        else:
+            response['metadata'] = [{} for _ in range(len(inputs_text))]
 
         return response

@@ -4,15 +4,15 @@ export PYTHONPATH=$NEMO_DIR:$PYTHONPATH
 MEGATRON_CKPT=/media/data3/pretrained_models/megatron_gpt/gpt_pretrain_220m_len_4096_pos_alibi_step_595508_gbs256.nemo
 ASR_MODEL="stt_en_fastconformer_transducer_large"
 
-GLOBAL_BATCH=8
-MICRO_BATCH=4
+GLOBAL_BATCH=1
+MICRO_BATCH=1
 NUM_WORKERS=0
-TRAIN_MANIFESTS=[/media/data/datasets/LibriSpeech/train_clean_100_cleaned.json,/media/data/datasets/LibriSpeech/train_clean_360_cleaned.json,/media/data/datasets/LibriSpeech/train_other_500_cleaned.json]
+# TRAIN_MANIFESTS=[/media/data/datasets/LibriSpeech/train_clean_100_cleaned.json,/media/data/datasets/LibriSpeech/train_clean_360_cleaned.json,/media/data/datasets/LibriSpeech/train_other_500_cleaned.json]
 # TRAIN_MANIFESTS="[/media/data/datasets/LibriSpeech/dev_clean.json]"
-VAL_MANIFESTS="[/media/data/datasets/LibriSpeech/dev_other.json]"
-# TRAIN_MANIFESTS="[/media/data/datasets/LibriSpeech/debug_1.json]"
-# VAL_MANIFESTS="[/media/data/datasets/LibriSpeech/debug_1.json]"
-EXP_NAME=AudioGPT-LS-nontar-dev-clean-debug-r6
+# VAL_MANIFESTS="[/media/data/datasets/LibriSpeech/dev_other.json]"
+TRAIN_MANIFESTS="[/media/data/datasets/LibriSpeech/debug_1.json]"
+VAL_MANIFESTS="[/media/data/datasets/LibriSpeech/debug_1.json]"
+EXP_NAME=AudioGPT-LS-nontar-dev-clean-debug-1sample-r7
 PROJECT_NAME=audio-text-llm-debug
 
 # wandb login f5029311df02a27459c2c99c5fbef08978dc709e
