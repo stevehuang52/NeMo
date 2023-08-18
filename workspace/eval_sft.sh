@@ -3,6 +3,7 @@ export PYTHONPATH=$NEMO_DIR:$PYTHONPATH
 
 MEGATRON_CKPT=/media/data3/pretrained_models/megatron_gpt/gpt_pretrain_220m_len_4096_pos_alibi_step_595508_gbs256.nemo
 
+# must have a `\` before `=` to avoid hydra errors, the eval script will remove the `\`
 ALM_CKPT='/home/heh/codes/nemo-slm/workspace/nemo_experiments/AudioGPT-LS-nontar-dev-clean-debug-1sample-r4/checkpoints/AudioGPT-LS-nontar-dev-clean-debug-1sample-r4--validation_wer\=0.000-step=164.ckpt'
 ALM_YAML='/home/heh/codes/nemo-slm/workspace/nemo_experiments/AudioGPT-LS-nontar-dev-clean-debug-1sample-r4/version_3/hparams.yaml'
 
