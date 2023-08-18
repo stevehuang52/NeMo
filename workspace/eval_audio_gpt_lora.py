@@ -184,6 +184,7 @@ def main(cfg) -> None:
 
     if model.global_rank == 0:
         print("***************************")
+        metadata_set = set()
         if cfg.inference.outfile_path is not None:
             with open(cfg.inference.outfile_path, "w", encoding="utf-8") as f:
                 for batch in response:
@@ -204,6 +205,10 @@ def main(cfg) -> None:
                                 f.write(json.dumps(d, sort_keys=True, indent=2) + '\n')
                     else:
                         for i in range(len(batch_sentences)):
+                            key = str(batch_metadata[i])
+                            if key in metadata_set:
+                                continue
+                            metadata_set.add(key)
                             d = {
                                 'metadata': batch_metadata[i],
                                 'context': batch_contexts[i],
