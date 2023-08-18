@@ -210,7 +210,7 @@ def main(cfg) -> None:
         save_restore_connector=save_restore_connector,
         strict=False,
     )
-    model.audio_encoder.load_state_dict(audio_model.encoder.state_dict(), strict=True)
+    model.audio_encoder.encoder.load_state_dict(audio_model.encoder.state_dict(), strict=True)
     logging.info(f'Loaded pretrained audio model from {pretrained_audio_model}')
 
     trainer.fit(model)

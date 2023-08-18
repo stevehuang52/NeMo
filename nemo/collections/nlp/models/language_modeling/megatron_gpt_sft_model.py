@@ -594,12 +594,16 @@ class MegatronGPTSFTModel(MegatronGPTModel):
 
         if mode == 'validation':
             self.log("validation_loss", averaged_loss, batch_size=1, sync_dist=True)
+            logging.info(f"validation_loss: {averaged_loss}")
             if averaged_metric is not None:
                 self.log(f"validation_{self.val_metric_name}", averaged_metric, sync_dist=True)
+                logging.info(f"validation_{self.val_metric_name}: {averaged_metric}")
         elif mode == 'test':
             self.log("test_loss", averaged_loss, batch_size=1, sync_dist=True)
+            logging.info(f"test_loss: {averaged_loss}")
             if averaged_metric is not None:
                 self.log(f"test_{self.test_metric_name}", averaged_metric, sync_dist=True)
+                logging.info(f"test_{self.test_metric_name}: {averaged_metric}")
 
         # Merge the functionality of previous on_inference_epoch_end() within inference_epoch_end() func here
         app_state = AppState()

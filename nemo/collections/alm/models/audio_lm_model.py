@@ -20,10 +20,10 @@ from omegaconf import DictConfig, ListConfig, open_dict
 from pytorch_lightning.trainer.trainer import Trainer
 
 from nemo.collections.alm.data.audio_text_qa_dataset import (
-    AudioQuestionAnswerDataset,
     get_aqa_dataset_from_config,
     get_tarred_aqa_dataset_from_config,
 )
+from nemo.collections.alm.modules.audio_encoders import AudioEncoder
 from nemo.collections.alm.modules.common.audio_text_generation_utils import generate
 from nemo.collections.alm.parts.utils.data_utils import create_attention_mask, get_num_samples_from_files
 from nemo.collections.asr.models import ASRModel
@@ -40,7 +40,6 @@ from nemo.collections.nlp.models.language_modeling.llama.llama_model import LLAM
 from nemo.collections.nlp.models.language_modeling.megatron_gpt_peft_models import MegatronGPTLoRAModel
 from nemo.collections.nlp.models.language_modeling.megatron_llama_model import MegatronLLAMAModel
 from nemo.collections.nlp.modules.common.megatron.utils import average_losses_across_data_parallel_group
-from nemo.collections.nlp.modules.common.text_generation_strategy import END_OF_SEQ
 from nemo.collections.nlp.modules.common.text_generation_utils import get_computeprob_response
 from nemo.core.classes import ModelPT
 from nemo.core.classes.mixins import adapter_mixins
@@ -49,7 +48,12 @@ from nemo.utils import AppState, logging
 
 try:
     import apex.transformer.pipeline_parallel.utils
-    from apex.transformer.pipeline_parallel.utils import get_num_microbatches
+    from apex.transformer.pipeline_parallel.utils import (
+        _reconfigure_microbatch_calculator,
+        get_current_global_batch_size,
+        get_micro_batch_size,
+        get_num_microbatches,
+    )
 
     HAVE_APEX = True
 
@@ -68,18 +72,6 @@ try:
 except (ImportError, ModuleNotFoundError):
 
     HAVE_MEGATRON_CORE = False
-
-try:
-    from apex.transformer.pipeline_parallel.utils import (
-        _reconfigure_microbatch_calculator,
-        get_current_global_batch_size,
-        get_micro_batch_size,
-        get_num_microbatches,
-    )
-
-    HAVE_APEX = True
-except (ImportError, ModuleNotFoundError):
-    HAVE_APEX = False
 
 
 class AudioGPTLoRAModel(MegatronGPTLoRAModel):
@@ -100,10 +92,6 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             state_dict.update(lm_peft)
             state_dict.update(audio_encoder)
             state_dict.update(connector)
-            if self.audio_spec_augmentation is not None:
-                state_dict.update(self.audio_spec_augmentation.state_dict(prefix="audio_spec_augmentation."))
-            if self.audio_preprocessor is not None:
-                state_dict.update(self.audio_preprocessor.state_dict(prefix="audio_preprocessor."))
             return state_dict
         else:
             # we want all the params with the same keys as calling self.state_dict()
@@ -197,17 +185,7 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
         logging.info(f"Optimizer groups set:\n{self.summarize()}")
 
     def _setup_audio_encoder(self, cfg: DictConfig):
-        if hasattr(cfg, 'preprocessor') and cfg.preprocessor is not None:
-            self.audio_preprocessor = ASRModel.from_config_dict(cfg.preprocessor)
-        else:
-            self.audio_preprocessor = None
-
-        if hasattr(cfg, 'spec_augment') and cfg.spec_augment is not None:
-            self.audio_spec_augmentation = ASRModel.from_config_dict(cfg.spec_augment)
-        else:
-            self.audio_spec_augmentation = None
-
-        self.audio_encoder = ASRModel.from_config_dict(cfg.encoder)
+        self.audio_encoder = AudioEncoder(cfg)
 
     def _setup_connector(self, cfg: DictConfig):
         if 'output_dim' not in cfg or cfg.output_dim is None or cfg.output_dim <= 0:
@@ -235,29 +213,12 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             1) The audio feature tensor of shape [B, T, D].
             2) The lengths of the acoustic sequence after propagation through the encoder, of shape [B].
         """
-        has_input_signal = input_signal is not None and input_signal_length is not None
-        has_processed_signal = processed_signal is not None and processed_signal_length is not None
-        if (has_input_signal ^ has_processed_signal) == False:
-            raise ValueError(
-                f"{self} Arguments ``input_signal`` and ``input_signal_length`` are mutually exclusive "
-                " with ``processed_signal`` and ``processed_signal_len`` arguments."
-            )
-
-        if not has_processed_signal:
-            if self.audio_preprocessor is None:
-                raise ValueError(f"preprocessor cannot be None when has_processed_signal is False")
-            processed_signal, processed_signal_length = self.audio_preprocessor(
-                input_signal=input_signal, length=input_signal_length,
-            )
-
-        if self.audio_spec_augmentation is not None and self.training:
-            processed_signal = self.audio_spec_augmentation(
-                input_spec=processed_signal, length=processed_signal_length
-            )
-
-        encoder_output = self.audio_encoder(audio_signal=processed_signal, length=processed_signal_length)
-        encoded = encoder_output[0].transpose(1, 2)  # [B, D, T] -> [B, T, D]
-        encoded_len = encoder_output[1]
+        encoded, encoded_len = self.audio_encoder(
+            input_signal=input_signal,
+            input_signal_length=input_signal_length,
+            processed_signal=processed_signal,
+            processed_signal_length=processed_signal_length,
+        )
         audio_feat, audio_feat_len = self.connector(encoded, encoded_len)
         return audio_feat, audio_feat_len
 

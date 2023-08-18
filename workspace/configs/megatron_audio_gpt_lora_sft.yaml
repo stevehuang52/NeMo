@@ -127,8 +127,8 @@ model:
   audio_encoder:
     spec_augment:
       _target_: nemo.collections.asr.modules.SpectrogramAugmentation
-      freq_masks: 2 # set to zero to disable it
-      time_masks: 10 # set to zero to disable it
+      freq_masks: 0 # set to zero to disable it
+      time_masks: 0 # set to zero to disable it
       freq_width: 27
       time_width: 0.05
 
@@ -161,7 +161,7 @@ model:
       pin_memory: True
       max_seq_length: 2048
       min_seq_length: 1
-      drop_last: True
+      drop_last: False
       # Example of how to specify concat_sampling_probabilities
       # concat_sampling_probabilities:
       #   - 0.5
@@ -184,7 +184,6 @@ model:
       # tarred datasets
       is_tarred: false
       tarred_audio_filepaths: null
-      shuffle_n: 2048
       # bucketing params
       bucketing_strategy: "fully_randomized"
       bucketing_batch_size: null
@@ -212,7 +211,7 @@ model:
       truncation_field: "context" # Options: ['context', 'answer']
       index_mapping_dir: null # Path to a directory to write index mapping files.
       prompt_template: ${model.data.train_ds.prompt_template} # fstring to use for assistant prompt. Example: "Q: {input}\nA: {output}"
-      tokens_to_generate: 128
+      tokens_to_generate: 256
       # ASR configs
       sample_rate: 16000
 
@@ -261,7 +260,7 @@ model:
     - 0.98
     sched:
       name: CosineAnnealing
-      warmup_steps: 1000
+      warmup_steps: 200
       min_lr: 0.0 # min_lr must be 0.0 for prompt learning when pipeline parallel > 1
       constant_steps: 0 # Constant steps should also be 0 when min_lr=0
       monitor: val_loss
