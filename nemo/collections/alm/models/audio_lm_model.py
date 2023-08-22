@@ -350,6 +350,7 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
                 position_ids=None,
                 encoder_input=encoder_input,
                 attention_mask=attention_mask,
+                loss_mask=loss_mask,
                 labels=labels,
                 checkpoint_activations_all_layers=checkpoint_activations_all_layers,
             )
@@ -543,7 +544,8 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             data_parallel_size = parallel_state.get_data_parallel_world_size()
             num_micro_batches = data_cfg.global_batch_size // (data_cfg.micro_batch_size * data_parallel_size)
             global_batch_size_on_this_data_parallel_rank = num_micro_batches * data_cfg.micro_batch_size
-            return torch.utils.data.DataLoader(
+
+            loader = torch.utils.data.DataLoader(
                 dataset,
                 collate_fn=collate_fn,
                 shuffle=False,
@@ -552,6 +554,9 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
                 num_workers=data_cfg.num_workers,
                 pin_memory=data_cfg.pin_memory,
             )
+            # print(global_batch_size_on_this_data_parallel_rank, len(dataset), len(loader))
+            # import ipdb; ipdb.set_trace()
+            return loader
 
         batch_sampler = MegatronPretrainingBatchSampler(
             total_samples=len(dataset),
@@ -564,13 +569,14 @@ class AudioGPTLoRAModel(MegatronGPTLoRAModel):
             pad_samples_to_global_batch_size=False,
         )
 
-        return torch.utils.data.DataLoader(
+        loader = torch.utils.data.DataLoader(
             dataset,
             batch_sampler=batch_sampler,
             collate_fn=collate_fn,
             num_workers=data_cfg.num_workers,
             pin_memory=data_cfg.pin_memory,
         )
+        return loader
 
     def setup_metric(self, data_cfg):
 

@@ -817,13 +817,14 @@ class TarredAudioQuestionAnswerDataset(TextProcessing, IterableDataset):
         return self._dataset.__iter__()
 
     def _compute_len(self):
+        # TODO: need to figure out why here needs to be divided by world_size, while in ASR we don't need to.
         if self.shard_manifests and torch.distributed.is_available() and torch.distributed.is_initialized():
             my_len = torch.tensor(len(self.collection), dtype=torch.int32).cuda()
             torch.distributed.all_reduce(my_len)
-            my_len = my_len.int()
+            my_len = my_len.int() // parallel_state.get_data_parallel_world_size()
             logging.info(f'Sharded manifests: Total length: {my_len}')
         else:
-            my_len = len(self.collection)
+            my_len = len(self.collection) // parallel_state.get_data_parallel_world_size()
 
         return my_len
 

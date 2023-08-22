@@ -410,32 +410,35 @@ class MegatronGPTSFTModel(MegatronGPTModel):
 
         output = self.predict_step(batch, batch_idx, dataloader_idx)
 
-        if 'inputs' in output:
-            inputs_text = output['inputs']
-        else:
-            inputs_text = [self.tokenizer.ids_to_text(c.tolist()) for c in batch['contexts']]
+        if data_cfg.get("write_predictions_to_file", False) or data_cfg.metric.name != 'loss':
+            if 'inputs' in output:
+                inputs_text = output['inputs']
+            else:
+                inputs_text = [self.tokenizer.ids_to_text(c.tolist()) for c in batch['contexts']]
 
-        if 'labels' in output:
-            labels_text = output['labels']
-        else:
-            labels_text = [self.tokenizer.ids_to_text(a.tolist()) for a in batch['answers']]
+            if 'labels' in output:
+                labels_text = output['labels']
+            else:
+                labels_text = [self.tokenizer.ids_to_text(a.tolist()) for a in batch['answers']]
 
-        if 'preds' in output:
-            preds_text = output['preds']
-        else:
-            preds_text = [
-                self.tokenizer.ids_to_text(t[l.item() :][: data_cfg.get('tokens_to_generate')])
-                for t, l in zip(output['token_ids'], batch['context_lengths'])
-            ]
+            if 'preds' in output:
+                preds_text = output['preds']
+            else:
+                preds_text = [
+                    self.tokenizer.ids_to_text(t[l.item() :][: data_cfg.get('tokens_to_generate')])
+                    for t, l in zip(output['token_ids'], batch['context_lengths'])
+                ]
 
-        if data_cfg.get("log_every_n_steps", None) is not None:
-            if batch_idx % data_cfg.log_every_n_steps == 0:
-                logging.info(f"--------------------------------------------------")
-                for i in range(len(inputs_text)):
-                    logging.info(f"Input {i}: `{inputs_text[i]}`")
-                    logging.info(f"Label {i}: `{labels_text[i]}`")
-                    logging.info(f"Pred  {i}: `{preds_text[i]}`")
-                logging.info(f"--------------------------------------------------")
+            if data_cfg.get("log_every_n_steps", None) is not None:
+                if data_cfg.log_every_n_steps > 0 and batch_idx % data_cfg.log_every_n_steps == 0:
+                    logging.info(f"--------------------------------------------------")
+                    for i in range(len(inputs_text)):
+                        logging.info(f"Input {i}: `{inputs_text[i]}`")
+                        logging.info(f"Label {i}: `{labels_text[i]}`")
+                        logging.info(f"Pred  {i}: `{preds_text[i]}`")
+                    logging.info(f"--------------------------------------------------")
+        else:
+            inputs_text, labels_text, preds_text = [], [], []
 
         outputs = {
             'loss': loss,
@@ -552,12 +555,12 @@ class MegatronGPTSFTModel(MegatronGPTModel):
                 if metric_name == 'rouge':
                     for k, v in metric_result.items():
                         if 'fmeasure' in k:
-                            self.log(metric_log_key + f'_{k}', v.item(), sync_dist=True)
-                            logging.info(f"{mode} {metric_name} {k}: {v.item()}")
+                            self.log(metric_log_key + f'_{k}', v.item(), sync_dist=True, batch_size=1)
+                            logging.info(f"{mode} {metric_name} {k} [{dataloader_idx}]: {v.item()}")
                     metric_result = metric_result['rouge1_fmeasure']
                 else:
-                    self.log(metric_log_key, metric_result.item(), sync_dist=True)
-                    logging.info(f"{mode} {metric_name}: {metric_result.item()}")
+                    self.log(metric_log_key, metric_result.item(), sync_dist=True, batch_size=1)
+                    logging.info(f"{mode} {metric_name} [{dataloader_idx}]: {metric_result.item()}")
 
                 metric_fn.reset()
                 averaged_metric.append(metric_result)
@@ -596,13 +599,13 @@ class MegatronGPTSFTModel(MegatronGPTModel):
             self.log("validation_loss", averaged_loss, batch_size=1, sync_dist=True)
             logging.info(f"validation_loss: {averaged_loss}")
             if averaged_metric is not None:
-                self.log(f"validation_{self.val_metric_name}", averaged_metric, sync_dist=True)
+                self.log(f"validation_{self.val_metric_name}", averaged_metric, batch_size=1, sync_dist=True)
                 logging.info(f"validation_{self.val_metric_name}: {averaged_metric}")
         elif mode == 'test':
             self.log("test_loss", averaged_loss, batch_size=1, sync_dist=True)
             logging.info(f"test_loss: {averaged_loss}")
             if averaged_metric is not None:
-                self.log(f"test_{self.test_metric_name}", averaged_metric, sync_dist=True)
+                self.log(f"test_{self.test_metric_name}", averaged_metric, batch_size=1, sync_dist=True)
                 logging.info(f"test_{self.test_metric_name}: {averaged_metric}")
 
         # Merge the functionality of previous on_inference_epoch_end() within inference_epoch_end() func here

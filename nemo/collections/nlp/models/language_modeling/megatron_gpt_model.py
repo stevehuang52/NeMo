@@ -810,6 +810,7 @@ class MegatronGPTModel(MegatronBaseModel, TextGeneration):
                 batch['tokens'],
                 batch['position_ids'],
                 batch['attention_mask'],
+                batch['loss_mask'],
                 batch['labels'],
                 checkpoint_activations_all_layers=checkpoint_activations_all_layers,
             )

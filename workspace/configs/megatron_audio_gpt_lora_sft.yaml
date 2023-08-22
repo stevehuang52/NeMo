@@ -45,13 +45,13 @@ exp_manager:
     save_top_k: 1
     mode: min
     save_nemo_on_train_end: True
-    filename: '${name}--{${exp_manager.checkpoint_callback_params.monitor}:.3f}-{step}'
+    filename: '${name}--{${exp_manager.checkpoint_callback_params.monitor}:.3f}-{step}-{epoch}'
     model_parallel_size: ${model.tensor_model_parallel_size}
     always_save_nemo: False
     save_best_model: True
   create_early_stopping_callback: False
   early_stopping_callback_params:
-    monitor: "val_loss"
+    monitor: validation_${model.data.validation_ds.metric.name}
     mode: "min"
     min_delta: 0.001
     patience: 10
@@ -127,8 +127,8 @@ model:
   audio_encoder:
     spec_augment:
       _target_: nemo.collections.asr.modules.SpectrogramAugmentation
-      freq_masks: 0 # set to zero to disable it
-      time_masks: 0 # set to zero to disable it
+      freq_masks: 2 # set to zero to disable it
+      time_masks: 10 # set to zero to disable it
       freq_width: 27
       time_width: 0.05
 
@@ -211,7 +211,7 @@ model:
       truncation_field: "context" # Options: ['context', 'answer']
       index_mapping_dir: null # Path to a directory to write index mapping files.
       prompt_template: ${model.data.train_ds.prompt_template} # fstring to use for assistant prompt. Example: "Q: {input}\nA: {output}"
-      tokens_to_generate: 256
+      tokens_to_generate: 64
       # ASR configs
       sample_rate: 16000
 
