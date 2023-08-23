@@ -127,8 +127,8 @@ model:
   audio_encoder:
     spec_augment:
       _target_: nemo.collections.asr.modules.SpectrogramAugmentation
-      freq_masks: 2 # set to zero to disable it
-      time_masks: 10 # set to zero to disable it
+      freq_masks: 0 # set to zero to disable it
+      time_masks: 0 # set to zero to disable it
       freq_width: 27
       time_width: 0.05
 
@@ -137,9 +137,9 @@ model:
     input_dim: -1
     output_dim: -1
     hidden_dim: 512
-    num_layers: 1
-    pooling: 'mean'
-    pooling_factor: 1
+    num_layers: 2
+    pooling: 'cat'
+    pooling_factor: 2
 
   data:
     end_string: '[EOS]'
@@ -254,7 +254,7 @@ model:
   optim:
     name: fused_adam
     lr: 1e-4
-    weight_decay: 0.01 
+    weight_decay: 0.001 
     betas: 
     - 0.9
     - 0.98

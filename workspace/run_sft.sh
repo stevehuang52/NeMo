@@ -7,13 +7,17 @@ ASR_MODEL="stt_en_fastconformer_transducer_large"
 GLOBAL_BATCH=64
 MICRO_BATCH=32
 NUM_WORKERS=0
-TRAIN_MANIFESTS=[/media/data/datasets/LibriSpeech/train_clean_100_cleaned.json,/media/data/datasets/LibriSpeech/train_clean_360_cleaned.json,/media/data/datasets/LibriSpeech/train_other_500_cleaned.json]
+# TRAIN_MANIFESTS=[/media/data/datasets/LibriSpeech/train_clean_100_cleaned.json,/media/data/datasets/LibriSpeech/train_clean_360_cleaned.json,/media/data/datasets/LibriSpeech/train_other_500_cleaned.json]
 # TRAIN_MANIFESTS="[/media/data/datasets/LibriSpeech/dev_clean.json]"
-VAL_MANIFESTS="[/media/data/datasets/LibriSpeech/dev_clean_cleaned.json,/media/data/datasets/LibriSpeech/dev_other.json]"
-VAL_NAMES="[dev-clean,dev-other]"
-# TRAIN_MANIFESTS="[/media/data/datasets/LibriSpeech/debug_1.json]"
-# VAL_MANIFESTS="[/media/data/datasets/LibriSpeech/debug_1.json]"
-EXP_NAME=AudioGPT-LS-nontar-debug-full-r3
+# VAL_MANIFESTS="[/media/data/datasets/LibriSpeech/dev_clean_cleaned.json,/media/data/datasets/LibriSpeech/dev_other.json]"
+# VAL_NAMES="[dev-clean,dev-other]"
+
+TRAIN_MANIFESTS="[/media/data/datasets/LibriSpeech/dev_clean_cleaned.json]"
+VAL_MANIFESTS="[/media/data/datasets/LibriSpeech/dev_clean_cleaned.json]"
+VAL_NAMES="[dev-clean]"
+
+
+EXP_NAME=AudioGPT-LS-nontar-debug-devclean-r3
 PROJECT_NAME=audio-text-llm-debug
 
 
@@ -24,7 +28,7 @@ CUDA_VISIBLE_DEVICES='0,1' python run_sft_audio_gpt_lora.py --config-path="./con
     ++exp_manager.wandb_logger_kwargs.name=${EXP_NAME} \
     ++exp_manager.wandb_logger_kwargs.project=${PROJECT_NAME} \
     ++exp_manager.wandb_logger_kwargs.resume=false \
-    trainer.devices=-1 \
+    trainer.devices=2 \
     model.global_batch_size=$GLOBAL_BATCH \
     model.micro_batch_size=$MICRO_BATCH \
     model.pretrained_audio_model=$ASR_MODEL \

@@ -588,7 +588,7 @@ def generate(
         output['full_logprob'] = full_logits
         output['token_ids'] = decode_tokens
         output['offsets'] = all_offsets
-        output['audio_length_to_add'] = inference_strategy.audio_length_to_add
+        output['audio_length_to_add'] = inference_strategy.audio_length_to_add.cpu()
         output = inference_strategy.post_generation_process(output)
         return output
 
@@ -638,10 +638,11 @@ def sample_sequence_batch(
     tokenizer = model.tokenizer
     # initialize the batch
     with torch.no_grad():
-        context_length = context_lengths.min().item() + inference_strategy.audio_length_to_add.min().item()
         context_tokens, input_embeddings = inference_strategy.init_batch(
-            context_tokens, context_length, audio_signal, audio_signal_length, compute_attention_mask
+            context_tokens, context_lengths, audio_signal, audio_signal_length, compute_attention_mask
         )
+        audio_text_context_length = context_lengths + inference_strategy.audio_length_to_add
+        context_length = audio_text_context_length.min().item()
         # added eos_id to support the function generate_samples_eval that passes
         # eos_id as an argument and needs termination when that id id found.
         eod_id = tokenizer.eos_id
@@ -659,7 +660,14 @@ def sample_sequence_batch(
         lengths = torch.ones([batch_size]).long().cuda() * maxlen
         while context_length < maxlen:
             batch, tensor_shape = inference_strategy.prepare_batch_at_step(
-                tokens, input_embeddings, maxlen, micro_batch_size, counter, context_length, compute_attention_mask
+                tokens,
+                input_embeddings,
+                maxlen,
+                micro_batch_size,
+                counter,
+                context_length,
+                audio_text_context_length,
+                compute_attention_mask,
             )
             output = inference_strategy.forward_step(batch, tensor_shape)
             if parallel_state.is_pipeline_last_stage():

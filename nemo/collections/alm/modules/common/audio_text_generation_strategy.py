@@ -45,6 +45,12 @@ END_OF_SEQ = '<|endoftext|>'
 __all__ = ['AudioToTextGenerationStrategy']
 
 
+def switch(val1, val2, boolean):
+    boolean = boolean.type_as(val1)
+    boolean = boolean.unsqueeze(0).unsqueeze(-1)
+    return (1 - boolean) * val1 + boolean * val2
+
+
 class AudioToTextGenerationStrategy(text_generation_strategy.GPTModelTextGenerationStrategy):
     def __init__(self, model, audio_signal, audio_signal_length, **kwargs):
         super().__init__(model)
@@ -55,12 +61,12 @@ class AudioToTextGenerationStrategy(text_generation_strategy.GPTModelTextGenerat
         )
         self.audio_feats = audio_feats
         self.audio_feat_lens = audio_feat_lens
-        self.audio_length_to_add = torch.tensor([audio_feats.shape[1]])
+        self.audio_length_to_add = torch.tensor([audio_feats.shape[1]], device=self.model.device)
 
     def init_batch(
         self,
         context_tokens: torch.Tensor,
-        context_length: int,
+        context_lengths: torch.Tensor,
         audio_signal: torch.Tensor,
         audio_length: torch.Tensor,
         compute_attention_mask: bool,
@@ -80,7 +86,9 @@ class AudioToTextGenerationStrategy(text_generation_strategy.GPTModelTextGenerat
         )
         self.position_ids = torch.cat([audio_position_ids, text_position_ids + audio_feats.size(1)], dim=1)
 
-        input_embeddings = self.model._get_input_embeddings(audio_feats, context_tokens, text_position_ids)
+        input_embeddings = self.model._get_input_embeddings(
+            audio_feats, audio_feat_lens, context_tokens, text_position_ids
+        )
         new_context_tokens = torch.cat(
             [
                 torch.zeros(
@@ -109,6 +117,7 @@ class AudioToTextGenerationStrategy(text_generation_strategy.GPTModelTextGenerat
         micro_batch_size: int,
         step: int,
         context_length: int,
+        context_lengths: int,
         compute_attention_mask: bool,
     ) -> Tuple[List[torch.Tensor], List[int]]:
         # types2use = None
@@ -124,6 +133,8 @@ class AudioToTextGenerationStrategy(text_generation_strategy.GPTModelTextGenerat
             tokens2use = tokens[:, context_length - 1].view(micro_batch_size, -1)
             positions2use = self.position_ids[:, context_length - 1].view(micro_batch_size, -1)
             embeddings2use = self.model._get_text_embeddings(tokens2use, positions2use)
+            started = context_lengths <= context_length
+            embeddings2use = switch(input_embeddings[context_length - 1].unsqueeze(0), embeddings2use, started)
 
         """Prepare batch for each of the inference steps"""
         setkey_value_array = torch.tensor(
