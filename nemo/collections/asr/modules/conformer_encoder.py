@@ -352,6 +352,8 @@ class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
         else:
             self.pre_encode = nn.Linear(feat_in, d_model)
 
+        self.pre_encode_kwargs = {}
+
         # Reduction
         if reduction and reduction_factor > 1:
             assert reduction_position >= -1 and reduction_position < n_layers
@@ -513,6 +515,8 @@ class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
                 (audio_signal.size(0),), audio_signal.size(-1), dtype=torch.int64, device=audio_signal.device
             )
 
+        print('LENGTH IN CONFORMER: ', length)
+
         # select a random att_context_size with the distribution specified by att_context_probs during training
         # for non-validation cases like test, validation or inference, it uses the first mode in self.att_context_size
         if self.training and len(self.att_context_size_all) > 1:
@@ -522,10 +526,17 @@ class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
 
         audio_signal = torch.transpose(audio_signal, 1, 2)
 
+        print('AUDIO SIGNAL BEFORE PRE ENCODE: ', audio_signal.shape)
+        print('AUDIO SIGNAL LENGTH BEFORE PRE ENCODE: ', length)
+
+
+        if hasattr(self.pre_encode, "apply_mask"):
+            self.pre_encode_kwargs['curr_att_context_size'] = cur_att_context_size
+
         if isinstance(self.pre_encode, nn.Linear):
-            audio_signal = self.pre_encode(audio_signal)
+            audio_signal = self.pre_encode(audio_signal, **self.pre_encode_kwargs)
         else:
-            audio_signal, length = self.pre_encode(x=audio_signal, lengths=length)
+            audio_signal, length = self.pre_encode(x=audio_signal, lengths=length, **self.pre_encode_kwargs)
             length = length.to(torch.int64)
             # self.streaming_cfg is set by setup_streaming_cfg(), called in the init
             if self.streaming_cfg.drop_extra_pre_encoded > 0 and cache_last_channel is not None:
@@ -534,6 +545,10 @@ class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
 
         if self.reduction_position is not None and cache_last_channel is not None:
             raise ValueError("Caching with reduction feature is not supported yet!")
+        
+
+        print('AUDIO SIGNAL AFTER PRE ENCODE: ', audio_signal.shape)
+        print('AUDIO SIGNAL LENGTH AFTER PRE ENCODE: ', length)
 
         max_audio_length = audio_signal.size(1)
         if cache_last_channel is not None:
@@ -559,6 +574,11 @@ class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
             device=audio_signal.device,
         )
 
+        print('CURR_ATT_CONTEXT_SIZE: ', cur_att_context_size)
+        print('ATT MASK SHAPE: ', att_mask.shape)
+
+        print(att_mask)
+
         if cache_last_channel is not None:
             pad_mask = pad_mask[:, cache_len:]
             if att_mask is not None:
@@ -575,6 +595,7 @@ class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
             else:
                 cache_last_channel_cur = None
                 cache_last_time_cur = None
+
             audio_signal = layer(
                 x=audio_signal,
                 att_mask=att_mask,
@@ -685,25 +706,40 @@ class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
                 if att_context_size[1] >= 0:
                     att_mask = att_mask.tril(diagonal=att_context_size[1])
             elif self.att_context_style == "chunked_limited":
+                print('ATT CONTEXT SIZE: ', att_context_size)
+                print('CLEAN ATT MASK SUMS: ')
+                print(att_mask.sum(axis=1))
+                print(att_mask.sum())
+                print('=' * 20)
                 # When right context is unlimited, just the left side of the masking need to get updated
                 if att_context_size[1] == -1:
                     if att_context_size[0] >= 0:
                         att_mask = att_mask.triu(diagonal=-att_context_size[0])
                 else:
                     chunk_size = att_context_size[1] + 1
+                    print('CHUNK SIZE: ', chunk_size)
                     # left_chunks_num specifies the number of chunks to be visible by each chunk on the left side
                     if att_context_size[0] >= 0:
                         left_chunks_num = att_context_size[0] // chunk_size
                     else:
                         left_chunks_num = 10000
 
+                    print('LEFT CHUNKS NUM: ', left_chunks_num)
+                    print('MAX AUDIO LENGTH: ', max_audio_length)
+
                     chunk_idx = torch.arange(0, max_audio_length, dtype=torch.int, device=att_mask.device)
+                    print('CHUNK IDX: ', chunk_idx)
                     chunk_idx = torch.div(chunk_idx, chunk_size, rounding_mode="trunc")
+                    print('CHUNK IDX AFTER DIV: ', chunk_idx)
                     diff_chunks = chunk_idx.unsqueeze(1) - chunk_idx.unsqueeze(0)
+                    print('DIFF CHUNKS SHAPE: ', diff_chunks.shape)
+                    print(diff_chunks)
                     chunked_limited_mask = torch.logical_and(
                         torch.le(diff_chunks, left_chunks_num), torch.ge(diff_chunks, 0)
                     )
+                    print("CHUNK_LIMITED_MASK", chunked_limited_mask)
                     att_mask = torch.logical_and(att_mask, chunked_limited_mask.unsqueeze(0))
+                    print("ATT MASK AT THE END", att_mask)
         else:
             att_mask = None
 
