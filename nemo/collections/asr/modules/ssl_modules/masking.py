@@ -85,8 +85,6 @@ class RandomBlockMasking(NeuralModule):
             masks (Tensor): the generated masks, shape=(batch, features, time)
         """
 
-        print('IN RANDOM MASKING FORWARD: ', curr_att_context_size)
-
         if self.allow_overlap:
             return self.forward_with_overlap(input_feats, input_lengths, curr_att_context_size)
         else:
@@ -118,7 +116,6 @@ class RandomBlockMasking(NeuralModule):
                 start = patch_idx[j] * block_size + offset
                 end = start + block_size
                 masks[i, :, start:end] = 1.0
-                print('MASK VALUE SHAPE: ', mask_value.shape)
                 maksed_feats[i, :, start:end] = mask_value
         return maksed_feats, masks
 
@@ -140,18 +137,11 @@ class RandomBlockMasking(NeuralModule):
         total_context_size = 0
         check_context = False
 
-        print(curr_att_context_size[0])
-        print(curr_att_context_size[1])
-
         if curr_att_context_size[0] != -1:
             total_context_size += curr_att_context_size[0]
 
         if curr_att_context_size[1] != -1:
             total_context_size += curr_att_context_size[1]
-
-
-        print("TOTAL CONTEXT SIZE: ", total_context_size)
-        
 
         if total_context_size > 0:
             check_context = (True and self.att_context_max_ratio > 0)
@@ -164,38 +154,27 @@ class RandomBlockMasking(NeuralModule):
         # # TODO: change below code to batched operations if possible
 
 
-        print("MAX SIZE: ", max_masked)
         for i in range(batch_size):
             curr_len = input_lengths[i].detach().cpu().numpy()
             num_patches = np.random.binomial(curr_len, self.mask_prob)
-            print('CURR LEN: ', curr_len, ' ------- NUM PATCHES: ', num_patches)
-            print('MASK VALUE SHAPE: ', mask_value.shape)
             patch_idices = torch.randperm(max(0, curr_len - block_size), device=input_feats.device)[:num_patches]
-            print('PATCH INDICES: ', patch_idices)
 
             for j in range(num_patches):
                 start = patch_idices[j]
                 end = min(start + self.block_size, input_lengths[i])
 
-                print('START: ', start, ' ---- END: ', end, ' ---- CHECK CONTEXT: ', check_context)
-
                 if check_context:
                     proposed_ends = [end]
-                    print('CHECKING CONTEXT')
                     for k in range(max(0, start - total_context_size), min(input_lengths[i] - total_context_size, start) + 1):
                         already_masked = torch.sum(masks[i, 0, k : k + total_context_size]).item()
-                        print('ALREADY MASKED: ', already_masked)
                         if already_masked + block_size > max_masked:
-                            print(f'ALREADY MASKED IN {k} - {k + total_context_size}: ', already_masked)
                             to_be_masked = min(max_masked - already_masked, input_lengths[i] - start)
                             end = start + to_be_masked
-                            print('NEW END ', end, ' ------- proposed_ends: ', proposed_ends)
                             proposed_ends.append(int(end))
                     
                     end = min(proposed_ends)
 
                 masks[i, :, start:end] = 1.0
-                print('START: ', start, ' ---- END: ', end)
                 maksed_feats[i, :, start:end] = mask_value
         return maksed_feats, masks
 
@@ -210,7 +189,6 @@ class ConvFeatureMaksingWrapper(NeuralModule):
         self.apply_mask = False
 
     def forward(self, x, lengths, curr_att_context_size=[-1, -1]):
-        print("IN FORWARD: curr_att_context_size: ", curr_att_context_size)
         feats, lengths = self.pre_encode(x=x, lengths=lengths)
         self.curr_feat = feats.detach()
         if self.apply_mask:

@@ -61,23 +61,14 @@ class MLMLoss(Loss):
         self, decoder_outputs, targets, decoder_lengths=None, target_lengths=None, spec_masks=None, masks=None
     ):
 
-        print('IN LOSS MASK SHAPE: ', masks)
-        print('IN LOSS DECODER OUTPUTS SHAPE: ', decoder_outputs.shape)
-
         if masks is None:
             masks = spec_masks
-
-
-        print('IN LOSS SPEC MASK SHAPE: ', spec_masks.shape)
 
         # B,D,T -> B,T,D
         masks = masks.transpose(1, 2)
 
         masks = masks.reshape(masks.shape[0], masks.shape[1] // self.combine_time_steps, -1)
         masks = masks.mean(-1) > self.mask_threshold
-
-
-        print('SHAPE OF THE MASK: ', masks.shape)
 
         out_masked_only = decoder_outputs[masks]
         targets = F.pad(targets, (0, masks.shape[-1] - targets.shape[-1]))

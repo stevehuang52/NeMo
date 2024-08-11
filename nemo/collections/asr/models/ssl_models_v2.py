@@ -77,7 +77,6 @@ class EncDecSpeechSSLModel(SpeechEncDecSelfSupervisedModel):
         self.pre_encoder = None
         if self.cfg.get("mask_position", "pre_conv") == "post_conv":
             # hacked to mask features after convolutional sub-sampling
-            print('SETTING PRE_ENCODER')
             self.pre_encoder = ConvFeatureMaksingWrapper(self.encoder.pre_encode, self.mask_processor)
             self.encoder.pre_encode = self.pre_encoder
 
@@ -364,10 +363,6 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
                 input_signal=input_signal, length=input_signal_length,
             )
 
-        print("INPUT SIGNAL SHAPE: ", input_signal.shape, ' ----- ', 'INPUT SIGNAL LENGTH: ', input_signal_length)
-
-        print("PROCESSED SIGNAL SHAPE: ", processed_signal.shape, ' ----- ', 'PROCESSED SIGNAL LENGTH: ', processed_signal_length)
-
 
         has_noise_signal = noise_signal is not None and noise_signal_length is not None
         has_processed_noise_signal = processed_noise_signal is not None and processed_noise_signal_length is not None
@@ -380,10 +375,6 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
             processed_noise_signal, processed_noise_signal_length = self.preprocessor(
                 input_signal=noise_signal, length=noise_signal_length,
             )
-
-            print("NOISE SIGNAL SHAPE: ", noise_signal.shape, ' ----- ', 'NOISE SIGNAL LENGTH: ',  noise_signal_length)
-
-            print("PROCESSED NOISE SIGNAL SHAPE: ", processed_noise_signal.shape, ' ----- ', 'PROCESSED NOISE SIGNAL LENGTH: ', processed_noise_signal_length)
 
         has_noisy_input_signal = noisy_input_signal is not None and noisy_input_signal_length is not None
         has_processed_noisy_input_signal = (
@@ -434,8 +425,6 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
             noisy_input_signal_length=batch.noisy_audio_len,
             apply_mask=True,
         )
-
-        print('MASKS SHAPE IN TRAINING STEP: ', masks.shape)
 
         loss_value = self.loss(masks=masks, decoder_outputs=log_probs, targets=tokens, decoder_lengths=encoded_len)
 
