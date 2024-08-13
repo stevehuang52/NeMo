@@ -713,6 +713,8 @@ class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
         else:
             att_mask = None
 
+        [True, True, ]
+
         # pad_mask is the masking to be used to ignore paddings
         pad_mask = torch.arange(0, max_audio_length, device=device).expand(
             padding_length.size(0), -1
