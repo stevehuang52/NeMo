@@ -580,7 +580,6 @@ class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
             else:
                 cache_last_channel_cur = None
                 cache_last_time_cur = None
-
             audio_signal = layer(
                 x=audio_signal,
                 att_mask=att_mask,
@@ -712,8 +711,6 @@ class ConformerEncoder(NeuralModule, StreamingEncoder, Exportable, AccessMixin):
                     att_mask = torch.logical_and(att_mask, chunked_limited_mask.unsqueeze(0))
         else:
             att_mask = None
-
-        [True, True, ]
 
         # pad_mask is the masking to be used to ignore paddings
         pad_mask = torch.arange(0, max_audio_length, device=device).expand(

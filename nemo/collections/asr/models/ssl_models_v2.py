@@ -363,7 +363,6 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
                 input_signal=input_signal, length=input_signal_length,
             )
 
-
         has_noise_signal = noise_signal is not None and noise_signal_length is not None
         has_processed_noise_signal = processed_noise_signal is not None and processed_noise_signal_length is not None
         if (has_noise_signal ^ has_processed_noise_signal) == False:
@@ -410,7 +409,7 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
                 masked_signal = processed_noisy_input_signal
                 masks = torch.zeros_like(processed_noisy_input_signal)
             encoded, encoded_len = self.encoder(audio_signal=masked_signal, length=processed_noisy_input_signal_length)
-    
+            
         log_probs = self.decoder(encoder_output=encoded)
 
         return log_probs, encoded_len, masks, tokens

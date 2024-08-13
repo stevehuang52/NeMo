@@ -229,7 +229,6 @@ class AudioNoiseDataset(audio_to_text.AudioToCharDataset):
             orig_sr=sample.orig_sr,
             channel_selector=self.channel_selector,
         )
-
         audio_len = torch.tensor(audio.shape[0]).long()
         noise, noise_len = sample_noise(self.noise_data, self.featurizer, audio_len.item())
 

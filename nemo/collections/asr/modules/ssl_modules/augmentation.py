@@ -241,7 +241,7 @@ class MultiSpeakerNoiseAugmentation(WavLMAugmentation):
                 )
 
             # get the residual signal to be added to original audio
-            noise_signal = noise_signal * mix_scale
+            noise_signal = mix_scale * noise_signal
 
             # add noise to audio
             noisy_audio[i] = audio_signal[i] + noise_signal
@@ -278,8 +278,11 @@ class MultiSpeakerNoiseAugmentation(WavLMAugmentation):
         speaker_candidates = np.random.choice(speaker_candidates, min(num_speakers, batch_size - 1), replace=False)
 
         if len(segment_lens) > len(speaker_candidates):
-            speaker_candidates = np.concatenate((speaker_candidates, 
-                                                np.random.choice(speaker_candidates, len(segment_lens) - len(speaker_candidates), replace=True)))
+            speaker_candidates = np.concatenate(
+                (speaker_candidates, 
+                 np.random.choice(
+                     speaker_candidates, len(segment_lens) - len(speaker_candidates), replace=True
+                     )))
 
         sid = 0
         start_idx_for_noise = 0
