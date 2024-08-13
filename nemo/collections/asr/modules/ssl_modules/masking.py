@@ -24,7 +24,7 @@ class RandomBlockMasking(NeuralModule):
     Performs random block masking on sequence of features.
     Args:
         mask_prob (float): percentage of sequence to mask
-        block_size (int): size of each block to mask   
+        block_size (int): size of each block to mask
         mask_value (Optional[float]): value to use for masking, if None, use random values
         feat_in (Optional[int]): size of input features, required if mask_value is None
         freeze (bool): if True, mask embedding is not trainable
@@ -59,8 +59,7 @@ class RandomBlockMasking(NeuralModule):
 
     @property
     def input_types(self):
-        """Returns definitions of module input types
-        """
+        """Returns definitions of module input types"""
         return {
             "input_feats": NeuralType(('B', 'D', 'T'), AcousticEncodedRepresentation()),
             "input_lengths": NeuralType(tuple('B'), LengthsType()),
@@ -68,8 +67,7 @@ class RandomBlockMasking(NeuralModule):
 
     @property
     def output_types(self):
-        """Returns definitions of module output types
-        """
+        """Returns definitions of module output types"""
         return {
             "maksed_feats": NeuralType(('B', 'D', 'T'), AcousticEncodedRepresentation()),
             "masks": NeuralType(('B', 'D', 'T'), AcousticEncodedRepresentation()),
@@ -104,14 +102,19 @@ class RandomBlockMasking(NeuralModule):
         masks = torch.zeros_like(input_feats)
         maksed_feats = input_feats.clone()
         for i in range(batch_size):
-            num_patches = torch.ceil(input_lengths[i] * self.mask_prob / self.block_size).int()
-            offset = torch.randint(0, self.block_size, (1,), device=input_feats.device)[0]
-            block_size = self.block_size
-            if (num_patches + 1) * self.block_size > input_lengths[i]:
-                block_size = torch.div(input_lengths[i], (num_patches + 1), rounding_mode='trunc')
-
-            max_num_patches = torch.div(input_lengths[i], block_size, rounding_mode='trunc')
-            patch_idx = torch.randperm(max_num_patches - 1, device=input_feats.device)[:num_patches]
+            if self.block_size >= input_lengths[i] * self.max_mask_ratio:
+                # handle case where audio is too short
+                block_size = 8
+                num_patches = 1
+                patch_idx = [0]
+            else:
+                num_patches = torch.ceil(input_lengths[i] * self.mask_prob / self.block_size).int()
+                offset = torch.randint(0, self.block_size, (1,), device=input_feats.device)[0]
+                block_size = self.block_size
+                if (num_patches + 1) * self.block_size > input_lengths[i]:
+                    block_size = torch.div(input_lengths[i], (num_patches + 1), rounding_mode='trunc')
+                max_num_patches = torch.div(input_lengths[i], block_size, rounding_mode='trunc')
+                patch_idx = torch.randperm(max_num_patches - 1, device=input_feats.device)[:num_patches]
             for j in range(num_patches):
                 start = patch_idx[j] * block_size + offset
                 end = start + block_size
@@ -200,7 +203,7 @@ class ConvFeatureMaksingWrapper(NeuralModule):
             self.curr_mask = torch.zeros_like(feats)
         return masked_feats, lengths
 
-    def set_masking(self, apply_mask: bool):
+    def set_masking_enabled(self, apply_mask: bool):
         self.apply_mask = apply_mask
 
     def get_current_mask(self):
