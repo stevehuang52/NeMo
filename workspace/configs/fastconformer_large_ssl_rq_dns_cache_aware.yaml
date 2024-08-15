@@ -53,20 +53,15 @@ model:
     bucketing_batch_size: null
     # batch augmentation
     batch_augmentor:
-      _target_: nemo.collections.asr.modules.ssl_modules.MultiSpeakerNoiseAugmentation
-      prob: 0.7
+      _target_: nemo.collections.asr.modules.ssl_modules.WavLMAugmentation
+      prob: 0.5
       noise_ratio: 0.5
-      min_r_speech: -5.0  # min energy_ratio for added speech
-      max_r_speech: 5.0  # max energy_ratio for added speech
+      min_r_speech: -5.0
+      max_r_speech: 5.0
       min_r_noise: -5.0
       max_r_noise: 20.0
-      min_mix_rate: 0.2
-      max_mix_rate: 0.6
-      min_num_segments: 1
-      max_num_segments: 5
-      min_num_speakers: 1  # num of extra speakers to add
-      max_num_speakers: 4
-      use_mixed_augmentation: true
+      min_mix_rate: 0.5
+      max_mix_rate: 0.5
 
 
   validation_ds:
