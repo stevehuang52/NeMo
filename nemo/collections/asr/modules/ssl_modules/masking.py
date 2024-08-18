@@ -164,7 +164,7 @@ class RandomBlockMasking(NeuralModule):
 
             for j in range(num_patches):
                 start = patch_idices[j]
-                end = min(start + self.block_size, input_lengths[i])
+                end = min(start + block_size, input_lengths[i])
 
                 if check_context:
                     proposed_ends = [end]
@@ -174,7 +174,7 @@ class RandomBlockMasking(NeuralModule):
                             to_be_masked = min(max_masked - already_masked, input_lengths[i] - start)
                             end = start + to_be_masked
                             proposed_ends.append(int(end))
-                    
+                            
                     end = min(proposed_ends)
 
                 masks[i, :, start:end] = 1.0
