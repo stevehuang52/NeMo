@@ -345,6 +345,7 @@ def oomptimizer(
     torch.cuda.set_per_process_memory_fraction(memory_fraction, device)
 
     trainer = pl.Trainer(barebones=True)
+    trainer.limit_train_batches = 1000
     trainer.log_every_n_steps = 1000000
     model_clones = []
     for _ in range(2 if ddp else 1):
@@ -455,7 +456,7 @@ def oomptimizer(
                     click.secho(f"OOM!", fg="yellow")
                     oom = True
                 except RuntimeError as e:
-                    if "cuFFT error: CUFFT_INTERNAL_ERROR" not in str(e):
+                    if "cuFFT error: CUFFT_INTERNAL_ERROR" not in str(e) and "canUse32BitIndexMath" not in str(e):
                         raise
                     click.secho(f"OOM!", fg="yellow")
                     oom = True

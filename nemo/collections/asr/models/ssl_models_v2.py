@@ -319,6 +319,25 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
             "tokens": tokens,
         }
 
+    @property
+    def oomptimizer_schema(self) -> dict:
+        """
+        Return a typing schema for optimal batch size calibration for various
+        sequence lengths using OOMptimizer.
+        """
+        return {
+            "cls": AudioNoiseBatch,
+            "inputs": [
+                {"name": "audio", "type": NeuralType(("B", "T"), AudioSignal()), "seq_length": "input"},
+                {"name": "audio_len", "type": NeuralType(("B", "T"), LengthsType()), "seq_length": "input"},
+                {"name": "noise", "type": NeuralType(("B", "T"), AudioSignal()), "seq_length": "input"},
+                {"name": "noise_len", "type": NeuralType(("B", "T"), LengthsType()), "seq_length": "input"},
+                {"name": "noisy_audio", "type": NeuralType(("B", "T"), AudioSignal()), "seq_length": "input"},
+                {"name": "noisy_audio_len", "type": NeuralType(("B", "T"), LengthsType()), "seq_length": "input"},
+            ],
+        }
+
+
     def transfer_batch_to_device(self, batch: Any, device: torch.device, dataloader_idx: int) -> Any:
         """
         PTL hook: https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#transfer-batch-to-device
@@ -404,7 +423,17 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
                 masked_signal = processed_noisy_input_signal
                 masks = torch.zeros_like(processed_noisy_input_signal)
             encoded, encoded_len = self.encoder(audio_signal=masked_signal, length=processed_noisy_input_signal_length)
-            
+
+
+        # print('INPUT SHAPE: ', processed_signal.shape)
+        # print("MASKS SHAPE: ", masks.shape)
+        # print("Encoded audio shape: ", encoded.shape)
+        # print('FEATS shape: ', feats.shape)
+        # masks_max, _ = torch.max(masks, dim=1)
+        # print('MAX_SHAPE: ', masks_max.shape)
+        # masks_sum = torch.sum(masks_max, dim=1)
+        # print('MASK_SUM SHAPE: ', masks_sum.shape)
+        # print('MASKS SUM: ', masks_sum)
         log_probs = self.decoder(encoder_output=encoded)
 
         return log_probs, encoded_len, masks, tokens
