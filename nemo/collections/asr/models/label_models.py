@@ -376,8 +376,6 @@ class EncDecSpeakerLabelModel(ModelPT, ExportableEncDecModel, VerificationMixin)
             logits, embs = decoder_outputs
         else:
             logits, embs = decoder_outputs, None
-        if encoded.isnan().any():
-            logging.warning("NaN detected in encoder output")
 
         return logits, embs
 
@@ -396,11 +394,6 @@ class EncDecSpeakerLabelModel(ModelPT, ExportableEncDecModel, VerificationMixin)
             audio_signal, audio_signal_len, labels, _ = batch
             logits, _ = self.forward(input_signal=audio_signal, input_signal_length=audio_signal_len)
             loss = self.loss(logits=logits, labels=labels)
-
-        if loss.isnan():
-            logging.warning(f"Received an NaN loss at step {batch_idx}")
-        if logits.isnan().any():
-            logging.warning(f"Received an NaN output at step {batch_idx}")
 
         self.log('loss', loss)
         self.log('learning_rate', self._optimizer.param_groups[0]['lr'])
@@ -421,10 +414,7 @@ class EncDecSpeakerLabelModel(ModelPT, ExportableEncDecModel, VerificationMixin)
         audio_signal, audio_signal_len, labels, _ = batch
         logits, _ = self.forward(input_signal=audio_signal, input_signal_length=audio_signal_len)
         loss_value = self.eval_loss(logits=logits, labels=labels)
-        if loss_value.isnan():
-            logging.warning(f"Received an NaN loss at step {batch_idx}")
-        if logits.isnan().any():
-            logging.warning(f"Received an NaN output at step {batch_idx}")
+
         acc_top_k = self._accuracy(logits=logits, labels=labels)
         correct_counts, total_counts = self._accuracy.correct_counts_k, self._accuracy.total_counts_k
         self._macro_accuracy.update(preds=logits, target=labels)
@@ -486,7 +476,7 @@ class EncDecSpeakerLabelModel(ModelPT, ExportableEncDecModel, VerificationMixin)
         except ValueError as e:
             logging.warning(f"Got ValueError while calculating EER: {e}")
             eer = 100.0
-        # eer = brentq(lambda x: 1.0 - x - interp1d(fpr, tpr)(x), 0.0, 1.0) * 100
+
         tensorboard_logs = {f'{tag}_loss': loss_mean, f"{tag}_eer": eer}
         return {f'{tag}_loss': loss_mean, 'log': tensorboard_logs}
 
