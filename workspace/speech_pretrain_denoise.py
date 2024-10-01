@@ -57,7 +57,9 @@ def main(cfg):
     trainer = pl.Trainer(**cfg.trainer)
     exp_manager(trainer, cfg.get("exp_manager", None))
     asr_model = EncDecSpeechDenoiseMLMModel(cfg=cfg.model, trainer=trainer)
+    import ipdb
 
+    ipdb.set_trace()
     # Initialize the weights of the model from another model, if provided via config
     asr_model.maybe_init_from_pretrained_checkpoint(cfg)
 

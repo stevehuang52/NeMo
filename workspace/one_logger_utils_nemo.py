@@ -78,12 +78,6 @@ import uuid
 from functools import wraps
 from typing import Any, Dict, Optional
 
-from one_logger_global_vars import (
-    CHECKPOINT_CALLBACK_ARGS,
-    MINIMAL_SCHEMA_CALLBACK_ARGS,
-    THROUGHPUT_CALLBACK_ARGS,
-    VERSION,
-)
 
 #######################################################
 # Timer implementation
