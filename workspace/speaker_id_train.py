@@ -54,6 +54,8 @@ Optional: Use tarred dataset to speech up data loading.
 
 # seed_everything(42)
 
+from nemo.collections.asr.models import SpeechEncDecSelfSupervisedModel
+
 
 def load_ssl_encoder(model, cfg):
     if cfg.get("init_from_ptl_ckpt", None) is not None:
