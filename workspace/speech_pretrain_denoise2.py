@@ -56,6 +56,9 @@ When doing supervised fine-tuning from unsupervised pre-trained encoder, set fla
 @hydra_runner(config_path="./configs", config_name="conformer_large_ssl_rq")
 def main(cfg):
     logging.info(f"Hydra config: {OmegaConf.to_yaml(cfg)}")
+    model_name = str(cfg.exp_manager.name).split("_")[1]
+    # only include precision and num nodes
+    suffix = str(cfg.exp_manager.name).split("_Pc")[1].split("_r")[0]
     one_logger_callback_config = {
         "enable_for_current_rank": os.environ.get('RANK') == '0',
         "one_logger_async": cfg.get("exp_manager").get("create_wandb_logger", False),
@@ -63,24 +66,24 @@ def main(cfg):
         "app_tag_run_version": "0.0.0",
         "summary_data_schema_version": "1.0.0",
         "app_run_type": "training",
-        "app_tag": "dummy_value_for_app_tag",  # Please change this
-        "app_tag_run_name": "dummy_value_for_app_tag_run_name",  # Please change this
-        "one_logger_project": "jiashang-test",  # Please change this
-        "one_logger_run_name": "jiashang-test-0919",  # Please change this
+        "app_tag": cfg.exp_manager.name,  # Please change this
+        "app_tag_run_name": f"{model_name}-{suffix}",  # Please change this
+        "one_logger_project": "heh-NEST-train",  # Please change this
+        "one_logger_run_name": cfg.exp_manager.name,  # Please change this
         "world_size": os.environ.get('WORLD_SIZE', -1),
-        "global_batch_size": cfg.get("model").get("train_ds").get("batch_size"),
-        "batch_size": cfg.get("model").get("train_ds").get("batch_size"),
-        "train_iterations_target": cfg.get("trainer").get("max_steps"),
-        "train_samples_target": cfg.get("trainer").get("max_steps")
-        * cfg.get("model").get("train_ds").get("batch_size"),
+        "global_batch_size": cfg.get("model").get("train_ds").get("batch_size", 1),
+        "batch_size": cfg.get("model").get("train_ds").get("batch_size", 1),
+        "train_iterations_target": cfg.get("trainer").get("max_steps", 1),
+        "train_samples_target": cfg.get("trainer").get("max_steps", 1)
+        * cfg.get("model").get("train_ds").get("batch_size", 1),
         "is_train_iterations_enabled": True,
         "is_baseline_run": False,
         "is_test_iterations_enabled": False,
         "is_validation_iterations_enabled": True,
         "is_save_checkpoint_enabled": True,
         "is_log_throughput_enabled": False,
-        "micro_batch_size": cfg.get("model").get("train_ds").get("batch_size"),
-        "seq_length": 128,
+        "micro_batch_size": cfg.get("model").get("train_ds").get("batch_size", 1),
+        "seq_length": 1,
         "save_checkpoint_strategy": "sync",
     }
 
