@@ -333,6 +333,10 @@ class LazyNeMoTarredIterator:
             manifest_path = self.paths[sid] if len(self.paths) > 1 else self.paths[0]
             shard_manifest = {data["audio_filepath"]: data for data in self.shard_id_to_manifest[sid]}
             tar_path = self.shard_id_to_tar_path[sid]
+            try:
+                open_best(tar_path, mode="rb")
+            except Exception as e:
+                logging.error(f"Error opening tar file '{tar_path}': {e}")
             with tarfile.open(fileobj=open_best(tar_path, mode="rb"), mode="r|*") as tar:
                 for tar_info in tar:
                     assert tar_info.name in shard_manifest, (
