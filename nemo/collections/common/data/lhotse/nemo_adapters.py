@@ -337,17 +337,20 @@ class LazyNeMoTarredIterator:
             try:
                 open_best(tar_path, mode="rb")
             except Exception as e:
-                logging.error(f"Error opening tar file '{tar_path}': {e}")
+                logging.info(f"Error opening tar file '{tar_path}': {e}")
+                print(f"=======Error opening tar file '{tar_path}': {e}")
                 retry = True
 
             if retry and str(tar_path).startswith("s3://"):
                 ais_tar_path = tar_path.replace("s3://", "ais://")
                 logging.info(f"Retrying to open tar file '{tar_path}' with AIS path '{ais_tar_path}'")
+                print(f"======Retrying to open tar file '{tar_path}' with AIS path '{ais_tar_path}'")
                 try:
                     open_best(ais_tar_path, mode="rb")
                     tar_path = ais_tar_path
                 except Exception as e:
                     logging.error(f"Error opening tar file '{ais_tar_path}': {e}")
+                    print(f"=======Error opening tar file '{ais_tar_path}': {e}")
                     retry = False
 
             with tarfile.open(fileobj=open_best(tar_path, mode="rb"), mode="r|*") as tar:
