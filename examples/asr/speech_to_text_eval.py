@@ -62,11 +62,14 @@ python speech_to_text_eval.py \
 
 """
 
+import re
 import json
 import os
 from dataclasses import dataclass, field, is_dataclass
 from typing import Optional
 
+
+import jiwer
 import torch
 import transcribe_speech
 from omegaconf import MISSING, OmegaConf, open_dict
@@ -101,7 +104,7 @@ class EvaluationConfig(transcribe_speech.TranscriptionConfig):
 
     text_processing: Optional[TextProcessingConfig] = field(
         default_factory=lambda: TextProcessingConfig(
-            punctuation_marks=".,?",
+            punctuation_marks=".,?-",
             separate_punctuation=False,
             do_lowercase=False,
             rm_punctuation=False,
@@ -150,9 +153,43 @@ def main(cfg: EvaluationConfig):
                 invalid_manifest = True
                 break
 
-            ground_truth_text.append(data[cfg.gt_text_attr_name])
+            gt_text = data[cfg.gt_text_attr_name].replace("<cs> ", "")
+            gt_text = gt_text.replace("<inaudible>", "")
 
-            predicted_text.append(data["pred_text"])
+            filler_words = ["um", "uh", "mm-mm", "mm-hmm"]
+
+            #before_wer = jiwer.wer(gt_text, data["pred_text"])
+
+            pattern = r'\b(?:' + '|'.join(map(re.escape, filler_words)) + r')\b'
+            pattern_with_punctuation = r'[\s\.,!?;:]*' + pattern + r'[\s\.,!?;:]*'
+
+            gt_text = re.sub(pattern_with_punctuation, ' ', gt_text, flags=re.IGNORECASE)
+            gt_text = re.sub(r'\s+', ' ', gt_text).strip()
+
+            #for filler_word in filler_words:
+            #    gt_text = gt_text.replace(filler_word, "")
+            #    gt_text = gt_text.replace(filler_word.capitalize(), "")
+
+            #after_wer = jiwer.wer(gt_text, data["pred_text"])
+
+            #print(before_wer, after_wer)
+
+            ground_truth_text.append(gt_text)
+
+            indices_to_remove = data["indices_to_remove"].split()
+            indices_to_remove = [int(i) for i in indices_to_remove]
+            indices_to_remove = []
+
+            pred_text = data["pred_text"].split()
+
+            pred_text = [word for  (i, word) in enumerate(pred_text) if i not in indices_to_remove] 
+
+            try:
+                predicted_text.append(" ".join(pred_text))
+
+            except:
+                print(pred_text)
+                raise
 
     pc = PunctuationCapitalization(cfg.text_processing.punctuation_marks)
     if cfg.text_processing.separate_punctuation:

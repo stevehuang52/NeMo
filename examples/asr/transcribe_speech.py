@@ -475,6 +475,7 @@ def main(cfg: TranscriptionConfig) -> Union[TranscriptionConfig, List[Hypothesis
         return transcriptions
 
     # write audio transcriptions
+    print("WRITING TRANSCRIPTIONS!")
     output_filename, pred_text_attr_name = write_transcription(
         transcriptions,
         cfg,

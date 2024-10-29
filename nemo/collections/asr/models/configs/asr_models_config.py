@@ -46,7 +46,7 @@ class ASRDatasetConfig(nemo.core.classes.dataset.DatasetConfig):
     augmentor: Optional[Dict[str, Any]] = None
     max_duration: Optional[float] = None
     min_duration: Optional[float] = None
-    max_utts: int = 0
+   # max_utts: Optional[int] = 0
     blank_index: int = -1
     unk_index: int = -1
     normalize: bool = False

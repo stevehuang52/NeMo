@@ -1478,9 +1478,13 @@ class CacheAwareStreamingAudioBuffer:
             audio_chunk = torch.cat((cache_pre_encode, audio_chunk), dim=-1)
 
             if self.online_normalization:
+                device = self.get_model_device()
+                print("*"*20)
+                print(device)
+                print("*"*20)
                 audio_chunk, x_mean, x_std = normalize_batch(
                     x=audio_chunk,
-                    seq_len=torch.tensor([audio_chunk.size(-1)] * audio_chunk.size(0)),
+                    seq_len=torch.tensor([audio_chunk.size(-1)] * audio_chunk.size(0), device=device),
                     normalize_type=self.model_normalize_type,
                 )
 
@@ -1568,9 +1572,10 @@ class CacheAwareStreamingAudioBuffer:
             self.streams_length[stream_id] = self.streams_length[stream_id] + processed_signal.size(-1)
 
         if self.online_normalization:
+            device = self.get_model_device()
             processed_signal, x_mean, x_std = normalize_batch(
                 x=processed_signal,
-                seq_len=torch.tensor([processed_signal_length]),
+                seq_len=torch.tensor([processed_signal_length], device=device),
                 normalize_type=self.model_normalize_type,
             )
         return processed_signal, processed_signal_length, stream_id

@@ -15,10 +15,14 @@
 from math import ceil
 from typing import Any, Dict, List, Optional, Union
 
+import os
+from os import path
 import torch
 import torch.nn as nn
-from omegaconf import DictConfig
+from pathlib import Path
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
+from nemo.utils.app_state import AppState
 
 from nemo.collections.asr.data import audio_to_text_dataset, ssl_dataset
 from nemo.collections.asr.data.audio_to_text_dali import DALIOutputs
@@ -33,7 +37,7 @@ from nemo.core.classes.common import PretrainedModelInfo, typecheck
 from nemo.core.classes.mixins import AccessMixin
 from nemo.core.neural_types import AudioSignal, LabelsType, LengthsType, LogprobsType, NeuralType, SpectrogramType
 from nemo.utils import logging
-
+from nemo.core.connectors.save_restore_connector import SaveRestoreConnector
 
 class EncDecSpeechSSLModel(SpeechEncDecSelfSupervisedModel):
     @classmethod
@@ -233,6 +237,86 @@ class EncDecSpeechSSLModel(SpeechEncDecSelfSupervisedModel):
         test_loss_mean = torch.stack([x['test_loss'] for x in outputs]).mean()
         tensorboard_logs = {'test_loss': test_loss_mean}
         return {'test_loss': test_loss_mean, 'log': tensorboard_logs}
+
+
+    @classmethod
+    def restore_from(
+        cls,
+        restore_path: str,
+        override_config_path: Optional[Union[OmegaConf, str]] = None,
+        map_location: Optional[torch.device] = None,
+        strict: bool = True,
+        return_config: bool = False,
+        save_restore_connector: SaveRestoreConnector = None,
+        trainer: Optional[Trainer] = None,
+        validate_access_integrity: bool = True,
+    ):
+        """
+        Restores model instance (weights and configuration) from .nemo file.
+
+        Args:
+            restore_path: path to .nemo file from which model should be instantiated
+            override_config_path: path to a yaml config that will override the internal
+                config file or an OmegaConf / DictConfig object representing the model config.
+            map_location: Optional torch.device() to map the instantiated model to a device.
+                By default (None), it will select a GPU if available, falling back to CPU otherwise.
+            strict: Passed to load_state_dict. By default True.
+            return_config: If set to true, will return just the underlying config of the restored
+                model as an OmegaConf DictConfig object without instantiating the model.
+            trainer: Optional, a pytorch lightning Trainer object that will be forwarded to the
+                instantiated model's constructor.
+            save_restore_connector (SaveRestoreConnector): Can be overridden to add custom save and restore logic.
+
+            Example:
+                ```
+                model = nemo.collections.asr.models.EncDecCTCModel.restore_from('asr.nemo')
+                assert isinstance(model, nemo.collections.asr.models.EncDecCTCModel)
+                ```
+
+        Returns:
+            An instance of type cls or its underlying config (if return_config is set).
+        """
+
+        if save_restore_connector is None:
+            save_restore_connector = SaveRestoreConnector()
+
+        if save_restore_connector.model_extracted_dir is None:
+            restore_path = os.path.abspath(os.path.expanduser(restore_path))
+        else:
+            restore_path = os.path.abspath(os.path.expanduser(save_restore_connector.model_extracted_dir))
+
+        if not path.exists(restore_path):
+            raise FileNotFoundError(f"Can't find {restore_path}")
+
+        app_state = AppState()
+        app_state.model_restore_path = restore_path
+
+        cls.update_save_restore_connector(save_restore_connector)
+        try:
+            instance = cls._save_restore_connector.restore_from(
+            cls,
+            restore_path,
+            override_config_path,
+            map_location,
+            strict,
+            return_config,
+            trainer,
+            validate_access_integrity,
+        )
+        except:
+            instance = cls._save_restore_connector.restore_from(
+            SpeechEncDecSelfSupervisedModel,
+            restore_path,
+            override_config_path,
+            map_location,
+            strict,
+            return_config,
+            trainer,
+            validate_access_integrity,
+        )
+        if isinstance(instance, ModelPT):
+            instance._save_restore_connector = save_restore_connector
+        return instance
 
 
 class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
@@ -511,6 +595,9 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
                 flush=True,
             )
         return {f'{mode}_loss': loss_value}
+
+
+    
 
 
 class SemiSupervisedSpeechMAEModel(ModelPT, ASRModuleMixin, AccessMixin):

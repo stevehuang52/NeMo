@@ -15,6 +15,7 @@ import glob
 import json
 import os
 import re
+import pickle
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple, Union
@@ -375,6 +376,7 @@ def write_transcription(
     compute_timestamps: bool = False,
 ) -> Tuple[str, str]:
     """Write generated transcription to output file."""
+    print('IN FUNCTION')
     if cfg.append_pred:
         logging.info(f'Transcripts will be written in "{cfg.output_filename}" file')
         if cfg.pred_name_postfix is not None:
@@ -412,9 +414,15 @@ def write_transcription(
     with open(cfg.output_filename, 'w', encoding='utf-8', newline='\n') as f:
         if cfg.audio_dir is not None:
             for idx, transcription in enumerate(best_hyps):  # type: rnnt_utils.Hypothesis or str
+                print('WRITING')
                 if not return_hypotheses:  # transcription is str
                     item = {'audio_filepath': filepaths[idx], pred_text_attr_name: transcription}
                 else:  # transcription is Hypothesis
+                    print("HERE")
+                    print("="*20)
+                    hyp_filename = Path(Path(cfg.output_filename).parent, filename).with_suffix('.pkl')
+                    with open(hyp_filename, 'wb') as pickle_f:
+                        pickle.dump(transcription, pickle_f)
                     item = {'audio_filepath': filepaths[idx], pred_text_attr_name: transcription.text}
 
                     if compute_timestamps:
@@ -440,6 +448,15 @@ def write_transcription(
                     if not return_hypotheses:  # transcription is str
                         item[pred_text_attr_name] = best_hyps[idx]
                     else:  # transcription is Hypothesis
+                        print("HERE")
+
+                        filename = Path(item["audio_filepath"]).stem + "_hyp"
+
+                        hyp_filename = Path(Path(cfg.output_filename).parent, filename).with_suffix('.pkl')
+
+                        with open(hyp_filename, 'wb') as pickle_f:
+                            pickle.dump(best_hyps[idx], pickle_f)
+
                         item[pred_text_attr_name] = best_hyps[idx].text
 
                         if compute_timestamps:

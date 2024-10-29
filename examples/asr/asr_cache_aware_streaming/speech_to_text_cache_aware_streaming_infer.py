@@ -309,6 +309,12 @@ def main():
         else:
             raise ValueError("Model does not support multiple lookaheads.")
 
+
+
+
+    print(args.chunk_size)
+    print(args.shift_size)
+    print(args.left_chunks)
     global autocast
     if (
         args.use_amp
@@ -323,6 +329,8 @@ def main():
         @contextlib.contextmanager
         def autocast():
             yield
+
+
 
     # configure the decoding config
     decoding_cfg = asr_model.cfg.decoding
@@ -388,6 +396,8 @@ def main():
         with open(args.manifest_file, 'r') as f:
             for line in f:
                 item = json.loads(line)
+                if not os.path.isabs(item["audio_filepath"]):
+                    item["audio_filepath"] = os.path.dirname(args.manifest_file) + "/" + item["audio_filepath"] 
                 samples.append(item)
 
         logging.info(f"Loaded {len(samples)} from the manifest at {args.manifest_file}.")
@@ -431,18 +441,22 @@ def main():
                 "streaming_out_"
                 + os.path.splitext(os.path.basename(args.asr_model))[0]
                 + "_"
-                + os.path.splitext(os.path.basename(args.test_manifest))[0]
+                + os.path.splitext(os.path.basename(args.manifest_file))[0]
+                + "_"
+                + args.att_context_size.replace("]", "").split(",")[1] if args.att_context_size else str(args.chunk_size)
                 + ".json"
             )
 
             hyp_json = os.path.join(args.output_path, fname)
             os.makedirs(args.output_path, exist_ok=True)
             with open(hyp_json, "w") as out_f:
-                for i, hyp in enumerate(all_streaming_tran):
+                for i, (hyp, offline_hyp) in enumerate(zip(all_streaming_tran, all_offline_tran)):
                     record = {
                         "pred_text": hyp,
+                        "offline_pred_text": offline_hyp,
                         "text": all_refs_text[i],
                         "wer": round(word_error_rate(hypotheses=[hyp], references=[all_refs_text[i]]) * 100, 2),
+                        "offline_wer": round(word_error_rate(hypotheses=[offline_hyp], references=[all_refs_text[i]]) * 100, 2)
                     }
                     out_f.write(json.dumps(record) + '\n')
 

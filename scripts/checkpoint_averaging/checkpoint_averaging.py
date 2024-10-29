@@ -146,6 +146,7 @@ def main():
         # restore merged weights into model
         nemo_model.load_state_dict(avg_state, strict=True)
         # Save model
+        avg_model_fname = '/lustre/fsw/portfolios/convai/users/msekoyan/cs_asr_models/avg_models/offline_with_cs.nemo'
         logging.info(f"Saving average model to:\n\t{avg_model_fname}")
         nemo_model.save_to(avg_model_fname)
 
