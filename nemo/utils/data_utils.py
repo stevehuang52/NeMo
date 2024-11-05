@@ -46,7 +46,7 @@ def is_datastore_path(path) -> bool:
     """Check if a path is from a data object store.
     Currently, only AIStore is supported.
     """
-    return str(path).startswith('s3://')
+    return str(path).startswith('s3://') or str(path).startswith('ais://')
 
 
 def is_tarred_path(path) -> bool:

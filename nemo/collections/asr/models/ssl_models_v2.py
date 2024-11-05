@@ -188,6 +188,8 @@ class EncDecSpeechSSLModel(SpeechEncDecSelfSupervisedModel):
 
         loss_value = self.loss(masks=masks, decoder_outputs=log_probs, targets=tokens, decoder_lengths=encoded_len)
 
+        logging.info(f"Val loader {dataloader_idx}, batch {batch_idx}, loss: {loss_value}")
+
         return {f'{mode}_loss': loss_value}
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
@@ -253,6 +255,7 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
                 ),
             )
 
+        logging.info(f"Setting up dataloader with config: {config}")
         dataset = ssl_dataset.get_audio_noise_dataset_from_config(
             config,
             global_rank=self.global_rank,
