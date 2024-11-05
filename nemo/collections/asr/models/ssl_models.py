@@ -292,7 +292,7 @@ class SpeechEncDecSelfSupervisedModel(ModelPT, ASRModuleMixin, AccessMixin):
 
         # preserve config
         self._update_dataset_config(dataset_name='validation', config=val_data_config)
-
+        logging.info(f"Validation dataset config: {val_data_config}")
         self._validation_dl = self._setup_dataloader_from_config(config=val_data_config)
 
         # Need to set this because if using an IterableDataset, the length of the dataloader is the total number

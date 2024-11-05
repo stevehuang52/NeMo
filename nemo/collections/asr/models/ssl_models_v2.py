@@ -243,8 +243,10 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
 
     def _setup_dataloader_from_config(self, config: Optional[Dict]):
         audio_to_text_dataset.inject_dataloader_value_from_model_config(self.cfg, config, key='sample_rate')
+        logging.info(f"Setting up dataloader with config: {config}")
 
         if config.get("use_lhotse"):
+
             return get_lhotse_dataloader_from_config(
                 config,
                 global_rank=self.global_rank,
@@ -255,7 +257,6 @@ class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
                 ),
             )
 
-        logging.info(f"Setting up dataloader with config: {config}")
         dataset = ssl_dataset.get_audio_noise_dataset_from_config(
             config,
             global_rank=self.global_rank,
