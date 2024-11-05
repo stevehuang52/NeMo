@@ -890,6 +890,7 @@ class ModelPT(LightningModule, Model):
         """
         self.propagate_model_guid()
         if stage == 'fit':
+            logging.info(f"Deferring setup of training data to setup_training_data() method.")
             train_deferred_setup = (
                 'train_ds' in self._cfg
                 and self._cfg.train_ds is not None
@@ -903,6 +904,9 @@ class ModelPT(LightningModule, Model):
                 'validation_ds' in self._cfg
                 and self._cfg.validation_ds is not None
                 and self._cfg.validation_ds.get('defer_setup', False)
+            )
+            logging.info(
+                f"Deferring setup validation data, defer_stup: {self._cfg.validation_ds.get('defer_setup', False)}, val_loader: {self.val_dataloader()}, val_deferred_setup: {val_deferred_setup}"
             )
             if self.val_dataloader() is None and val_deferred_setup:
                 self.setup_multiple_validation_data(val_data_config=self._cfg.validation_ds)
