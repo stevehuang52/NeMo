@@ -340,19 +340,19 @@ class TarredAudioNoiseDataset(audio_to_text.TarredAudioToCharDataset):
                 orig_sr=manifest_entry.orig_sr,
             )
             audio_filestream.close()
+
+            if audio.size(0) == 0:
+                logging.warning(f"Loaded audio has zero length: {manifest_entry}.")
+                failed = True
+            elif audio.isnan().any():
+                logging.warning(f"Loaded audio has NaN values: {manifest_entry}.")
+                failed = True
+            elif audio.abs().max() == 0:
+                logging.warning(f"Loaded audio has all zero values: {manifest_entry}.")
+                failed = True
         except Exception as e:
             logging.warning(f"Error reading audio sample: {manifest_entry}, with exception: {e}.")
             print(f"\n[E] Error reading audio sample: {manifest_entry}, with exception: {e}\n", flush=True)
-            failed = True
-
-        if audio.size(0) == 0:
-            logging.warning(f"Loaded audio has zero length: {manifest_entry}.")
-            failed = True
-        elif audio.isnan().any():
-            logging.warning(f"Loaded audio has NaN values: {manifest_entry}.")
-            failed = True
-        elif audio.abs().max() == 0:
-            logging.warning(f"Loaded audio has all zero values: {manifest_entry}.")
             failed = True
 
         if failed:
