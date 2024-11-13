@@ -905,10 +905,13 @@ class ModelPT(LightningModule, Model):
                 and self._cfg.validation_ds is not None
                 and self._cfg.validation_ds.get('defer_setup', False)
             )
-            logging.info(
-                f"Deferring setup validation data, defer_stup: {self._cfg.validation_ds.get('defer_setup', False)}, val_loader: {self.val_dataloader()}, val_deferred_setup: {val_deferred_setup}"
+            no_val_dataloader = self.val_dataloader() is None or (
+                isinstance(self.val_dataloader(), list) and len(self.val_dataloader()) == 0
             )
-            if self.val_dataloader() is None and val_deferred_setup:
+            logging.info(
+                f"Deferring setup validation data, defer_stup: {self._cfg.validation_ds.get('defer_setup', False)}, val_loader: {self.val_dataloader()}, val_deferred_setup: {val_deferred_setup}, no_val_dataloader: {no_val_dataloader}"
+            )
+            if no_val_dataloader and val_deferred_setup:
                 self.setup_multiple_validation_data(val_data_config=self._cfg.validation_ds)
 
         if stage == 'test':

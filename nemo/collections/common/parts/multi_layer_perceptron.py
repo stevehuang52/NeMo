@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from contextlib import contextmanager
 from typing import Optional
+
 import torch
 
 
@@ -75,3 +77,10 @@ class MultiLayerPerceptron(torch.nn.Module):
         if self.channel_idx is not None:
             output_states = output_states.transpose(-1, self.channel_idx)
         return output_states
+
+    @contextmanager
+    def with_log_softmax_enabled(self, value: bool) -> "MultiLayerPerceptron":
+        prev = self.log_softmax
+        self.log_softmax = value
+        yield self
+        self.log_softmax = prev
