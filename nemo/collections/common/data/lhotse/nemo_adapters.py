@@ -346,7 +346,14 @@ class LazyNeMoTarredIterator:
                         )
                         continue
                     data = shard_manifest[tar_info.name]
-                    raw_audio = tar.extractfile(tar_info).read()
+                    try:
+                        raw_audio = tar.extractfile(tar_info).read()
+                    except Exception as e:
+                        logging.warning(
+                            f"Failed to read tar entry `{tar_info.name}` from tar file `{tar_path}`. "
+                            f"Skipping this entry. Exception: {e}"
+                        )
+                        continue
                     # Note: Lhotse has a Recording.from_bytes() utility that we won't use here because
                     #       the profiling indicated significant overhead in torchaudio ffmpeg integration
                     #       that parses full audio instead of just reading the header for WAV files.
