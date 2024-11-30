@@ -333,60 +333,63 @@ class LazyNeMoTarredIterator:
             manifest_path = self.paths[sid] if len(self.paths) > 1 else self.paths[0]
             shard_manifest = {data["audio_filepath"]: data for data in self.shard_id_to_manifest[sid]}
             tar_path = self.shard_id_to_tar_path[sid]
-
-            with tarfile.open(fileobj=open_best(tar_path, mode="rb"), mode="r|*") as tar:
-                try:
-                    for tar_info in tar:
-                        # assert tar_info.name in shard_manifest, (
-                        #     f"Mismatched entry between JSON manifest ('{manifest_path}') and tar file ('{tar_path}'). "
-                        #     f"Cannot locate JSON entry for tar file '{tar_info.name}'"
-                        # )
-                        if tar_info.name not in shard_manifest:
-                            logging.warning(
-                                f"Skipping tar entry `{tar_info.name}` because it's not in the manifest `{manifest_path}`."
+            try:
+                with tarfile.open(fileobj=open_best(tar_path, mode="rb"), mode="r|*") as tar:
+                    try:
+                        for tar_info in tar:
+                            # assert tar_info.name in shard_manifest, (
+                            #     f"Mismatched entry between JSON manifest ('{manifest_path}') and tar file ('{tar_path}'). "
+                            #     f"Cannot locate JSON entry for tar file '{tar_info.name}'"
+                            # )
+                            if tar_info.name not in shard_manifest:
+                                logging.warning(
+                                    f"Skipping tar entry `{tar_info.name}` because it's not in the manifest `{manifest_path}`."
+                                )
+                                continue
+                            data = shard_manifest[tar_info.name]
+                            try:
+                                raw_audio = tar.extractfile(tar_info).read()
+                            except Exception as e:
+                                logging.warning(
+                                    f"Failed to read tar entry `{tar_info.name}` from tar file `{tar_path}`. "
+                                    f"Skipping this entry. Exception: {e}"
+                                )
+                                continue
+                            # Note: Lhotse has a Recording.from_bytes() utility that we won't use here because
+                            #       the profiling indicated significant overhead in torchaudio ffmpeg integration
+                            #       that parses full audio instead of just reading the header for WAV files.
+                            # recording = lhotse.Recording.from_bytes(raw_audio, recording_id=tar_info.path)
+                            meta = soundfile.info(BytesIO(raw_audio))
+                            recording = Recording(
+                                id=tar_info.path,
+                                sources=[
+                                    AudioSource(type="memory", channels=list(range(meta.channels)), source=raw_audio)
+                                ],
+                                sampling_rate=int(meta.samplerate),
+                                num_samples=meta.frames,
+                                duration=meta.duration,
                             )
-                            continue
-                        data = shard_manifest[tar_info.name]
-                        try:
-                            raw_audio = tar.extractfile(tar_info).read()
-                        except Exception as e:
-                            logging.warning(
-                                f"Failed to read tar entry `{tar_info.name}` from tar file `{tar_path}`. "
-                                f"Skipping this entry. Exception: {e}"
+                            cut = recording.to_cut()
+                            cut.supervisions.append(
+                                SupervisionSegment(
+                                    id=cut.id,
+                                    recording_id=cut.recording_id,
+                                    start=0,
+                                    duration=cut.duration,
+                                    text=data.get(self.text_field),
+                                    language=data.get(self.lang_field),
+                                )
                             )
-                            continue
-                        # Note: Lhotse has a Recording.from_bytes() utility that we won't use here because
-                        #       the profiling indicated significant overhead in torchaudio ffmpeg integration
-                        #       that parses full audio instead of just reading the header for WAV files.
-                        # recording = lhotse.Recording.from_bytes(raw_audio, recording_id=tar_info.path)
-                        meta = soundfile.info(BytesIO(raw_audio))
-                        recording = Recording(
-                            id=tar_info.path,
-                            sources=[
-                                AudioSource(type="memory", channels=list(range(meta.channels)), source=raw_audio)
-                            ],
-                            sampling_rate=int(meta.samplerate),
-                            num_samples=meta.frames,
-                            duration=meta.duration,
-                        )
-                        cut = recording.to_cut()
-                        cut.supervisions.append(
-                            SupervisionSegment(
-                                id=cut.id,
-                                recording_id=cut.recording_id,
-                                start=0,
-                                duration=cut.duration,
-                                text=data.get(self.text_field),
-                                language=data.get(self.lang_field),
-                            )
-                        )
-                        cut.custom = _to_custom_attr_dict(data)
-                        for extra_field in extra_fields:
-                            extra_field.attach_to(cut)
-                        yield cut
-                except Exception as e:
-                    logging.warning(f"Failed to read tar file `{tar_path}`. Skipping this shard. Exception: {e}")
-                    continue
+                            cut.custom = _to_custom_attr_dict(data)
+                            for extra_field in extra_fields:
+                                extra_field.attach_to(cut)
+                            yield cut
+                    except Exception as e:
+                        logging.warning(f"Failed to read tar file `{tar_path}`. Skipping this shard. Exception: {e}")
+                        continue
+            except Exception as e:
+                logging.warning(f"Failed to open tar file `{tar_path}`. Skipping this shard. Exception: {e}")
+                continue
 
     def __len__(self) -> int:
         return len(self.source)
