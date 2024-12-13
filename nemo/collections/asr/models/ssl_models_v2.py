@@ -240,6 +240,10 @@ class EncDecSpeechSSLModel(SpeechEncDecSelfSupervisedModel):
 class EncDecSpeechDenoiseMLMModel(EncDecSpeechSSLModel):
     def __init__(self, cfg: DictConfig, trainer: Trainer = None):
         super().__init__(cfg, trainer)
+        if hasattr(self, "decoder_ssl"):
+            del self.decoder_ssl
+        if hasattr(self, "spec_augmentation"):
+            del self.spec_augmentation
 
     def _setup_dataloader_from_config(self, config: Optional[Dict]):
         audio_to_text_dataset.inject_dataloader_value_from_model_config(self.cfg, config, key='sample_rate')
