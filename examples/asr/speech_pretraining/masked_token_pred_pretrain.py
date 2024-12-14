@@ -17,10 +17,12 @@ import lightning.pytorch as pl
 from omegaconf import OmegaConf
 
 from nemo.collections.asr.models.ssl_models import EncDecDenoiseMaskedTokenPredModel
+from nemo.core.classes.common import typecheck
 from nemo.core.config import hydra_runner
 from nemo.utils import logging
 from nemo.utils.exp_manager import exp_manager
 
+typecheck.set_typecheck_enabled(False)
 
 """
 # Example of training a self-supervised denoising masksed token prediction model

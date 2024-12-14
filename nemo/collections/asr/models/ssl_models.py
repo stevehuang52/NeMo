@@ -633,6 +633,10 @@ class EncDecMaskedTokenPredModel(SpeechEncDecSelfSupervisedModel):
 
     def __init__(self, cfg: DictConfig, trainer: Trainer = None):
         super().__init__(cfg, trainer)
+        if hasattr(self, "decoder_ssl"):
+            del self.decoder_ssl
+        if hasattr(self, "spec_augmentation"):
+            del self.spec_augmentation
 
         if self.cfg.get("mask_position", "pre_conv") == "post_conv":
             # adjust config for post-convolution masking
