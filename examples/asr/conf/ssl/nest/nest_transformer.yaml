@@ -5,7 +5,7 @@
 #  +--------------+---------+---------+----------+--------------+------------+---------+
 #  | Model        | d_model | n_heads | n_layers | weight_decay |  xscaling  | use_bias|
 #  +==============+=========+========+===========+==============+============+=========+
-#  | Large (110M) |   512   |    8   |    32     |     1e-3     |    True    |   True  |
+#  | Large (114M) |   512   |    8   |    33     |     1e-3     |    True    |   True  |
 #  +--------------+---------+--------+-----------+--------------+------------+---------+
 #  | XLarge (603M)|   1024  |    8   |    44     |     1e-3     |    False   |   False |
 #  +--------------+---------+--------+-----------+--------------+------------+---------+
@@ -135,7 +135,7 @@ model:
     _target_: nemo.collections.asr.modules.ASRTransformerEncoder
     feat_in: ${model.preprocessor.features}
     feat_out: -1 # you may set it if you need different output size other than the default d_model
-    n_layers: 32
+    n_layers: 33
     d_model: 512
     use_bias: True # whether to apply bias in the feedforward, MHA and convolution modules
 

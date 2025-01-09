@@ -213,7 +213,7 @@ class SLUIntentSlotBPEModel(ASRModel, ExportableEncDecModel, ASRModuleMixin, ASR
             decoder_states=bos_semantics,
             decoder_mask=bos_semantics_mask,
         )
-        log_probs = self.classifier(decoded)
+        log_probs = self.classifier(hidden_states=decoded)
 
         predictions = log_probs.argmax(dim=-1, keepdim=False)
 

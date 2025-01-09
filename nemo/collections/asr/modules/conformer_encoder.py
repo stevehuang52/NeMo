@@ -1162,14 +1162,17 @@ class ConformerMultiLayerFeatureExtractor(NeuralModule, Exportable, AccessMixin)
     def __init__(
         self,
         encoder: ConformerEncoder,
-        layer_idx_list: List[int],
+        layer_idx_list: Optional[List[int]] = None,
         aggregator: NeuralModule = None,
         detach: bool = False,
         convert_to_cpu: bool = False,
     ):
         super().__init__()
         self.encoder = encoder
-        self.layer_idx_list = [int(l) for l in layer_idx_list]
+        if layer_idx_list is None:
+            layer_idx_list = [i for i in range(len(encoder.layers))]
+        else:
+            self.layer_idx_list = [int(l) for l in layer_idx_list]
         for x in self.layer_idx_list:
             if x < 0 or x >= len(encoder.layers):
                 raise ValueError(f"layer index {x} out of range [0, {len(encoder.layers)})")

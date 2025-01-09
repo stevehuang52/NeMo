@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from nemo.collections.asr.modules.asr_transformer_encoder import ASRTransformerEncoder
+from nemo.collections.asr.modules.asr_transformer_encoder import ASRTransformerEncoder, ASRTransformerFeatureExtractor
 from nemo.collections.asr.modules.audio_preprocessing import (
     AudioToMelSpectrogramPreprocessor,
     AudioToMFCCPreprocessor,
@@ -21,7 +21,11 @@ from nemo.collections.asr.modules.audio_preprocessing import (
     SpectrogramAugmentation,
 )
 from nemo.collections.asr.modules.beam_search_decoder import BeamSearchDecoderWithLM
-from nemo.collections.asr.modules.conformer_encoder import ConformerEncoder, ConformerEncoderAdapter
+from nemo.collections.asr.modules.conformer_encoder import (
+    ConformerEncoder,
+    ConformerEncoderAdapter,
+    ConformerMultiLayerFeatureExtractor,
+)
 from nemo.collections.asr.modules.conv_asr import (
     ConvASRDecoder,
     ConvASRDecoderClassification,

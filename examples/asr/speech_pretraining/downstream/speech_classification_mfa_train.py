@@ -74,9 +74,9 @@ def load_ssl_encoder(model, cfg):
     encoder_state_dict = OrderedDict()
     for key, value in state_dict.items():
         if key.startswith('encoder.'):
-            encoder_state_dict[f'preprocessor.feature_extractor.{key}'] = value
+            encoder_state_dict[key[len('encoder.') :]] = value
 
-    model.load_state_dict(encoder_state_dict, strict=False)
+    model.preprocessor.feature_extractor.encoder.load_state_dict(encoder_state_dict, strict=True)
     logging.info("Loaded ssl encoder state dict.")
 
     return model
