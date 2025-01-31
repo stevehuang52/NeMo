@@ -1,0 +1,57 @@
+
+###### 1.4B
+oci_nest_canary2_eu450k_lhotse_r2_v2.sh
+--------------------------------------
+oci_Canary2-FC_L36D1280H16_mel128_eu450k_bd180_nb1_adamwlr0.0001_wd1e-3_NoamAnnealing_warmup25000_mask0.01x40pre_conv_Aug0.2x0.5_Pcbf16-mixed_n16_val0.2_r2_v2
+
+2769538-2769594
+
+###### 115M
+oci_nest_canary2_eu450k_lhotse_r0_v6.sh
+--------------------------------------
+oci_Canary2-FC_L18D512H8_mel128_eu450k_bd240_nb16_adamwlr0.001_wd1e-3_warmup25000_mask0.01x40pre_conv_Aug0.2x0.1_Pcbf16-mixed_n16_initr0v5-step54005_r0_v6_t2
+
+2769598-2769650
+
+
+oci_nest2_en100k_transformer_large.sh
+--------------------------------------
+2769653-2769706
+
+
+###### 810M
+oci_nest_canary2_eu450k_lhotse_r1_v6.sh
+--------------------------------------
+oci_Canary2-FC_L32D1024H8_mel128_eu450k_bd70_nb16_adamwlr0.0005_wd1e-3_NoamAnnealing_warmup25000_mask0.01x40pre_conv_Aug0.2x0.1_Pcbf16-mixed_n16_val0.2_Init235k_gc10_r1_v6_t2
+
+2802333-2802342
+
+
+
+###### 2B
+oci_nest_canary2_eu450k_lhotse_r3_v2.sh
+--------------------------------------
+oci_Canary2-FC_L36D1536H16_mel128_eu450k_bd160_nb1_adamwlr0.0001_wd1e-3_NoamAnnealing_warmup25000_mask0.01x40pre_conv_Aug0.2x0.9_Pcbf16-mixed_n16_val0.2_r3_v2_t1
+
+
+oci_nest_canary2_eu450k_lhotse_r3.sh
+--------------------------------------
+
+
+
+oci_nest_canary2_eu450k_lhotse_r0_v5.sh
+--------------------------------------
+oci_Canary2-FC_L17D512H8_mel128_eu450k_bd240_nb16_adamwlr0.001_wd1e-3_warmup25000_mask0.01x40pre_conv_Aug0.2x0.1_Pcbf16-mixed_n16_val0.2_init115200_r0_v5
+
+
+
+
+oci_nest_canary2_eu450k_lhotse_XL_debug.sh
+--------------------------------------
+
+
+
+oci_nest_canary2_eu450k_lhotse_bestrq_r2.sh
+--------------------------------------
+
+
